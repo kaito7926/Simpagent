@@ -202,9 +202,9 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | PLAT-01 through DOCS-06 | Unmapped | Pending |
 
 **Coverage:**
-- v1 requirements: 96 total
+- v1 requirements: 90 total
 - Mapped to phases: 0
-- Unmapped: 96
+- Unmapped: 90
 
 ---
 *Requirements defined: 2026-06-08*
