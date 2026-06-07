@@ -199,13 +199,110 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLAT-01 through DOCS-06 | Unmapped | Pending |
+| PLAT-01 | Phase 1 | Pending |
+| PLAT-02 | Phase 1 | Pending |
+| PLAT-03 | Phase 1 | Pending |
+| PLAT-04 | Phase 1 | Pending |
+| PLAT-05 | Phase 1 | Pending |
+| PLAT-06 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| AUTH-05 | Phase 1 | Pending |
+| AUTH-06 | Phase 1 | Pending |
+| AUTH-07 | Phase 1 | Pending |
+| AUTH-08 | Phase 1 | Pending |
+| AUTH-09 | Phase 1 | Pending |
+| AUTH-10 | Phase 1 | Pending |
+| AUTHZ-01 | Phase 1 | Pending |
+| AUTHZ-08 | Phase 1 | Pending |
+| AUTHZ-03 | Phase 2 | Pending |
+| AUTHZ-05 | Phase 2 | Pending |
+| AUTHZ-06 | Phase 2 | Pending |
+| CHAT-01 | Phase 2 | Pending |
+| CHAT-02 | Phase 2 | Pending |
+| CHAT-03 | Phase 2 | Pending |
+| CHAT-04 | Phase 2 | Pending |
+| CHAT-05 | Phase 2 | Pending |
+| CHAT-06 | Phase 2 | Pending |
+| CHAT-07 | Phase 2 | Pending |
+| CHAT-08 | Phase 2 | Pending |
+| CHAT-09 | Phase 2 | Pending |
+| CHAT-10 | Phase 2 | Pending |
+| CHAT-11 | Phase 2 | Pending |
+| AUTHZ-04 | Phase 3 | Pending |
+| AUTHZ-07 | Phase 3 | Pending |
+| AGNT-01 | Phase 3 | Pending |
+| AGNT-02 | Phase 3 | Pending |
+| AGNT-03 | Phase 3 | Pending |
+| AGNT-04 | Phase 3 | Pending |
+| AGNT-05 | Phase 3 | Pending |
+| AGNT-06 | Phase 3 | Pending |
+| AGNT-07 | Phase 3 | Pending |
+| SRCH-01 | Phase 3 | Pending |
+| SRCH-02 | Phase 3 | Pending |
+| SRCH-03 | Phase 3 | Pending |
+| SRCH-04 | Phase 3 | Pending |
+| SRCH-05 | Phase 3 | Pending |
+| SRCH-06 | Phase 3 | Pending |
+| SRCH-07 | Phase 3 | Pending |
+| SRCH-08 | Phase 3 | Pending |
+| CHAT-12 | Phase 4 | Pending |
+| SBOX-01 | Phase 4 | Pending |
+| SBOX-02 | Phase 4 | Pending |
+| SBOX-03 | Phase 4 | Pending |
+| SBOX-04 | Phase 4 | Pending |
+| SBOX-05 | Phase 4 | Pending |
+| SBOX-06 | Phase 4 | Pending |
+| SBOX-07 | Phase 4 | Pending |
+| SBOX-08 | Phase 4 | Pending |
+| AUTHZ-02 | Phase 5 | Pending |
+| GATE-01 | Phase 5 | Pending |
+| GATE-02 | Phase 5 | Pending |
+| GATE-03 | Phase 5 | Pending |
+| GATE-04 | Phase 5 | Pending |
+| GATE-05 | Phase 5 | Pending |
+| GATE-06 | Phase 5 | Pending |
+| GATE-07 | Phase 5 | Pending |
+| GATE-08 | Phase 5 | Pending |
+| OBS-01 | Phase 5 | Pending |
+| OBS-02 | Phase 5 | Pending |
+| OBS-03 | Phase 5 | Pending |
+| OBS-04 | Phase 5 | Pending |
+| OBS-05 | Phase 5 | Pending |
+| OBS-06 | Phase 5 | Pending |
+| OBS-07 | Phase 5 | Pending |
+| TEST-01 | Phase 6 | Pending |
+| TEST-02 | Phase 6 | Pending |
+| TEST-03 | Phase 6 | Pending |
+| TEST-04 | Phase 6 | Pending |
+| TEST-05 | Phase 6 | Pending |
+| TEST-06 | Phase 6 | Pending |
+| TEST-07 | Phase 6 | Pending |
+| TEST-08 | Phase 6 | Pending |
+| TEST-09 | Phase 6 | Pending |
+| TEST-10 | Phase 6 | Pending |
+| DOCS-01 | Phase 6 | Pending |
+| DOCS-02 | Phase 6 | Pending |
+| DOCS-03 | Phase 6 | Pending |
+| DOCS-04 | Phase 6 | Pending |
+| DOCS-05 | Phase 6 | Pending |
+| DOCS-06 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 90 total
-- Mapped to phases: 0
-- Unmapped: 90
+- Mapped to phases: 90
+- Unmapped: 0
+
+**Phase allocation:**
+- Phase 1: 18 requirements
+- Phase 2: 14 requirements
+- Phase 3: 17 requirements
+- Phase 4: 9 requirements
+- Phase 5: 16 requirements
+- Phase 6: 16 requirements
 
 ---
 *Requirements defined: 2026-06-08*
-*Last updated: 2026-06-08 after initial definition*
+*Last updated: 2026-06-08 after roadmap generation*
