@@ -1,0 +1,43 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: backend
+    url: http://backend:8000
+    routes:
+      - name: backend-api
+        paths:
+          - /api
+        strip_path: false
+      - name: backend-health
+        paths:
+          - /health
+          - /ready
+        strip_path: false
+
+  - name: frontend
+    url: http://frontend:3000
+    routes:
+      - name: frontend-app
+        paths:
+          - /
+        strip_path: false
+
+plugins:
+  - name: cors
+    config:
+      origins:
+        - http://localhost:8000
+      credentials: true
+      methods:
+        - GET
+        - POST
+        - OPTIONS
+      headers:
+        - Authorization
+        - Content-Type
+        - X-CSRF-Token
+        - X-Correlation-Id
+      exposed_headers:
+        - X-Correlation-Id
+      max_age: 3600

@@ -1,0 +1,44 @@
+import type { InputHTMLAttributes, ReactNode } from "react";
+
+type FormFieldProps = {
+  id: string;
+  label: string;
+  required?: boolean;
+  hint?: string;
+  error?: string | null;
+  children?: ReactNode;
+} & Omit<InputHTMLAttributes<HTMLInputElement>, "id">;
+
+export function FormField({ id, label, required = true, hint, error, children, ...inputProps }: FormFieldProps) {
+  const hintId = hint ? `${id}-hint` : undefined;
+  const errorId = error ? `${id}-error` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
+
+  return (
+    <div className="form-field">
+      <label className="form-label" htmlFor={id}>
+        <span>{label}</span>
+        {required ? <span className="required-note">Bắt buộc</span> : null}
+      </label>
+      {children ?? (
+        <input
+          {...inputProps}
+          id={id}
+          aria-invalid={Boolean(error)}
+          aria-describedby={describedBy}
+          className="text-input"
+        />
+      )}
+      {hint ? (
+        <p className="field-hint" id={hintId}>
+          {hint}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="field-error" id={errorId}>
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}

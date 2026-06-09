@@ -1,1 +1,7 @@
 .env
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.next/
+node_modules/
+*.egg-info/

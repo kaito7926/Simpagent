@@ -1,0 +1,58 @@
+services:
+  postgres-test:
+    image: postgres:18.4
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: simpagent_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d simpagent_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports: []
+
+  backend-test:
+    build:
+      context: ./backend
+    working_dir: /app
+    environment:
+      SIMPAGENT_APP_ENV: test
+      SIMPAGENT_DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres-test:5432/simpagent_test
+      SIMPAGENT_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8000
+      SIMPAGENT_JWT_ISSUER: simpagent.test
+      SIMPAGENT_JWT_AUDIENCE: simpagent-api
+      SIMPAGENT_JWT_ACTIVE_KID: test-kid
+      SIMPAGENT_JWT_PRIVATE_KEY_FILE: /run/secrets/jwt_private_key
+      SIMPAGENT_JWT_PUBLIC_KEY_FILE: /run/secrets/jwt_public_key
+      SIMPAGENT_REFRESH_HMAC_KEY_FILE: /run/secrets/refresh_hmac_key
+      SIMPAGENT_CSRF_HMAC_KEY_FILE: /run/secrets/csrf_hmac_key
+      SIMPAGENT_COOKIE_SECURE: true
+      SIMPAGENT_COOKIE_SAMESITE: strict
+      SIMPAGENT_ACCESS_TOKEN_TTL_SECONDS: 600
+      SIMPAGENT_REFRESH_IDLE_TTL_SECONDS: 604800
+      SIMPAGENT_REFRESH_ABSOLUTE_TTL_SECONDS: 2592000
+      SIMPAGENT_DEMO_SEED_ENABLED: false
+      SIMPAGENT_PROVIDER_CHECK_TIMEOUT_SECONDS: 2
+      SIMPAGENT_LLM_API_BASE: https://api.example.test/v1
+      SIMPAGENT_LLM_MODEL: fake-model
+      SIMPAGENT_SEARCH_MODEL: configured-search-model
+      SIMPAGENT_TEST_NOW: 2026-06-09T00:00:00+00:00
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    secrets:
+      - jwt_private_key
+      - jwt_public_key
+      - refresh_hmac_key
+      - csrf_hmac_key
+
+secrets:
+  jwt_private_key:
+    file: ./backend/tests/fixtures/secrets/test_jwt_private.pem
+  jwt_public_key:
+    file: ./backend/tests/fixtures/secrets/test_jwt_public.pem
+  refresh_hmac_key:
+    file: ./backend/tests/fixtures/secrets/test_refresh_hmac_key
+  csrf_hmac_key:
+    file: ./backend/tests/fixtures/secrets/test_csrf_hmac_key
