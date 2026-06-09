@@ -82,24 +82,33 @@ Task IDs and plan assignments are finalized by the planner. Every requirement be
 
 ## Wave 0 Requirements
 
-- [ ] `backend/pyproject.toml` - runtime/test dependencies, pytest configuration, asyncio mode, and markers.
-- [ ] `backend/tests/conftest.py` - app, settings, key, fixed-clock, client, and canary fixtures.
-- [ ] `backend/tests/fixtures/postgres.py` - migrated PostgreSQL session and deterministic cleanup.
-- [ ] `backend/tests/fixtures/auth.py` - user, login, cookie, CSRF, and token helpers.
-- [ ] `backend/tests/unit/test_config.py` - PLAT-04.
-- [ ] `backend/tests/integration/db/test_migrations.py` - PLAT-03.
-- [ ] `backend/tests/integration/test_health.py` - PLAT-05 and PLAT-06.
-- [ ] `backend/tests/integration/test_provider_status.py` - PLAT-06.
-- [ ] `backend/tests/integration/auth/` - AUTH-01 through AUTH-09 lifecycle modules.
-- [ ] `backend/tests/security/test_jwt_profile.py` - AUTH-04 and AUTHZ-08.
-- [ ] `backend/tests/security/test_refresh_replay.py` - AUTH-05 and AUTH-06.
-- [ ] `backend/tests/security/test_browser_session.py` - AUTH-09.
-- [ ] `backend/tests/security/test_secret_leakage.py` - project secret policy.
-- [ ] `backend/tests/unit/identity/test_provider_contract.py` - AUTH-10.
-- [ ] `backend/tests/security/test_principal_fail_closed.py` - AUTHZ-01.
-- [ ] `backend/tests/security/test_unknown_policy_state.py` - AUTHZ-08.
-- [ ] `backend/tests/smoke/test_topology.py` - PLAT-01 and PLAT-02.
-- [ ] `compose.test.yaml` - isolated PostgreSQL test topology.
+Every missing path has an execution owner. Within each listed plan, the named
+test task runs RED before the implementation task that satisfies it.
+
+| Wave 0 path | Owner | Created before behavior |
+|-------------|-------|-------------------------|
+| `backend/pyproject.toml` | 01-01 Task 1 | All backend tests and implementation |
+| `backend/tests/conftest.py` | 01-01 Task 1 | All API/unit/security tests |
+| `backend/tests/fixtures/postgres.py` | 01-01 Task 1 | All PostgreSQL integration/security behavior |
+| `backend/tests/fixtures/auth.py` | 01-01 Task 1 | All account/session behavior |
+| `backend/tests/unit/test_config.py` | 01-07 Task 1 | 01-07 Task 2 configuration invariants |
+| `backend/tests/integration/db/test_migrations.py` | 01-07 Task 1 | 01-07 Task 2 complete schema revision |
+| `backend/tests/integration/test_health.py` | 01-07 Task 1 | 01-07 Task 3 readiness implementation |
+| `backend/tests/integration/test_provider_status.py` | 01-07 Task 1 | 01-07 Task 3 provider-state implementation |
+| `backend/tests/integration/auth/test_registration.py` | 01-02 Task 1 | 01-02 Tasks 2-3 registration |
+| `backend/tests/integration/auth/test_login.py` | 01-02 Task 1 | 01-02 Tasks 2-3 login |
+| `backend/tests/integration/auth/test_me.py` | 01-02 Task 1 | 01-02 Task 3 current identity |
+| `backend/tests/integration/auth/test_refresh_rotation.py` | 01-05 Task 1 | 01-05 Task 2 refresh rotation |
+| `backend/tests/integration/auth/test_logout.py` | 01-05 Task 1 | 01-05 Task 2 logout |
+| `backend/tests/security/test_jwt_profile.py` | 01-04 Task 1 | 01-04 Task 3 strict JWT profile |
+| `backend/tests/security/test_refresh_replay.py` | 01-05 Task 1 | 01-05 Task 2 replay handling |
+| `backend/tests/security/test_browser_session.py` | 01-05 Task 1 | 01-05 Task 2 Origin/CSRF handling |
+| `backend/tests/security/test_secret_leakage.py` | 01-01 Task 3 | Plans 01-02, 01-04, 01-05, 01-07, and 01-08 secret-bearing paths |
+| `backend/tests/unit/identity/test_provider_contract.py` | 01-04 Task 1 | 01-04 Task 2 provider boundary |
+| `backend/tests/security/test_principal_fail_closed.py` | 01-04 Task 1 | 01-04 Task 3 principal resolution |
+| `backend/tests/security/test_unknown_policy_state.py` | 01-04 Task 1 | 01-04 Task 3 unknown-state handling |
+| `backend/tests/smoke/test_topology.py` | 01-08 Task 1 | 01-08 Tasks 2-3 assembled topology |
+| `compose.test.yaml` | 01-01 Task 1 | Every PostgreSQL-backed test plan |
 
 ---
 
@@ -116,7 +125,7 @@ Task IDs and plan assignments are finalized by the planner. Every requirement be
 
 - [ ] All plan tasks have an automated verification command or an explicit Wave 0 dependency.
 - [ ] No three consecutive implementation tasks lack automated verification.
-- [ ] Wave 0 creates every missing fixture and test path referenced above.
+- [ ] Wave 0 owners above create every missing fixture and test path before its implementation task.
 - [ ] No watch-mode flags appear in verification commands.
 - [ ] Task-level feedback latency remains below 30 seconds where practical.
 - [ ] PostgreSQL-backed integration tests and fresh-volume Compose smoke tests are green.

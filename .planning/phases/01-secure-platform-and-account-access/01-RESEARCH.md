@@ -1048,22 +1048,19 @@ Validation must decode with strict length limits and use `hmac.compare_digest`; 
 | A2 | [ASSUMED] A minimal `google-genai` `models.get` call is permitted and useful for the selected Google credential type in the target environment. | Provider degradation | If the API/credential mode does not support this getter, keep the provider checker interface and report `unknown/unavailable` until Phase 3's live capability probe. |
 | A3 | [ASSUMED] Ten active refresh families per user is an acceptable prototype bound. | Session behavior | If evaluator workflows need more devices, make the cap configurable while keeping a finite production default. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Exact evaluator browser and local URL topology**
-   - What we know: frontend and API may use different localhost ports, which are different origins but the same site. [CITED: https://fastapi.tiangolo.com/tutorial/cors/]
-   - What's unclear: whether the final demo routes browser API calls through Kong on the same host/origin or cross-origin localhost ports.
-   - Recommendation: plan exact origins now, use credentialed explicit CORS, and add a browser smoke test for cookie/CSRF behavior before closing AUTH-09.
+1. **Exact evaluator browser and local URL topology - RESOLVED**
+   - Decision: the browser uses the frontend origin and sends `/api/*`, `/health`, and `/ready` through the same public Kong origin. FastAPI and PostgreSQL remain private Compose services. Explicit credentialed CORS and exact Origin validation still use the configured public origin, and the assembled smoke test verifies cookie/CSRF behavior through Kong.
+   - Basis: this is the narrowest topology consistent with the required DB-less edge route, protected `__Host-` cookies, AUTH-09, and the planner-discretion authority in `01-CONTEXT.md`.
 
-2. **Live Gemini 2 availability on implementation/demo date**
-   - What we know: the official page places `gemini-2.5-flash` at earliest shutdown in June 2026. [CITED: https://ai.google.dev/gemini-api/docs/deprecations]
-   - What's unclear: no Google credentials were available in research, so live availability was not verified on June 8, 2026.
-   - Recommendation: Phase 1 implements sanitized model status; Phase 3 must run a real search-grounding capability check and may need to surface a project-constraint conflict if no Gemini 2 model remains.
+2. **Live Gemini 2 availability on implementation/demo date - RESOLVED**
+   - Decision: Phase 1 never hardcodes a Gemini model and never performs generation or Search. It reads `SEARCH_MODEL` from configuration, reports only sanitized `unconfigured`, `model_unavailable`, or `unavailable` status, and keeps account access operational in degraded mode. Phase 3 owns the credentialed Google Search grounding capability check and must surface a constraint conflict rather than silently changing the Gemini 2 requirement.
+   - Basis: Pattern 11, PLAT-06, the June 2026 model-lifecycle evidence, and the delegated choice to use a documented degraded provider state.
 
-3. **Production secret provisioning mechanism**
-   - What we know: Compose secrets may source files or host environment values, and Pydantic Settings can load a secrets directory. [CITED: https://docs.docker.com/reference/compose-file/secrets/; https://docs.pydantic.dev/latest/concepts/pydantic_settings/]
-   - What's unclear: the evaluator may prefer generated local files or manually supplied environment values.
-   - Recommendation: support `*_FILE`/`/run/secrets` as canonical, provide a development initializer for random keys, and keep direct secret environment aliases only as documented local fallback.
+3. **Production secret provisioning mechanism - RESOLVED**
+   - Decision: `/run/secrets` and explicit `*_FILE` settings are canonical for production and Compose. A development-only initializer generates local RSA and independent refresh/CSRF key files. Direct secret environment values are allowed only as a documented local/test fallback and production validation rejects placeholders, missing files, and unsafe values.
+   - Basis: Pattern 12, Docker/Pydantic secret-source support, and the delegated configuration/bootstrap discretion in `01-CONTEXT.md`.
 
 ## Environment Availability
 
