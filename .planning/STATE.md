@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-06-09T08:37:35.114Z"
-last_activity: 2026-06-08 - Roadmap created with all 90 v1 requirements mapped.
+stopped_at: Phase 1 GSD artifacts closed
+last_updated: "2026-06-10T00:21:01+07:00"
+last_activity: 2026-06-10 -- Phase 01 code, verification, and tracking artifacts completed
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 8
-  completed_plans: 0
-  percent: 0
+  completed_plans: 8
+  percent: 17
 ---
 
 # Project State
@@ -21,35 +21,35 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** Users can safely authenticate and use an AI chatbot with controlled agent tools without crossing tenant, role, scope, network, or host-execution boundaries.
-**Current focus:** Phase 1 - Secure Platform and Account Access
+**Current focus:** Phase 02 — private-direct-chat
 
 ## Current Position
 
-Phase: 1 of 6 (Secure Platform and Account Access)
-Plan: 0 of 8 in current phase
-Status: Ready to execute
-Last activity: 2026-06-08 - Roadmap created with all 90 v1 requirements mapped.
+Phase: 02 (private-direct-chat) — READY TO PLAN
+Plan: 0 of TBD
+Status: Phase 01 complete; Phase 02 planning can begin
+Last activity: 2026-06-10 -- Closed Phase 01 summaries and verification after full-stack validation
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 17%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0.0 hours
+- Total plans completed: 8
+- Average duration: Combined Phase 01 delivery commit + verification pass
+- Total execution time: Combined multi-session Phase 01 completion
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01 Secure Platform and Account Access | 8 | Complete | Combined execution |
 
 **Recent Trend:**
 
-- Last 5 plans: -
-- Trend: No execution data
+- Last 5 plans: 01-04, 01-05, 01-06, 01-07, 01-08 completed in the consolidated implementation pass
+- Trend: Stable
 
 *Updated after each plan completion*
 
@@ -60,14 +60,14 @@ Progress: [░░░░░░░░░░] 0%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Roadmap uses six dependency-ordered vertical MVP phases at standard granularity.
-- FastAPI remains the authorization authority even when Kong performs coarse rejection.
-- Google Search and Python execution stay behind separate typed credential boundaries.
-- Python code never executes in FastAPI or receives host, network, secret, or Docker authority.
+- Phase 01 uses Kong as the single public origin while FastAPI remains the authorization authority.
+- Browser access tokens stay memory-only; refresh remains cookie-backed and CSRF-protected.
+- Development demo seeding and secret initialization run as explicit Compose jobs; production admin creation stays deliberate and one-time.
+- Provider-only readiness failures degrade the platform without blocking core account access.
 
 ### Pending Todos
 
-None yet.
+- Phase 02 planning should decide how to reuse the authenticated frontend shell and backend identity/session patterns for chat flows.
 
 ### Blockers/Concerns
 
@@ -79,10 +79,10 @@ None yet.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| *(none)* | | | |
+| Human verification | Demo credential clarity and readiness operator usefulness still need manual review | Open | 2026-06-10 |
 
 ## Session Continuity
 
-Last session: 2026-06-08T14:05:31.015Z
-Stopped at: Phase 1 UI-SPEC approved
-Resume file: .planning/phases/01-secure-platform-and-account-access/01-UI-SPEC.md
+Last session: 2026-06-10T00:21:01+07:00
+Stopped at: Phase 01 GSD artifact closeout complete
+Resume file: .planning/phases/01-secure-platform-and-account-access/01-VERIFICATION.md

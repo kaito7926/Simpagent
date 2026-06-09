@@ -11,7 +11,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions marked as INSERTED
 
-- [ ] **Phase 1: Secure Platform and Account Access** - The local topology runs and users can authenticate through strict, revocable sessions.
+- [x] **Phase 1: Secure Platform and Account Access** - The local topology runs and users can authenticate through strict, revocable sessions.
 - [ ] **Phase 2: Private Direct Chat** - Users can use a safe browser chat experience with owner-only conversation history.
 - [ ] **Phase 3: Policy-Controlled Google Search** - Authorized users can receive grounded search answers through a bounded coordinator.
 - [ ] **Phase 4: Isolated Python Execution** - Authorized users can run bounded Python without host, secret, or network access.
@@ -155,7 +155,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Secure Platform and Account Access | 0/8 | Not started | - |
+| 1. Secure Platform and Account Access | 8/8 | Complete | 2026-06-10 |
 | 2. Private Direct Chat | 0/TBD | Not started | - |
 | 3. Policy-Controlled Google Search | 0/TBD | Not started | - |
 | 4. Isolated Python Execution | 0/TBD | Not started | - |

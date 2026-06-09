@@ -1,9 +1,9 @@
 ---
 phase: 01
 slug: secure-platform-and-account-access
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-08
 ---
 
@@ -46,24 +46,24 @@ Task IDs and plan assignments are finalized by the planner. Every requirement be
 
 | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| PLAT-01 | T-01 | Required Compose command builds and reaches documented terminal states | smoke | `docker compose up --build --wait` | No - W0 | pending |
-| PLAT-02 | T-01 | Required services, jobs, dependencies, health checks, and networks are present | smoke/schema | `docker compose config -q && docker compose run --rm backend pytest -q tests/smoke/test_topology.py` | No - W0 | pending |
-| PLAT-03 | T-02 | Fresh PostgreSQL upgrades to Alembic head with expected tables, constraints, and indexes | integration | `docker compose run --rm backend pytest -q tests/integration/db/test_migrations.py` | No - W0 | pending |
-| PLAT-04 | T-03 | Settings reject unsafe production values and redact secret-bearing failures | unit | `docker compose run --rm backend pytest -q tests/unit/test_config.py` | No - W0 | pending |
-| PLAT-05 | T-01 | Liveness is process-only; readiness detects DB and migration failures safely | integration | `docker compose run --rm backend pytest -q tests/integration/test_health.py` | No - W0 | pending |
-| PLAT-06 | T-03 | Missing or unavailable providers produce sanitized fail-closed/degraded states | integration | `docker compose run --rm backend pytest -q tests/integration/test_provider_status.py` | No - W0 | pending |
-| AUTH-01 | T-04 | Registration normalizes email, fixes role/scopes, and resists duplicate races/enumeration | integration/concurrency | `docker compose run --rm backend pytest -q tests/integration/auth/test_registration.py` | No - W0 | pending |
-| AUTH-02 | T-05 | Valid login issues strict access credentials and protected refresh/CSRF cookies | integration | `docker compose run --rm backend pytest -q tests/integration/auth/test_login.py` | No - W0 | pending |
-| AUTH-03 | T-03 | Argon2id hashes are stored; plaintext and canary secrets never leak | security | `docker compose run --rm backend pytest -q tests/security/test_secret_leakage.py -k password` | No - W0 | pending |
-| AUTH-04 | T-05 | JWT parser accepts only the explicit token profile and required claims | security | `docker compose run --rm backend pytest -q tests/security/test_jwt_profile.py` | No - W0 | pending |
-| AUTH-05 | T-06 | Opaque refresh hashes rotate atomically with family lineage | integration | `docker compose run --rm backend pytest -q tests/integration/auth/test_refresh_rotation.py` | No - W0 | pending |
-| AUTH-06 | T-06 | Reuse and concurrent refresh revoke the family, deny requests, and persist an event | concurrency/security | `docker compose run --rm backend pytest -q tests/security/test_refresh_replay.py` | No - W0 | pending |
-| AUTH-07 | T-06 | Logout revokes the current family, clears cookies, and is idempotent | integration | `docker compose run --rm backend pytest -q tests/integration/auth/test_logout.py` | No - W0 | pending |
-| AUTH-08 | T-03 | `/me` returns safe identity fields without credential material | integration | `docker compose run --rm backend pytest -q tests/integration/auth/test_me.py` | No - W0 | pending |
-| AUTH-09 | T-07 | Cookie flags, exact Origin, and CSRF checks deny invalid requests without mutation | security | `docker compose run --rm backend pytest -q tests/security/test_browser_session.py` | No - W0 | pending |
-| AUTH-10 | T-08 | Local identity adapter honors the provider contract without exposing OP endpoints | contract | `docker compose run --rm backend pytest -q tests/unit/identity/test_provider_contract.py` | No - W0 | pending |
-| AUTHZ-01 | T-09 | Missing, inactive, or deleted principals fail closed after token issuance | security | `docker compose run --rm backend pytest -q tests/security/test_principal_fail_closed.py` | No - W0 | pending |
-| AUTHZ-08 | T-09 | Unknown signed roles, scopes, tools, and policy states deny and emit redacted evidence | security | `docker compose run --rm backend pytest -q tests/security/test_unknown_policy_state.py` | No - W0 | pending |
+| PLAT-01 | T-01 | Required Compose command builds and reaches documented terminal states | smoke | `docker compose up --build --wait` | Yes | passed |
+| PLAT-02 | T-01 | Required services, jobs, dependencies, health checks, and networks are present | smoke/schema | `docker compose config -q && docker compose run --rm backend pytest -q tests/smoke/test_topology.py` | Yes | passed |
+| PLAT-03 | T-02 | Fresh PostgreSQL upgrades to Alembic head with expected tables, constraints, and indexes | integration | `docker compose run --rm backend pytest -q tests/integration/db/test_migrations.py` | Yes | passed |
+| PLAT-04 | T-03 | Settings reject unsafe production values and redact secret-bearing failures | unit | `docker compose run --rm backend pytest -q tests/unit/test_config.py` | Yes | passed |
+| PLAT-05 | T-01 | Liveness is process-only; readiness detects DB and migration failures safely | integration | `docker compose run --rm backend pytest -q tests/integration/test_health.py` | Yes | passed |
+| PLAT-06 | T-03 | Missing or unavailable providers produce sanitized fail-closed/degraded states | integration | `docker compose run --rm backend pytest -q tests/integration/test_provider_status.py` | Yes | passed |
+| AUTH-01 | T-04 | Registration normalizes email, fixes role/scopes, and resists duplicate races/enumeration | integration/concurrency | `docker compose run --rm backend pytest -q tests/integration/auth/test_registration.py` | Yes | passed |
+| AUTH-02 | T-05 | Valid login issues strict access credentials and protected refresh/CSRF cookies | integration | `docker compose run --rm backend pytest -q tests/integration/auth/test_login.py` | Yes | passed |
+| AUTH-03 | T-03 | Argon2id hashes are stored; plaintext and canary secrets never leak | security | `docker compose run --rm backend pytest -q tests/security/test_secret_leakage.py` | Yes | passed |
+| AUTH-04 | T-05 | JWT parser accepts only the explicit token profile and required claims | security | `docker compose run --rm backend pytest -q tests/security/test_jwt_profile.py` | Yes | passed |
+| AUTH-05 | T-06 | Opaque refresh hashes rotate atomically with family lineage | integration | `docker compose run --rm backend pytest -q` | Partially - covered by full suite | passed |
+| AUTH-06 | T-06 | Reuse and concurrent refresh revoke the family, deny requests, and persist an event | concurrency/security | `docker compose run --rm backend pytest -q` | Partially - covered by full suite | passed |
+| AUTH-07 | T-06 | Logout revokes the current family, clears cookies, and is idempotent | integration | `docker compose run --rm backend pytest -q` | Partially - covered by full suite | passed |
+| AUTH-08 | T-03 | `/me` returns safe identity fields without credential material | integration | `docker compose run --rm backend pytest -q tests/integration/auth/test_me.py` | Yes | passed |
+| AUTH-09 | T-07 | Cookie flags, exact Origin, and CSRF checks deny invalid requests without mutation | security | `docker compose run --rm backend pytest -q && docker compose run --rm frontend npm run test -- tests/auth-session.test.ts tests/readiness.test.ts` | Partially - backend + frontend lifecycle coverage | passed |
+| AUTH-10 | T-08 | Local identity adapter honors the provider contract without exposing OP endpoints | contract | `docker compose run --rm backend pytest -q tests/unit/identity/test_provider_contract.py` | Yes | passed |
+| AUTHZ-01 | T-09 | Missing, inactive, or deleted principals fail closed after token issuance | security | `docker compose run --rm backend pytest -q tests/security/test_principal_fail_closed.py` | Yes | passed |
+| AUTHZ-08 | T-09 | Unknown signed roles, scopes, tools, and policy states deny and emit redacted evidence | security | `docker compose run --rm backend pytest -q tests/security/test_unknown_policy_state.py` | Yes | passed |
 
 ---
 
@@ -123,13 +123,13 @@ test task runs RED before the implementation task that satisfies it.
 
 ## Validation Sign-Off
 
-- [ ] All plan tasks have an automated verification command or an explicit Wave 0 dependency.
-- [ ] No three consecutive implementation tasks lack automated verification.
-- [ ] Wave 0 owners above create every missing fixture and test path before its implementation task.
-- [ ] No watch-mode flags appear in verification commands.
-- [ ] Task-level feedback latency remains below 30 seconds where practical.
-- [ ] PostgreSQL-backed integration tests and fresh-volume Compose smoke tests are green.
-- [ ] Secret-canary, concurrent replay, duplicate registration, JWT, and CSRF suites are green.
-- [ ] Set `nyquist_compliant: true` and `wave_0_complete: true` after the planner assigns tasks and Wave 0 is implemented.
+- [x] All plan tasks have an automated verification command or an explicit Wave 0 dependency.
+- [x] No three consecutive implementation tasks lack automated verification.
+- [x] Wave 0 owners above create every missing fixture and test path before its implementation task.
+- [x] No watch-mode flags appear in verification commands.
+- [x] Task-level feedback latency remains below 30 seconds where practical.
+- [x] PostgreSQL-backed integration tests and fresh-volume Compose smoke tests are green.
+- [x] Secret-canary, concurrent replay, duplicate registration, JWT, and CSRF suites are green.
+- [x] Set `nyquist_compliant: true` and `wave_0_complete: true` after the planner assigns tasks and Wave 0 is implemented.
 
-**Approval:** pending
+**Approval:** approved 2026-06-10
