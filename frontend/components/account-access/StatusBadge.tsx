@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import React from "react";
 
 type StatusBadgeProps = {
   tone: "neutral" | "success" | "warning" | "danger";
