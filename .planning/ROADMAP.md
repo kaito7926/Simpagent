@@ -34,7 +34,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   4. User can refresh and log out through a JavaScript-inaccessible protected session, while rotated-token reuse revokes the family and is denied.
   5. Authenticated user can inspect their safe identity attributes, while inactive principals and unknown roles, scopes, tools, or policy states fail closed.
 
-**Plans:** 8 plansPlans:
+**Plans:** 8 plans
 **Wave 1**
 
 - [ ] 01-01-PLAN.md - Establish the PostgreSQL-only test, app, and sandbox foundations.
@@ -94,7 +94,19 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   4. Model output can propose but cannot authorize a tool; execution rechecks scope and policy and uses a short-lived audience-bound capability instead of the user's bearer token.
   5. Search and Python remain separate typed credential boundaries, every tool decision has a persisted correlated state, and untrusted prompts or search content cannot change policy, expose secrets, fetch internal URLs, or trigger arbitrary actions.
 
-**Plans:** TBD
+**Plans:** 4 plans across 3 waves
+**Wave 1**
+
+- [x] 03-01-PLAN.md - Create the explicit search-turn contract and honest backend state matrix before wiring the real Google worker.
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 03-02-PLAN.md - Replace the fake search seam with the real dedicated ADK worker, capability credential, and startup capability check.
+- [x] 03-03-PLAN.md - Implement the explicit search-mode chat shell and the grounded/degraded rendering contract on the frontend.
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 03-04-PLAN.md - Harden the search path against prompt injection, retention drift, and end-to-end failure gaps, then verify the full grounded/degraded experience through Compose.
 **UI hint:** yes
 
 ### Phase 4: Isolated Python Execution
@@ -153,11 +165,13 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 **Execution Order:**
 Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
+**Progress note:** Historical phases are not yet fully backfilled with summary artifacts in the current planning tree. The table below is therefore most accurate for the active Phase 3 branch, where implementation summaries now exist for Plans 03-01 through 03-04.
+
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Secure Platform and Account Access | 0/8 | Not started | - |
 | 2. Private Direct Chat | 0/TBD | Not started | - |
-| 3. Policy-Controlled Google Search | 0/TBD | Not started | - |
+| 3. Policy-Controlled Google Search | 4/4 | In progress - implementation landed, final phase verification pending | - |
 | 4. Isolated Python Execution | 0/TBD | Not started | - |
 | 5. Gateway, Administration, and Security Evidence | 0/TBD | Not started | - |
 | 6. Adversarial Verification and Vietnamese Delivery | 0/TBD | Not started | - |

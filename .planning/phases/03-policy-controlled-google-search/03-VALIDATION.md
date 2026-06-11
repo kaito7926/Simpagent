@@ -1,0 +1,130 @@
+---
+phase: 03
+slug: policy-controlled-google-search
+status: draft
+nyquist_compliant: false
+wave_0_complete: false
+created: 2026-06-11
+---
+
+# Phase 03 - Validation Strategy
+
+> Per-phase validation contract for feedback sampling during execution.
+
+---
+
+## Test Infrastructure
+
+| Property | Value |
+|----------|-------|
+| **Backend framework** | pytest `>=9,<10`, pytest-asyncio `>=1.4,<2`, HTTPX `>=0.28,<1` |
+| **Frontend framework** | `node:test` via `tsx --test` |
+| **Backend config file** | `backend/pyproject.toml` |
+| **Frontend config file** | `frontend/package.json` |
+| **Backend quick run command** | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search -x` |
+| **Backend security quick command** | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/security/test_search_guardrails.py -x` |
+| **Frontend quick run command** | `cd frontend && npm test -- tests/search-session.test.ts tests/search-rendering.test.tsx` |
+| **Full suite command** | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search tests/security/test_search_guardrails.py tests/security/test_search_prompt_injection.py && cd frontend && npm test -- tests/search-session.test.ts tests/search-rendering.test.tsx` |
+| **Compose smoke command** | `docker compose up --build --wait && docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/smoke/test_google_search_flow.py` |
+| **Estimated quick runtime** | Under 45 seconds after search-specific fixtures and tests exist |
+
+Search-specific backend tests should continue to run against PostgreSQL 18 and real application-created sessions. Frontend tests should prefer controller/state tests and pure rendering assertions before introducing heavier browser tooling.
+
+---
+
+## Sampling Rate
+
+- **After every task commit:** Run the narrowest relevant backend or frontend search test, targeting under 45 seconds.
+- **After every plan wave:** Run the backend search integration suite plus the frontend search-session/rendering suite.
+- **After worker, policy, or grounding changes:** Also run prompt-injection, missing-grounding, unavailable, timeout, and no-bearer-forwarding tests.
+- **Before `$gsd-verify-work`:** Start a fresh Compose topology, run the full backend search/security suite, the frontend search suite, and the end-to-end grounded/degraded smoke path.
+- **Max feedback latency:** 45 seconds for task-level checks; full topology checks run at wave and phase gates.
+
+---
+
+## Per-Task Verification Map
+
+Task IDs and plan assignments are finalized by the planner. Every requirement below must appear in at least one plan task with the listed automated command or a stricter equivalent.
+
+| Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
+|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
+| AUTHZ-04 | T-03 | Search requests without `tool:websearch` are denied before any provider call | security/integration | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search/test_search_authz.py` | No - W0 | pending |
+| AUTHZ-07 | T-03 | Model/tool output cannot grant or override search authorization | security | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/security/test_search_guardrails.py -k authz` | No - W0 | pending |
+| AGNT-01 | T-01 | Turn routing accepts only the explicit allowlist and records the chosen mode/state | integration | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search/test_turn_routing.py` | No - W0 | pending |
+| AGNT-02 | T-03 | Search worker cannot trigger arbitrary tools or commands | security | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/security/test_search_guardrails.py -k worker_boundary` | No - W0 | pending |
+| AGNT-03 | T-04 | At most one bounded tool invocation occurs per user turn | integration/security | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search/test_search_budgets.py` | No - W0 | pending |
+| AGNT-04 | T-03 | Search and Python remain separate workers and credential boundaries | source/security | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/security/test_search_guardrails.py -k separate_worker` | No - W0 | pending |
+| AGNT-05 | T-02 | Internal worker calls use a short-lived capability credential, not the user's bearer token | security | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/security/test_search_capability_token.py` | No - W0 | pending |
+| AGNT-06 | T-05 | Requested, denied, started, succeeded, failed, and timed-out actions persist correlated state | integration | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search/test_search_persistence.py` | No - W0 | pending |
+| AGNT-07 | T-02 / T-03 | Prompts, outputs, and tool content are treated as untrusted and never leak secrets | security | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/security/test_search_prompt_injection.py tests/security/test_search_secret_leakage.py` | No - W0 | pending |
+| SRCH-01 | T-01 | Dedicated ADK worker invokes Google Search through a configured compatible Gemini 2 model | contract/integration | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search/test_search_worker_contract.py` | No - W0 | pending |
+| SRCH-02 | T-01 | Startup/provider checks distinguish configured, unsupported, unavailable, and ready search capability | integration | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search/test_search_capability_check.py` | No - W0 | pending |
+| SRCH-03 | T-05 | Grounded responses include normalized evidence and ungrounded responses are not mislabeled | integration | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search/test_grounding_contract.py` | No - W0 | pending |
+| SRCH-04 | T-06 | Frontend safely renders citations and Search Suggestions for the same end user | frontend | `cd frontend && npm test -- tests/search-rendering.test.tsx tests/search-session.test.ts` | No - W0 | pending |
+| SRCH-05 | T-02 | Persistence and telemetry retain only the allowed field set and perform no click tracking | source/security | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/security/test_search_retention_allowlist.py` | No - W0 | pending |
+| SRCH-06 | T-04 | Search input, timeout, output, and retry budgets fail safely and visibly | integration | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search/test_search_failure_states.py` | No - W0 | pending |
+| SRCH-07 | T-05 | Grounded, missing-grounding, unavailable, timeout, and denied states stay visually distinct | frontend/integration | `cd frontend && npm test -- tests/search-rendering.test.tsx && docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search/test_search_failure_states.py` | No - W0 | pending |
+| SRCH-08 | T-03 | Search content cannot cause internal URL fetching, scope escalation, arbitrary tool execution, or policy changes | security | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/security/test_search_prompt_injection.py` | No - W0 | pending |
+
+---
+
+## Critical Security Scenarios
+
+1. **No-search-on-deny:** a request lacking `tool:websearch` returns the denied state and produces no provider call.
+2. **Missing-grounding honesty:** the worker returns answer text without grounding metadata and the system downgrades it to ordinary assistant styling with no badge/citations/suggestions.
+3. **Prompt-injection containment:** retrieved content attempts to override policy, fetch internal URLs, or request another tool and is ignored.
+4. **Capability-token boundary:** the worker receives only a short-lived audience-bound internal credential and never sees the user's bearer token.
+5. **Provider unavailability matrix:** configured-but-unavailable model, worker timeout, and provider failure all persist distinct states and copy.
+6. **Suggestion safety:** Search Suggestions prefill the composer and never auto-submit.
+7. **One-tool-per-turn:** a single user turn cannot trigger both direct chat and search or more than one search attempt.
+8. **Retention allowlist:** persisted message/tool metadata excludes disallowed raw provider or click-tracking fields.
+
+---
+
+## Wave 0 Requirements
+
+Every missing path has an execution owner. Within each listed plan, the named test task runs RED before the implementation task that satisfies it.
+
+| Wave 0 path | Owner | Created before behavior |
+|-------------|-------|-------------------------|
+| `backend/tests/integration/search/test_search_authz.py` | 03-01 | Search authorization routing |
+| `backend/tests/integration/search/test_turn_routing.py` | 03-01 | Explicit mode / one-tool-per-turn routing |
+| `backend/tests/integration/search/test_search_worker_contract.py` | 03-01 | ADK worker implementation |
+| `backend/tests/integration/search/test_search_capability_check.py` | 03-01 | Provider/model capability probing |
+| `backend/tests/integration/search/test_grounding_contract.py` | 03-01 | Grounding normalization and honest state mapping |
+| `backend/tests/integration/search/test_search_persistence.py` | 03-02 | Message/tool persistence semantics |
+| `backend/tests/integration/search/test_search_failure_states.py` | 03-02 | Timeout/unavailable/provider-failed state matrix |
+| `backend/tests/integration/search/test_search_budgets.py` | 03-02 | Input/output/retry/time budgets |
+| `backend/tests/security/test_search_guardrails.py` | 03-01 | Boundary, authz, and worker/tool guardrails |
+| `backend/tests/security/test_search_capability_token.py` | 03-02 | Internal capability credential boundary |
+| `backend/tests/security/test_search_prompt_injection.py` | 03-04 | Prompt-injection and SSRF denial |
+| `backend/tests/security/test_search_secret_leakage.py` | 03-04 | Secret redaction on search paths |
+| `backend/tests/security/test_search_retention_allowlist.py` | 03-04 | Allowed-field persistence only |
+| `frontend/tests/search-session.test.ts` | 03-03 | Client mode switch, retry, and suggestion-prefill controller behavior |
+| `frontend/tests/search-rendering.test.tsx` | 03-03 | Grounded/degraded rendering contract |
+| `backend/tests/smoke/test_google_search_flow.py` | 03-04 | End-to-end grounded/degraded search flow through Compose topology |
+
+---
+
+## Manual-Only Verifications
+
+| Behavior | Requirement | Why Manual | Test Instructions |
+|----------|-------------|------------|-------------------|
+| Search Suggestions satisfy the approved Vietnamese UX while staying separate from markdown | SRCH-04, SRCH-07 | Copy, layout, and trust cues are partly human-facing | Run the chat UI, produce a grounded answer with suggestions, click a suggestion, confirm the composer prefills and does not auto-submit |
+| Missing-grounding note feels clearly tentative but not like a hard failure | SRCH-03, SRCH-07 | Tone and ambiguity handling need human review | Trigger a no-grounding fallback and confirm the assistant turn shows `có thể tham khảo` without badge/citations/suggestions |
+| Distinction between denied and unavailable is obvious to an evaluator | AUTHZ-04, SRCH-07 | Security semantics and UX semantics must align | Compare a no-scope user search turn with a configured-but-unavailable search turn in the UI |
+
+---
+
+## Validation Sign-Off
+
+- [ ] All plan tasks have an automated verification command or an explicit Wave 0 dependency.
+- [ ] No three consecutive implementation tasks lack automated verification.
+- [ ] Wave 0 owners above create every missing search-specific test path before its implementation task.
+- [ ] No watch-mode flags appear in verification commands.
+- [ ] Backend search feedback latency remains below 45 seconds where practical.
+- [ ] Frontend search controller/rendering tests run without browser-only tooling by default.
+- [ ] Grounding, denied, unavailable, timeout, prompt-injection, and retention-allowlist suites are green.
+- [ ] Set `nyquist_compliant: true` and `wave_0_complete: true` after the planner assigns tasks and the Wave 0 tests exist.
+
+**Approval:** pending

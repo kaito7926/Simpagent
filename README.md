@@ -1,28 +1,32 @@
 # SimpAgent
 
-SimpAgent là prototype môn học về chatbot SaaS có định hướng an toàn. Ở trạng thái hiện tại, repo tập trung hoàn thành Phase 1: nền tảng chạy cục bộ, đăng ký/đăng nhập, phiên refresh an toàn, giao diện Next.js tiếng Việt, Kong gateway DB-less, PostgreSQL và sandbox Python health-only.
+SimpAgent là prototype môn học về chatbot SaaS có định hướng an toàn. Trạng thái hiện tại của repo không còn dừng ở nền Phase 1 nữa: nền tảng xác thực/phiên vẫn là lớp cơ sở, còn nhánh làm việc hiện nay tập trung vào **Phase 3: Policy-Controlled Google Search** cùng các phần hỗ trợ như admin evidence, logging tập trung, và smoke test topology đầy đủ.
 
 ## Mục tiêu repo
 
-- Chứng minh một luồng tài khoản an toàn: register -> login -> me -> refresh/logout.
-- Giữ backend là ranh giới ủy quyền chính thức.
-- Chuẩn bị nền cho các phase sau: chat riêng tư, Google Search có kiểm soát, Python sandbox, admin/audit, tài liệu và security verification.
+- Chứng minh một hệ chatbot có thể xác thực, phân quyền, và chạy công cụ dưới ràng buộc rõ ràng.
+- Giữ FastAPI là ranh giới ủy quyền và thực thi chính thức, kể cả khi Kong hoặc worker thực hiện coarse screening.
+- Tách riêng biên quyền giữa direct chat, Google Search, và Python sandbox.
+- Cung cấp đủ evidence, test, và tài liệu để trình diễn các kiểm soát an toàn trong môi trường Docker Compose cục bộ.
 
 ## Công nghệ đang dùng
 
 - Frontend: Next.js 16, React 19, TypeScript, CSS token cục bộ.
 - Backend: FastAPI, SQLAlchemy 2, Alembic, PostgreSQL.
 - Gateway: Kong OSS DB-less.
-- Sandbox: container Python health-only.
+- Search worker: Google ADK + Gemini search boundary.
+- Sandbox: container Python health-only ở nhánh hiện tại.
+- Observability: Grafana Loki + Promtail + backend JSON logs.
 - Test: pytest, Node test runner qua `tsx`, Docker Compose.
 
 ## Cấu trúc chính
 
-- `frontend/` — giao diện Phase 1 account access.
-- `backend/` — API auth/session/readiness, migration, CLI provisioning.
+- `frontend/` — giao diện account access và chat/search shell.
+- `backend/` — API auth, admin, conversations, search worker, logging, migration, provisioning.
 - `kong/` — cấu hình gateway DB-less.
-- `sandbox/` — nền sandbox health-only.
-- `.planning/` — roadmap, requirements, state và toàn bộ artifact GSD.
+- `observability/` — Loki, Promtail, Grafana provisioning.
+- `sandbox/` — nền sandbox health-only, chờ Phase 4.
+- `.planning/` — roadmap, requirements, state, phase artifacts, quick-task artifacts theo GSD.
 
 ## Chạy dự án
 
@@ -54,6 +58,7 @@ docker compose up --build --wait
 Public entrypoint mặc định:
 
 - App/Kong: `http://localhost:8000`
+- Grafana: `http://localhost:3001` (`admin` / `admin`)
 
 ### 4. Tài khoản demo phát triển
 
@@ -66,7 +71,7 @@ Mật khẩu mẫu nằm trong `.env.example` và chỉ dùng để demo cục b
 
 ## Lệnh kiểm thử quan trọng
 
-### Backend
+### Backend suite trong topology test
 
 ```bash
 docker compose -f compose.test.yaml run --rm backend-test pytest -q
@@ -81,7 +86,7 @@ docker compose run --rm backend python -m pytest -q
 ### Frontend tests
 
 ```bash
-docker compose run --rm frontend npm run test -- tests/auth-session.test.ts tests/readiness.test.ts
+docker compose run --rm frontend npm run test -- tests/search-session.test.ts tests/search-rendering.test.tsx
 ```
 
 ### Frontend typecheck
@@ -90,15 +95,63 @@ docker compose run --rm frontend npm run test -- tests/auth-session.test.ts test
 docker compose run --rm frontend npm run typecheck
 ```
 
+### Smoke test topology đầy đủ
+
+```bash
+docker compose up --build --wait
+docker compose run --rm -e SIMPAGENT_RUN_SMOKE=true backend python -m pytest -q tests/smoke
+```
+
+Nếu muốn ép smoke search ở trạng thái grounded hoặc degraded cụ thể, đặt thêm `SIMPAGENT_EXPECT_SEARCH_STATE`.
+
+### Kiểm tra observability cục bộ
+
+Sau khi `docker compose up --build --wait`, mở:
+
+- Grafana: `http://localhost:3001`
+- Datasource Loki đã được provision sẵn
+
+Luồng log hiện tại:
+
+- `backend` xuất JSON logs có `correlation_id`, `method`, `path`, `status_code`, `duration_ms`
+- `backend` ghi thêm các event `security_event` và `tool_execution`
+- `kong` ghi access/error log vào volume chung để Promtail scrape
+
 ### Migration drift check
 
 ```bash
 docker compose run --rm backend alembic check
 ```
 
+## Trạng thái hiện tại
+
+### Đã có trong repo
+
+- Nền Phase 1: register, login, `/me`, refresh/logout, demo seed, readiness, Kong + PostgreSQL + sandbox health-only.
+- Backend Phase 3:
+  - `/api/conversations/{conversation_id}/turns` với state matrix rõ ràng cho `direct_chat` và `google_search`
+  - dedicated Google Search worker boundary, grounding normalizer, capability token, provider capability check
+  - admin endpoints cho users, security events, tool executions, metrics, cùng nhánh `admin:write`
+  - JSON logging, correlation-aware access log, Loki/Promtail/Grafana stack
+  - deterministic attack-detection rule pack để chuẩn bị cho Phase 4
+- Frontend Phase 3:
+  - `/chat` shell tối thiểu
+  - controller cho mode switch, retry, suggestion prefill
+  - grounded/degraded rendering contract cho search
+- Test:
+  - backend integration/security cho search, admin, token boundary, guardrails
+  - unit test cho logging và attack detection
+  - smoke test cho topology, search, admin, và logging flow
+
+### Đang còn mở
+
+- Verify full assembled topology bằng Docker Compose trong một phiên có `docker` khả dụng.
+- Chốt phase-level verification/closeout artifact cho Phase 3.
+- Bắt đầu cắm attack-detection vào runtime Python execution khi sang Phase 4.
+
 ## Góp ý và cộng tác theo GSD
 
-Repo này nên được làm theo workflow GSD để tránh lệch plan, lệch phase và lệch artifact.
+Repo này nên được làm theo workflow GSD để tránh lệch plan, lệch phase, và lệch artifact.
 
 ### Luồng làm việc khuyến nghị cho 3 người
 
@@ -139,8 +192,8 @@ Trước khi yêu cầu Coding Agent làm việc, hãy đọc:
 ### Prompt mẫu cho Coding Agent
 
 ```text
-Đọc .planning/STATE.md, ROADMAP.md và phase 1 plans.
-Chỉ làm trong scope plan 01-08.
+Đọc .planning/STATE.md, ROADMAP.md và phase 3 plans.
+Chỉ làm trong scope phase 03 hiện tại.
 Sau khi sửa xong, chạy test liên quan và báo các file đã đổi.
 ```
 
@@ -157,18 +210,8 @@ Sau khi sửa xong, chạy test liên quan và báo các file đã đổi.
 - Không bypass hook nếu chưa hiểu nguyên nhân fail.
 - Trước khi push, kiểm tra lại `git status` để tránh đẩy artifact ngoài ý muốn.
 
-## Trạng thái hiện tại
-
-Phase 1 đã có:
-
-- backend auth/session/readiness foundation
-- frontend account-access flow tiếng Việt
-- demo provisioning CLI/jobs
-- compose topology với Kong + PostgreSQL + sandbox
-- test suite backend/frontend ở mức Phase 1
-
 ## Việc nên làm tiếp theo
 
-- Dùng `.planning/ROADMAP.md` để xác định phase kế tiếp.
-- Nếu tiếp tục Phase 1, hãy tạo summary/verification/tracking artifact còn thiếu theo GSD.
-- Nếu chuyển sang Phase 2, bắt đầu bằng `/gsd-plan-phase 2` hoặc `/gsd-execute-phase 2` sau khi review context.
+- Chạy assembled smoke thật trên Docker Compose với `SIMPAGENT_RUN_SMOKE=true`.
+- Chốt verification cho Phase 3 rồi cập nhật phase status trong `.planning/`.
+- Nếu tiếp tục sang nhánh Python execution, bắt đầu bằng `/gsd-plan-phase 4`.
