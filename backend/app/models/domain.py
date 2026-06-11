@@ -12,6 +12,24 @@ from app.db.base import Base
 
 MESSAGE_ROLE_CHECK = "role in ('system', 'user', 'assistant', 'tool')"
 TOOL_STATUS_CHECK = "status in ('queued', 'running', 'succeeded', 'failed', 'denied', 'timed_out')"
+SEARCH_METADATA_ALLOWED_ROOT_KEYS = frozenset(
+    {
+        "mode",
+        "state",
+        "google_grounded",
+        "tool_executed",
+        "correlation_id",
+        "sources",
+        "citations",
+        "suggestions",
+        "retry_of_message_id",
+        "web_search_queries",
+        "lifecycle",
+    }
+)
+SEARCH_METADATA_ALLOWED_SOURCE_KEYS = frozenset({"index", "title", "domain", "uri"})
+SEARCH_METADATA_ALLOWED_CITATION_KEYS = frozenset({"index", "source_index", "start", "end"})
+SEARCH_METADATA_ALLOWED_SUGGESTION_KEYS = frozenset({"trusted", "items"})
 
 
 class Conversation(Base):

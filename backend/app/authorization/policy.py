@@ -38,3 +38,15 @@ def evaluate_required_scopes(*, principal_scopes: set[str], required: set[str]) 
     if not required.issubset(principal_scopes):
         return PolicyResult.deny_scope
     return PolicyResult.allow
+
+
+def evaluate_admin_access(*, principal_role: str, principal_scopes: set[str], required_scope: str) -> PolicyResult:
+    if principal_role not in KNOWN_ROLE_VALUES or set(principal_scopes) - KNOWN_SCOPE_VALUES:
+        return PolicyResult.deny_unknown_state
+    if required_scope not in KNOWN_SCOPE_VALUES:
+        return PolicyResult.deny_unknown_state
+    if principal_role != Role.admin.value:
+        return PolicyResult.deny_role
+    if required_scope not in principal_scopes:
+        return PolicyResult.deny_scope
+    return PolicyResult.allow

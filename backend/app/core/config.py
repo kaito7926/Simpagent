@@ -38,6 +38,8 @@ class Settings(BaseSettings):
 
     app_env: AppEnv = "development"
     debug: bool = False
+    log_level: str = "INFO"
+    log_file_path: str | None = None
     database_url: SecretStr | None = None
     database_url_file: str | None = None
     allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
@@ -74,6 +76,12 @@ class Settings(BaseSettings):
     google_api_key: SecretStr | None = None
     google_api_key_file: str | None = None
     search_model: str | None = None
+    search_worker_timeout_seconds: float = Field(default=8.0, gt=0)
+    search_max_prompt_chars: int = Field(default=2000, ge=128, le=4000)
+    search_max_output_tokens: int = Field(default=1536, ge=128, le=4096)
+    search_max_output_chars: int = Field(default=4000, ge=256, le=12000)
+    search_capability_ttl_seconds: int = Field(default=30, ge=5, le=300)
+    search_capability_audience: str = "simpagent-search-worker"
     provider_check_timeout_seconds: int = 2
     test_now: str | None = None
 

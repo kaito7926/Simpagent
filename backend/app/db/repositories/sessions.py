@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import logging
 from uuid import UUID
 
 from sqlalchemy import select
@@ -63,4 +64,16 @@ class SessionsRepository:
         )
         self.session.add(event)
         await self.session.flush()
+        logging.getLogger("simpagent.security").info(
+            "security_event_recorded",
+            extra={
+                "event": "security_event",
+                "event_type": event_type,
+                "severity": severity,
+                "user_id": str(user_id) if user_id else None,
+                "correlation_id": correlation_id,
+                "description": description,
+                "metadata": metadata or {},
+            },
+        )
         return event

@@ -15,6 +15,7 @@ dependencies = [
   "PyJWT[crypto]>=2.13,<3",
   "pwdlib[argon2]>=0.3,<0.4",
   "email-validator>=2.3,<3",
+  "google-adk>=2.2,<2.3",
   "google-genai>=2.8,<2.9",
   "python-multipart>=0.0.20,<1",
 ]
@@ -49,6 +50,7 @@ markers = [
 filterwarnings = [
   "error",
   "ignore::DeprecationWarning:google.*",
+  "ignore:BaseAgentConfig is deprecated and will be removed in future versions\\.:DeprecationWarning",
 ]
 
 [tool.ruff]
