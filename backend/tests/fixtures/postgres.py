@@ -29,10 +29,11 @@ def postgres_url(settings: Settings) -> str:
 def alembic_config(postgres_url: str) -> Config:
     config = Config(str(ROOT / "alembic.ini"))
     config.set_main_option("sqlalchemy.url", postgres_url)
+    config.set_main_option("script_location", str(ROOT / "alembic"))
     return config
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def migrated_database(alembic_config: Config) -> None:
     command.upgrade(alembic_config, "head")
 
@@ -53,7 +54,7 @@ def session_factory(postgres_engine: AsyncEngine) -> async_sessionmaker[AsyncSes
     return async_sessionmaker(postgres_engine, expire_on_commit=False)
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 async def clean_database(session_factory: async_sessionmaker[AsyncSession]) -> AsyncIterator[None]:
     table_names = [table.name for table in reversed(Base.metadata.sorted_tables)]
     if table_names:
@@ -70,7 +71,10 @@ async def clean_database(session_factory: async_sessionmaker[AsyncSession]) -> A
 
 
 @pytest.fixture
-async def db_session(session_factory: async_sessionmaker[AsyncSession]) -> AsyncIterator[AsyncSession]:
+async def db_session(
+    clean_database: None,
+    session_factory: async_sessionmaker[AsyncSession],
+) -> AsyncIterator[AsyncSession]:
     async with session_factory() as session:
         yield session
         await session.rollback()

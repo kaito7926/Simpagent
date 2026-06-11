@@ -1,19 +1,38 @@
 from __future__ import annotations
 
+import asyncio
 import os
 from pathlib import Path
+import sys
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+
+ROOT = Path(__file__).resolve().parents[1]
+SECRETS = ROOT / "tests" / "fixtures" / "secrets"
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+# `app.main` creates a module-level FastAPI app during import, so tests need a
+# minimal settings baseline in the environment before importing it.
+os.environ.setdefault(
+    "SIMPAGENT_DATABASE_URL",
+    "postgresql+psycopg://postgres:postgres@postgres-test:5432/simpagent_test",
+)
+os.environ.setdefault("SIMPAGENT_APP_ENV", "test")
+os.environ.setdefault("SIMPAGENT_LLM_API_BASE", "https://api.example.test/v1")
+os.environ.setdefault("SIMPAGENT_LLM_MODEL", "fake-model")
+os.environ.setdefault("SIMPAGENT_SEARCH_MODEL", "configured-search-model")
+os.environ.setdefault("SIMPAGENT_JWT_PRIVATE_KEY_FILE", str(SECRETS / "test_jwt_private.pem"))
+os.environ.setdefault("SIMPAGENT_JWT_PUBLIC_KEY_FILE", str(SECRETS / "test_jwt_public.pem"))
+os.environ.setdefault("SIMPAGENT_REFRESH_HMAC_KEY_FILE", str(SECRETS / "test_refresh_hmac_key"))
+os.environ.setdefault("SIMPAGENT_CSRF_HMAC_KEY_FILE", str(SECRETS / "test_csrf_hmac_key"))
 
 from app.core.config import Settings
 from app.main import create_app
 
 pytest_plugins = ["tests.fixtures.postgres", "tests.fixtures.auth"]
-
-
-ROOT = Path(__file__).resolve().parents[1]
-SECRETS = ROOT / "tests" / "fixtures" / "secrets"
 
 
 @pytest.fixture(scope="session")
@@ -60,7 +79,7 @@ def app(settings: Settings, session_factory):
 
 
 @pytest.fixture
-async def client(app) -> AsyncClient:
+async def client(app, clean_database) -> AsyncClient:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as http_client:
         yield http_client
 

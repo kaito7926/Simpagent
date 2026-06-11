@@ -1,0 +1,359 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from uuid import uuid4
+
+import pytest
+
+from app.authorization.policy import PolicyResult
+from app.authorization.principal import AuthenticatedPrincipal
+from app.db.repositories.admin import (
+    AdminMetricsRecord,
+    AdminUserRecord,
+    SecurityEventRecord,
+    ToolExecutionRecord,
+)
+from app.schemas.auth import ADMIN_SCOPES, STANDARD_USER_SCOPES
+from app.security.access_tokens import AccessTokenClaims
+from app.services.admin_evidence import (
+    AdminAccessDenied,
+    AdminEvidenceService,
+    AdminWriteRejected,
+)
+
+
+@dataclass
+class FakeAdminRepository:
+    users: list[AdminUserRecord] = field(default_factory=list)
+    security_events: list[SecurityEventRecord] = field(default_factory=list)
+    tool_executions: list[ToolExecutionRecord] = field(default_factory=list)
+    metrics: AdminMetricsRecord = field(
+        default_factory=lambda: AdminMetricsRecord(
+            users_total=0,
+            users_active=0,
+            security_events_total=0,
+            security_events_last_24h=0,
+            tool_executions_total=0,
+            tool_executions_last_24h=0,
+        )
+    )
+
+    async def list_users(self, *, limit: int, offset: int):
+        window = self.users[offset : offset + limit + 1]
+        return window[:limit], len(window) > limit
+
+    async def list_security_events(self, *, limit: int, offset: int):
+        window = self.security_events[offset : offset + limit + 1]
+        return window[:limit], len(window) > limit
+
+    async def list_tool_executions(self, *, limit: int, offset: int):
+        window = self.tool_executions[offset : offset + limit + 1]
+        return window[:limit], len(window) > limit
+
+    async def get_metrics(self, *, since: datetime):
+        return self.metrics
+
+
+@dataclass
+class FakeSecurityEventSink:
+    calls: list[dict] = field(default_factory=list)
+
+    async def add_security_event(self, **kwargs):
+        self.calls.append(kwargs)
+        return kwargs
+
+
+@dataclass
+class FakeScopeRow:
+    scope: str
+
+
+@dataclass
+class FakeUser:
+    id: object
+    email: str
+    role: str
+    is_active: bool
+    is_demo: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+@dataclass
+class FakeUserBundle:
+    user: FakeUser
+    scopes: list[FakeScopeRow]
+    identities: list = field(default_factory=list)
+    local_credential: object | None = None
+
+
+@dataclass
+class FakeAccountsRepository:
+    bundles: dict = field(default_factory=dict)
+
+    async def get_user_bundle_by_id(self, user_id):
+        return self.bundles.get(user_id)
+
+    async def replace_user_scopes(self, user_id, scopes: list[str]) -> None:
+        bundle = self.bundles[user_id]
+        await self.replace_bundle_scopes(bundle, scopes)
+
+    async def replace_bundle_scopes(self, bundle, scopes: list[str]) -> None:
+        bundle.scopes = [FakeScopeRow(scope=scope) for scope in scopes]
+
+
+@dataclass
+class FakeAsyncSession:
+    flush_calls: int = 0
+    commit_calls: int = 0
+    rollback_calls: int = 0
+    transaction_open: bool = False
+
+    async def flush(self) -> None:
+        self.flush_calls += 1
+        self.transaction_open = True
+
+    async def commit(self) -> None:
+        self.commit_calls += 1
+        self.transaction_open = False
+
+    async def rollback(self) -> None:
+        self.rollback_calls += 1
+        self.transaction_open = False
+
+    def in_transaction(self) -> bool:
+        return self.transaction_open
+
+    def expire_all(self) -> None:
+        return None
+
+
+def _principal(*, role: str, scopes: tuple[str, ...]) -> AuthenticatedPrincipal:
+    user_id = uuid4()
+    claims = AccessTokenClaims(
+        sub=user_id,
+        role=role,
+        scopes=scopes,
+        iss="simpagent.test",
+        aud="simpagent-api",
+        iat=1,
+        nbf=1,
+        exp=2,
+        jti=uuid4(),
+    )
+    return AuthenticatedPrincipal(
+        user_id=user_id,
+        email="admin@example.test",
+        role=role,
+        scopes=scopes,
+        is_active=True,
+        claims=claims,
+    )
+
+
+@pytest.mark.asyncio
+async def test_list_users_returns_bounded_page_for_authorized_admin() -> None:
+    now = datetime.now(UTC)
+    repository = FakeAdminRepository(
+        users=[
+            AdminUserRecord(
+                id=uuid4(),
+                email="one@example.test",
+                role="user",
+                scopes=["chat:read"],
+                is_active=True,
+                is_demo=False,
+                created_at=now,
+                updated_at=now,
+            ),
+            AdminUserRecord(
+                id=uuid4(),
+                email="two@example.test",
+                role="admin",
+                scopes=["admin:read"],
+                is_active=True,
+                is_demo=False,
+                created_at=now,
+                updated_at=now,
+            ),
+        ]
+    )
+    service = AdminEvidenceService(
+        None,
+        correlation_id="corr-admin-users",
+        now=now,
+        repository=repository,
+        security_events=FakeSecurityEventSink(),
+    )
+
+    result = await service.list_users(
+        principal=_principal(role="admin", scopes=("admin:read",)),
+        limit=1,
+        offset=0,
+    )
+
+    assert len(result.items) == 1
+    assert result.items[0].email == "one@example.test"
+    assert result.page.has_more is True
+    assert result.page.next_offset == 1
+
+
+@pytest.mark.asyncio
+async def test_admin_denial_records_redacted_security_event() -> None:
+    sink = FakeSecurityEventSink()
+    service = AdminEvidenceService(
+        None,
+        correlation_id="corr-admin-denied",
+        now=datetime.now(UTC),
+        repository=FakeAdminRepository(),
+        security_events=sink,
+    )
+
+    with pytest.raises(AdminAccessDenied) as exc_info:
+        await service.list_security_events(
+            principal=_principal(role="user", scopes=("chat:read",)),
+            limit=25,
+            offset=0,
+        )
+
+    assert exc_info.value.decision is PolicyResult.deny_role
+    assert sink.calls[0]["event_type"] == "admin_access_denied"
+    assert sink.calls[0]["correlation_id"] == "corr-admin-denied"
+    assert sink.calls[0]["metadata"] == {
+        "resource": "security_events",
+        "required_scope": "admin:read",
+        "decision": PolicyResult.deny_role.value,
+    }
+
+
+@pytest.mark.asyncio
+async def test_metrics_uses_repository_snapshot() -> None:
+    service = AdminEvidenceService(
+        None,
+        correlation_id="corr-admin-metrics",
+        now=datetime(2026, 6, 11, tzinfo=UTC),
+        repository=FakeAdminRepository(
+            metrics=AdminMetricsRecord(
+                users_total=5,
+                users_active=4,
+                security_events_total=9,
+                security_events_last_24h=3,
+                tool_executions_total=7,
+                tool_executions_last_24h=2,
+            )
+        ),
+        security_events=FakeSecurityEventSink(),
+    )
+
+    result = await service.get_metrics(principal=_principal(role="admin", scopes=("admin:read",)))
+
+    assert result.users_total == 5
+    assert result.users_active == 4
+    assert result.security_events_last_24h == 3
+    assert result.tool_executions_last_24h == 2
+
+
+@pytest.mark.asyncio
+async def test_admin_write_requires_admin_write_scope() -> None:
+    sink = FakeSecurityEventSink()
+    service = AdminEvidenceService(
+        None,
+        correlation_id="corr-admin-write-scope",
+        now=datetime.now(UTC),
+        repository=FakeAdminRepository(),
+        security_events=sink,
+        accounts=FakeAccountsRepository(),
+    )
+
+    with pytest.raises(AdminAccessDenied) as exc_info:
+        await service.update_user_access(
+            principal=_principal(role="admin", scopes=("admin:read",)),
+            target_user_id=uuid4(),
+            is_active=False,
+        )
+
+    assert exc_info.value.decision is PolicyResult.deny_scope
+    assert sink.calls[0]["metadata"] == {
+        "resource": "user_access",
+        "required_scope": "admin:write",
+        "decision": PolicyResult.deny_scope.value,
+    }
+
+
+@pytest.mark.asyncio
+async def test_admin_write_updates_role_bundle_and_records_event() -> None:
+    now = datetime.now(UTC)
+    target_id = uuid4()
+    session = FakeAsyncSession()
+    sink = FakeSecurityEventSink()
+    accounts = FakeAccountsRepository(
+        bundles={
+            target_id: FakeUserBundle(
+                user=FakeUser(
+                    id=target_id,
+                    email="target@example.test",
+                    role="user",
+                    is_active=True,
+                    is_demo=False,
+                    created_at=now,
+                    updated_at=now,
+                ),
+                scopes=[FakeScopeRow(scope=scope) for scope in STANDARD_USER_SCOPES],
+            )
+        }
+    )
+    service = AdminEvidenceService(
+        session,
+        correlation_id="corr-admin-write-update",
+        now=now,
+        repository=FakeAdminRepository(),
+        security_events=sink,
+        accounts=accounts,
+    )
+
+    result = await service.update_user_access(
+        principal=_principal(role="admin", scopes=("admin:write",)),
+        target_user_id=target_id,
+        role="admin",
+        is_active=False,
+    )
+
+    assert result.changed_fields == ["is_active", "role", "scopes"]
+    assert result.user.role == "admin"
+    assert result.user.is_active is False
+    assert result.user.scopes == sorted(ADMIN_SCOPES)
+    assert sink.calls[0]["event_type"] == "admin_user_access_updated"
+    assert sink.calls[0]["metadata"]["changed_fields"] == ["is_active", "role", "scopes"]
+    assert session.flush_calls == 1
+    assert session.commit_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_admin_write_blocks_self_mutation_and_records_event() -> None:
+    sink = FakeSecurityEventSink()
+    session = FakeAsyncSession()
+    principal = _principal(role="admin", scopes=("admin:write",))
+    service = AdminEvidenceService(
+        session,
+        correlation_id="corr-admin-self-write",
+        now=datetime.now(UTC),
+        repository=FakeAdminRepository(),
+        security_events=sink,
+        accounts=FakeAccountsRepository(),
+    )
+
+    with pytest.raises(AdminWriteRejected) as exc_info:
+        await service.update_user_access(
+            principal=principal,
+            target_user_id=principal.user_id,
+            is_active=False,
+        )
+
+    assert exc_info.value.reason == "self_mutation_forbidden"
+    assert sink.calls[0]["event_type"] == "admin_write_denied"
+    assert sink.calls[0]["metadata"] == {
+        "resource": "user_access",
+        "reason": "self_mutation_forbidden",
+    }
+    assert session.commit_calls == 1
