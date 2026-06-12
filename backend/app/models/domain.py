@@ -12,7 +12,10 @@ from app.db.base import Base
 
 MESSAGE_ROLE_CHECK = "role in ('system', 'user', 'assistant', 'tool')"
 MESSAGE_STATUS_CHECK = "status in ('pending', 'completed', 'failed')"
-TOOL_STATUS_CHECK = "status in ('queued', 'running', 'succeeded', 'failed', 'denied', 'timed_out')"
+TOOL_STATUS_CHECK = (
+    "status in ('queued', 'running', 'succeeded', 'failed', 'denied', 'timed_out', "
+    "'policy_error', 'limit_reached', 'infra_failure')"
+)
 
 
 class Conversation(Base):
