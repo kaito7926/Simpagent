@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-06-12T09:33:06.631Z"
-last_activity: 2026-06-12 -- Phase 02 Plan 04 completed
+stopped_at: Completed 02-05-PLAN.md
+last_updated: "2026-06-12T10:43:52.572Z"
+last_activity: 2026-06-12 -- Phase 02 Plan 05 completed
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 15
-  completed_plans: 12
-  percent: 80
+  completed_plans: 13
+  percent: 87
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 02 (private-direct-chat) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
-Last activity: 2026-06-12 -- Phase 02 Plan 04 completed
+Last activity: 2026-06-12 -- Phase 02 Plan 05 completed
 
-Progress: [████████░░] 80%
+Progress: [█████████░] 87%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 10
+- Total plans completed: 13
 - Average duration: Combined Phase 01 delivery commit + verification pass
 - Total execution time: Combined multi-session Phase 01 completion
 
@@ -48,7 +48,7 @@ Progress: [████████░░] 80%
 
 **Recent Trend:**
 
-- Last 5 plans: 01-06, 01-07, 01-08, 02-01, 02-02 completed through the Phase 1 closeout and Phase 2 provider-adapter pass
+- Last 5 plans: 02-01, 02-02, 02-03, 02-04, 02-05 completed through the Phase 2 private direct-chat pass
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -56,6 +56,7 @@ Progress: [████████░░] 80%
 | Phase 02 P02 | 29 min | 3 tasks | 9 files |
 | Phase 02 P03 | 14 min | 2 tasks | 7 files |
 | Phase 02 P04 | 17 min | 2 tasks | 30 files |
+| Phase 02 P05 | 11 min | 2 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,9 @@ Recent decisions affecting current work:
 - [Phase 02]: Chat API helpers use AuthSessionController.authorizedJson exclusively. — This preserves memory-only access tokens and the existing refresh-on-401 session boundary.
 - [Phase 02]: Non-streaming chat shows an optimistic pending row and reloads persisted state after provider failure. — Durable backend message state remains authoritative for retry and correlation display.
 - [Phase 02]: Authenticated sessions replace the account card with ChatWorkspace on the root route. — Login, registration, recovery, and session expiry remain in the existing shell.
+- [Phase 02]: Undo-delete is implemented as a write-scoped owner-constrained SQL update with a 6-second deleted_at window. — Keeps recovery short-lived, database-backed, and tenant-safe.
+- [Phase 02]: Conversation list state labels expose only UI-safe values: Pending reply, Retry available, or null. — The sidebar does not leak provider internals or message counts from other owners.
+- [Phase 02]: Delete remains the only row management action, with undo handled through the existing authorized session request path. — Phase 2 avoids rename, archive, share, export, model, and tool controls.
 
 ### Pending Todos
 
@@ -97,6 +101,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-12T09:32:37.148Z
-Stopped at: Completed 02-04-PLAN.md
+Last session: 2026-06-12T10:43:52.562Z
+Stopped at: Completed 02-05-PLAN.md
 Resume file: None
