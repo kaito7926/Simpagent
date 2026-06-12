@@ -44,8 +44,8 @@
 - [x] **CHAT-02**: User can list their own conversations in stable, paginated order.
 - [x] **CHAT-03**: User can retrieve one owned conversation and its ordered message history.
 - [x] **CHAT-04**: User can delete an owned conversation according to a documented data and audit-retention policy.
-- [ ] **CHAT-05**: User can send a message to an owned conversation without duplicate submission creating duplicate provider work.
-- [ ] **CHAT-06**: Backend persists accepted user messages and successful assistant responses with immutable roles, timestamps, ordering, and safe metadata.
+- [x] **CHAT-05**: User can send a message to an owned conversation without duplicate submission creating duplicate provider work.
+- [x] **CHAT-06**: Backend persists accepted user messages and successful assistant responses with immutable roles, timestamps, ordering, and safe metadata.
 - [x] **CHAT-07**: A provider failure never creates a fabricated successful assistant message and returns a stable error containing a support correlation ID.
 - [x] **CHAT-08**: A configurable OpenAI-compatible adapter handles normal chat through `LLM_API_BASE`, `LLM_API_KEY`, `LLM_MODEL`, and bounded timeout/retry settings.
 - [ ] **CHAT-09**: Frontend supports registration, login, logout, conversation navigation, message composition, pending states, retryable errors, and history reload.
@@ -224,8 +224,8 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | CHAT-02 | Phase 2 | Complete |
 | CHAT-03 | Phase 2 | Complete |
 | CHAT-04 | Phase 2 | Complete |
-| CHAT-05 | Phase 2 | Pending |
-| CHAT-06 | Phase 2 | Pending |
+| CHAT-05 | Phase 2 | Complete |
+| CHAT-06 | Phase 2 | Complete |
 | CHAT-07 | Phase 2 | Complete |
 | CHAT-08 | Phase 2 | Complete |
 | CHAT-09 | Phase 2 | Pending |

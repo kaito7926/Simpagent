@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-06-12T07:55:44.007Z"
-last_activity: 2026-06-12 -- Phase 02 execution started
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-06-12T08:16:25.663Z"
+last_activity: 2026-06-12 -- Phase 02 Plan 03 completed
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 15
-  completed_plans: 10
-  percent: 67
+  completed_plans: 11
+  percent: 73
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 02 (private-direct-chat) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
-Last activity: 2026-06-12 -- Phase 02 Plan 02 completed
+Last activity: 2026-06-12 -- Phase 02 Plan 03 completed
 
-Progress: [███████░░░] 67%
+Progress: [███████░░░] 73%
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [███████░░░] 67%
 *Updated after each plan completion*
 | Phase 02 P01 | 16 min | 2 tasks | 10 files |
 | Phase 02 P02 | 29 min | 3 tasks | 9 files |
+| Phase 02 P03 | 14 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,9 @@ Recent decisions affecting current work:
 - [Phase 02]: Conversation ownership is enforced in repository SQL predicates using both conversation ID and user ID. — Prevents BOLA by avoiding fetch-by-id then Python owner checks.
 - [Phase 02]: Use the official OpenAI Python SDK package openai>=2,<3 after human legitimacy approval. — The package matched PyPI/OpenAI/GitHub evidence and was explicitly approved before manifest changes.
 - [Phase 02]: Allow both SIMPAGENT_LLM_* and documented LLM_* provider env names for direct-chat settings. — This keeps Pydantic settings, .env.example, and Compose provider configuration aligned for custom LLM_API_BASE and LLM_MODEL.
+- [Phase 02]: Provider calls happen after durable turn commit — Accepted user messages and pending assistant rows are committed before adapter.complete runs, avoiding long DB transactions and preserving retryable failed-turn state.
+- [Phase 02]: Send retry uses provider settings boundary — Routes obtain OpenAIChatAdapter through Settings from Plan 02-02 so custom LLM_API_BASE and LLM_MODEL remain configurable.
+- [Phase 02]: Provider failures persist failed assistant rows — Provider errors return provider_failed and store safe retry metadata plus correlation IDs without fabricated assistant content.
 
 ### Pending Todos
 
@@ -89,6 +93,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-12T07:55:43.998Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-06-12T08:15:28.814Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
