@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-06-12T08:16:25.663Z"
-last_activity: 2026-06-12 -- Phase 02 Plan 03 completed
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-06-12T09:33:06.631Z"
+last_activity: 2026-06-12 -- Phase 02 Plan 04 completed
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 15
-  completed_plans: 11
-  percent: 73
+  completed_plans: 12
+  percent: 80
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 02 (private-direct-chat) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
-Last activity: 2026-06-12 -- Phase 02 Plan 03 completed
+Last activity: 2026-06-12 -- Phase 02 Plan 04 completed
 
-Progress: [███████░░░] 73%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [███████░░░] 73%
 | Phase 02 P01 | 16 min | 2 tasks | 10 files |
 | Phase 02 P02 | 29 min | 3 tasks | 9 files |
 | Phase 02 P03 | 14 min | 2 tasks | 7 files |
+| Phase 02 P04 | 17 min | 2 tasks | 30 files |
 
 ## Accumulated Context
 
@@ -74,10 +75,13 @@ Recent decisions affecting current work:
 - [Phase 02]: Provider calls happen after durable turn commit — Accepted user messages and pending assistant rows are committed before adapter.complete runs, avoiding long DB transactions and preserving retryable failed-turn state.
 - [Phase 02]: Send retry uses provider settings boundary — Routes obtain OpenAIChatAdapter through Settings from Plan 02-02 so custom LLM_API_BASE and LLM_MODEL remain configurable.
 - [Phase 02]: Provider failures persist failed assistant rows — Provider errors return provider_failed and store safe retry metadata plus correlation IDs without fabricated assistant content.
+- [Phase 02]: Chat API helpers use AuthSessionController.authorizedJson exclusively. — This preserves memory-only access tokens and the existing refresh-on-401 session boundary.
+- [Phase 02]: Non-streaming chat shows an optimistic pending row and reloads persisted state after provider failure. — Durable backend message state remains authoritative for retry and correlation display.
+- [Phase 02]: Authenticated sessions replace the account card with ChatWorkspace on the root route. — Login, registration, recovery, and session expiry remain in the existing shell.
 
 ### Pending Todos
 
-- Phase 02 planning should decide how to reuse the authenticated frontend shell and backend identity/session patterns for chat flows.
+None.
 
 ### Blockers/Concerns
 
@@ -93,6 +97,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-12T08:15:28.814Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-06-12T09:32:37.148Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None
