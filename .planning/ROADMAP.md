@@ -4,6 +4,8 @@
 
 This roadmap delivers the prototype as dependency-ordered vertical slices: establish a runnable security and identity foundation, ship private direct chat, add policy-controlled Google Search, add isolated Python execution, harden the assembled gateway and evidence surfaces, then prove the complete system through adversarial verification and Vietnamese delivery documentation.
 
+**Integrated slice note:** PR #2 ships Phase 4 as an integrated tooling slice. Phase 3 still needs dedicated plans and refreshed verification artifacts before it can be marked complete in strict dependency order.
+
 ## Phases
 
 **Phase Numbering:**
@@ -14,7 +16,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 - [x] **Phase 1: Secure Platform and Account Access** - The local topology runs and users can authenticate through strict, revocable sessions.
 - [x] **Phase 2: Private Direct Chat** - Users can use a safe browser chat experience with owner-only conversation history.
 - [ ] **Phase 3: Policy-Controlled Google Search** - Authorized users can receive grounded search answers through a bounded coordinator.
-- [ ] **Phase 4: Isolated Python Execution** - Authorized users can run bounded Python without host, secret, or network access.
+- [x] **Phase 4: Isolated Python Execution** - Authorized users can run bounded Python without host, secret, or network access.
 - [ ] **Phase 5: Gateway, Administration, and Security Evidence** - The assembled application has hardened ingress, redacted observability, and protected admin evidence.
 - [ ] **Phase 6: Adversarial Verification and Vietnamese Delivery** - Evaluators can verify the claimed controls and operate the documented prototype.
 
@@ -34,32 +36,32 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   4. User can refresh and log out through a JavaScript-inaccessible protected session, while rotated-token reuse revokes the family and is denied.
   5. Authenticated user can inspect their safe identity attributes, while inactive principals and unknown roles, scopes, tools, or policy states fail closed.
 
-**Plans:** 8 plansPlans:
+**Plans:** 8/8 plans executed
 **Wave 1**
 
-- [ ] 01-01-PLAN.md - Establish the PostgreSQL-only test, app, and sandbox foundations.
+- [x] 01-01-PLAN.md - Establish the PostgreSQL-only test, app, and sandbox foundations.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md - Implement the real PostgreSQL registration/login/current-user API slice.
+- [x] 01-02-PLAN.md - Implement the real PostgreSQL registration/login/current-user API slice.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-03-PLAN.md - Prove the first frontend-to-Kong-to-API-to-PostgreSQL journey.
-- [ ] 01-04-PLAN.md - Enforce provider-neutral identity, strict JWTs, and fail-closed principals.
-- [ ] 01-07-PLAN.md - Complete schema, configuration, readiness, and provider degradation.
+- [x] 01-03-PLAN.md - Prove the first frontend-to-Kong-to-API-to-PostgreSQL journey.
+- [x] 01-04-PLAN.md - Enforce provider-neutral identity, strict JWTs, and fail-closed principals.
+- [x] 01-07-PLAN.md - Complete schema, configuration, readiness, and provider degradation.
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 01-05-PLAN.md - Add atomic refresh rotation, replay defense, CSRF, and logout.
+- [x] 01-05-PLAN.md - Add atomic refresh rotation, replay defense, CSRF, and logout.
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 01-06-PLAN.md - Complete browser session recovery and the account-access UI contract.
+- [x] 01-06-PLAN.md - Complete browser session recovery and the account-access UI contract.
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 01-08-PLAN.md - Provision demo/Admin accounts and verify the final assembled topology.
+- [x] 01-08-PLAN.md - Provision demo/Admin accounts and verify the final assembled topology.
 
 **UI hint:** no
 
@@ -111,7 +113,8 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   4. User receives bounded stdout, stderr, exit status, duration, and the specific terminating limit when time, CPU, memory, PID, process, file, or output controls stop execution.
   5. Temporary execution data is removed, and package installation, arbitrary external commands, user-controlled runtime settings, mounts, devices, namespaces, and privileged operation are denied.
 
-**Plans:** TBD
+**Plans:** 5/5 plans executed
+**Ship note:** Shipped on PR #2 as an integrated tooling slice. Phase 3 planning and refreshed verification artifacts are still pending in `.planning/phases/03-policy-controlled-google-search/`.
 **UI hint:** yes
 
 ### Phase 5: Gateway, Administration, and Security Evidence
@@ -153,11 +156,13 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 **Execution Order:**
 Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
+Note: PR #2 ships the Phase 4 Python slice before Phase 3 planning metadata was closed out. The table below reflects shipped code status, not strict dependency-order documentation completeness.
+
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Secure Platform and Account Access | 8/8 | Complete | 2026-06-10 |
 | 2. Private Direct Chat | 7/7 | Complete | 2026-06-12 |
-| 3. Policy-Controlled Google Search | 0/TBD | Not started | - |
-| 4. Isolated Python Execution | 0/TBD | Not started | - |
+| 3. Policy-Controlled Google Search | 0/TBD | Artifact closeout pending | - |
+| 4. Isolated Python Execution | 5/5 | Shipped (PR #2) | 2026-06-13 |
 | 5. Gateway, Administration, and Security Evidence | 0/TBD | Not started | - |
 | 6. Adversarial Verification and Vietnamese Delivery | 0/TBD | Not started | - |

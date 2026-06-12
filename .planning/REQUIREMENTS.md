@@ -3,40 +3,42 @@
 **Defined:** 2026-06-08
 **Core Value:** Users can safely authenticate and use an AI chatbot with controlled agent tools without crossing tenant, role, scope, network, or host-execution boundaries.
 
+**Integrated slice note:** Phase 4 is shipped on PR #2. Phase 3 search requirements remain pending until dedicated planning and refreshed verification artifacts are closed out.
+
 ## v1 Requirements
 
 ### Platform Foundation
 
-- [ ] **PLAT-01**: Developer can start the required local system with `docker compose up --build`.
-- [ ] **PLAT-02**: The Compose topology starts frontend, backend, PostgreSQL, Kong, and the Python sandbox foundation with health checks.
-- [ ] **PLAT-03**: Backend applies reviewed Alembic migrations for users, refresh tokens, conversations, messages, tool executions, audit logs, and security events.
-- [ ] **PLAT-04**: Operator can configure all secrets, provider endpoints, model IDs, allowed origins, and security settings through environment variables documented in `.env.example`.
-- [ ] **PLAT-05**: Services expose liveness and readiness endpoints that distinguish process health from dependency readiness without exposing secrets.
-- [ ] **PLAT-06**: Missing required LLM credentials or an unavailable configured search model produces a documented fail-closed or degraded state without a secret-bearing stack trace.
+- [x] **PLAT-01**: Developer can start the required local system with `docker compose up --build`.
+- [x] **PLAT-02**: The Compose topology starts frontend, backend, PostgreSQL, Kong, and the Python sandbox foundation with health checks.
+- [x] **PLAT-03**: Backend applies reviewed Alembic migrations for users, refresh tokens, conversations, messages, tool executions, audit logs, and security events.
+- [x] **PLAT-04**: Operator can configure all secrets, provider endpoints, model IDs, allowed origins, and security settings through environment variables documented in `.env.example`.
+- [x] **PLAT-05**: Services expose liveness and readiness endpoints that distinguish process health from dependency readiness without exposing secrets.
+- [x] **PLAT-06**: Missing required LLM credentials or an unavailable configured search model produces a documented fail-closed or degraded state without a secret-bearing stack trace.
 
 ### Authentication and Sessions
 
-- [ ] **AUTH-01**: User can register with a normalized unique email and password without account-enumerating responses.
-- [ ] **AUTH-02**: User can log in with valid local credentials and receives a short-lived access token plus a protected refresh session.
-- [ ] **AUTH-03**: Passwords are hashed with Argon2id and are never stored, returned, or logged in plaintext.
-- [ ] **AUTH-04**: Access JWTs include `sub`, `role`, `scopes`, `exp`, `iat`, and `jti` and are validated against an explicit algorithm, issuer, audience, type, and time policy.
-- [ ] **AUTH-05**: User can refresh a session through an opaque, server-side-hashed refresh-token family with atomic rotation.
-- [ ] **AUTH-06**: Reuse of a rotated or revoked refresh token revokes its active family, denies the request, and records a security event.
-- [ ] **AUTH-07**: User can log out and invalidate the active refresh session.
-- [ ] **AUTH-08**: Authenticated user can retrieve their current identity, role, scopes, and active status without credential material.
-- [ ] **AUTH-09**: Browser session handling keeps refresh tokens unavailable to JavaScript and applies CSRF and Origin protections appropriate to the deployment topology.
-- [ ] **AUTH-10**: Identity code exposes an OIDC-ready provider boundary without claiming that local password authentication is itself an OpenID Provider.
+- [x] **AUTH-01**: User can register with a normalized unique email and password without account-enumerating responses.
+- [x] **AUTH-02**: User can log in with valid local credentials and receives a short-lived access token plus a protected refresh session.
+- [x] **AUTH-03**: Passwords are hashed with Argon2id and are never stored, returned, or logged in plaintext.
+- [x] **AUTH-04**: Access JWTs include `sub`, `role`, `scopes`, `exp`, `iat`, and `jti` and are validated against an explicit algorithm, issuer, audience, type, and time policy.
+- [x] **AUTH-05**: User can refresh a session through an opaque, server-side-hashed refresh-token family with atomic rotation.
+- [x] **AUTH-06**: Reuse of a rotated or revoked refresh token revokes its active family, denies the request, and records a security event.
+- [x] **AUTH-07**: User can log out and invalidate the active refresh session.
+- [x] **AUTH-08**: Authenticated user can retrieve their current identity, role, scopes, and active status without credential material.
+- [x] **AUTH-09**: Browser session handling keeps refresh tokens unavailable to JavaScript and applies CSRF and Origin protections appropriate to the deployment topology.
+- [x] **AUTH-10**: Identity code exposes an OIDC-ready provider boundary without claiming that local password authentication is itself an OpenID Provider.
 
 ### Authorization
 
-- [ ] **AUTHZ-01**: Every protected endpoint rejects inactive users and tokens missing the required authenticated principal.
+- [x] **AUTHZ-01**: Every protected endpoint rejects inactive users and tokens missing the required authenticated principal.
 - [ ] **AUTHZ-02**: Admin APIs require the Admin role and the corresponding `admin:read` or `admin:write` scope.
 - [x] **AUTHZ-03**: Chat read operations require `chat:read`, and chat mutation operations require `chat:write`.
 - [ ] **AUTHZ-04**: Web Search execution requires `tool:websearch`, and Python execution requires `tool:python`.
 - [x] **AUTHZ-05**: Conversation and message queries constrain resource ID and authenticated owner in the same data-access operation.
 - [x] **AUTHZ-06**: User cannot infer, read, modify, append to, or delete another user's conversations or messages.
 - [ ] **AUTHZ-07**: Tool authorization is checked immediately before execution and cannot be granted or overridden by model output.
-- [ ] **AUTHZ-08**: Unknown roles, scopes, tools, and policy states fail closed and produce a redacted authorization or security event.
+- [x] **AUTHZ-08**: Unknown roles, scopes, tools, and policy states fail closed and produce a redacted authorization or security event.
 
 ### Conversations and Chat
 
@@ -51,7 +53,7 @@
 - [x] **CHAT-09**: Frontend supports registration, login, logout, conversation navigation, message composition, pending states, retryable errors, and history reload.
 - [x] **CHAT-10**: Frontend renders Markdown and code blocks while sanitizing raw HTML, scripts, event handlers, and dangerous URL schemes.
 - [x] **CHAT-11**: Chat supports a correct non-streaming JSON response path; streaming is enabled only if disconnect, persistence, and proxy behavior remain correct.
-- [ ] **CHAT-12**: User can distinguish direct LLM, Google-grounded Search, and Python-tool responses in the chat interface.
+- [x] **CHAT-12**: User can distinguish direct LLM, Google-grounded Search, and Python-tool responses in the chat interface.
 
 ### Agent Coordination
 
@@ -76,14 +78,14 @@
 
 ### Python Sandbox
 
-- [ ] **SBOX-01**: Backend never executes user Python with host-process `exec`, `eval`, shell execution, or the backend interpreter.
-- [ ] **SBOX-02**: Authorized code runs only through a dedicated fixed-policy sandbox boundary that accepts code and bounded execution parameters.
-- [ ] **SBOX-03**: Sandbox execution has no network access by default and cannot reach localhost, private networks, link-local addresses, cloud metadata, or Docker internal services.
-- [ ] **SBOX-04**: Sandbox runs non-root with a read-only root filesystem, temporary writable workspace, dropped capabilities, `no-new-privileges`, and an enforced seccomp profile.
-- [ ] **SBOX-05**: Sandbox enforces wall-time, CPU, memory, PID, file-size, process, and output limits and reports the limit that ended execution.
-- [ ] **SBOX-06**: Sandbox receives no application secrets, host paths, Docker socket, privileged mode, host namespaces, devices, or user-controlled runtime configuration.
-- [ ] **SBOX-07**: Sandbox captures bounded stdout, stderr, exit status, duration, and safe error details, then removes temporary execution data.
-- [ ] **SBOX-08**: Package installation and arbitrary external commands are denied unless a future reviewed allowlist explicitly permits them.
+- [x] **SBOX-01**: Backend never executes user Python with host-process `exec`, `eval`, shell execution, or the backend interpreter.
+- [x] **SBOX-02**: Authorized code runs only through a dedicated fixed-policy sandbox boundary that accepts code and bounded execution parameters.
+- [x] **SBOX-03**: Sandbox execution has no network access by default and cannot reach localhost, private networks, link-local addresses, cloud metadata, or Docker internal services.
+- [x] **SBOX-04**: Sandbox runs non-root with a read-only root filesystem, temporary writable workspace, dropped capabilities, `no-new-privileges`, and an enforced seccomp profile.
+- [x] **SBOX-05**: Sandbox enforces wall-time, CPU, memory, PID, file-size, process, and output limits and reports the limit that ended execution.
+- [x] **SBOX-06**: Sandbox receives no application secrets, host paths, Docker socket, privileged mode, host namespaces, devices, or user-controlled runtime configuration.
+- [x] **SBOX-07**: Sandbox captures bounded stdout, stderr, exit status, duration, and safe error details, then removes temporary execution data.
+- [x] **SBOX-08**: Package installation and arbitrary external commands are denied unless a future reviewed allowlist explicitly permits them.
 
 ### Gateway and Edge Security
 
@@ -199,24 +201,24 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLAT-01 | Phase 1 | Pending |
-| PLAT-02 | Phase 1 | Pending |
-| PLAT-03 | Phase 1 | Pending |
-| PLAT-04 | Phase 1 | Pending |
-| PLAT-05 | Phase 1 | Pending |
-| PLAT-06 | Phase 1 | Pending |
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
-| AUTH-03 | Phase 1 | Pending |
-| AUTH-04 | Phase 1 | Pending |
-| AUTH-05 | Phase 1 | Pending |
-| AUTH-06 | Phase 1 | Pending |
-| AUTH-07 | Phase 1 | Pending |
-| AUTH-08 | Phase 1 | Pending |
-| AUTH-09 | Phase 1 | Pending |
-| AUTH-10 | Phase 1 | Pending |
-| AUTHZ-01 | Phase 1 | Pending |
-| AUTHZ-08 | Phase 1 | Pending |
+| PLAT-01 | Phase 1 | Complete |
+| PLAT-02 | Phase 1 | Complete |
+| PLAT-03 | Phase 1 | Complete |
+| PLAT-04 | Phase 1 | Complete |
+| PLAT-05 | Phase 1 | Complete |
+| PLAT-06 | Phase 1 | Complete |
+| AUTH-01 | Phase 1 | Complete |
+| AUTH-02 | Phase 1 | Complete |
+| AUTH-03 | Phase 1 | Complete |
+| AUTH-04 | Phase 1 | Complete |
+| AUTH-05 | Phase 1 | Complete |
+| AUTH-06 | Phase 1 | Complete |
+| AUTH-07 | Phase 1 | Complete |
+| AUTH-08 | Phase 1 | Complete |
+| AUTH-09 | Phase 1 | Complete |
+| AUTH-10 | Phase 1 | Complete |
+| AUTHZ-01 | Phase 1 | Complete |
+| AUTHZ-08 | Phase 1 | Complete |
 | AUTHZ-03 | Phase 2 | Complete |
 | AUTHZ-05 | Phase 2 | Complete |
 | AUTHZ-06 | Phase 2 | Complete |
@@ -248,15 +250,15 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | SRCH-06 | Phase 3 | Pending |
 | SRCH-07 | Phase 3 | Pending |
 | SRCH-08 | Phase 3 | Pending |
-| CHAT-12 | Phase 4 | Pending |
-| SBOX-01 | Phase 4 | Pending |
-| SBOX-02 | Phase 4 | Pending |
-| SBOX-03 | Phase 4 | Pending |
-| SBOX-04 | Phase 4 | Pending |
-| SBOX-05 | Phase 4 | Pending |
-| SBOX-06 | Phase 4 | Pending |
-| SBOX-07 | Phase 4 | Pending |
-| SBOX-08 | Phase 4 | Pending |
+| CHAT-12 | Phase 4 | Complete |
+| SBOX-01 | Phase 4 | Complete |
+| SBOX-02 | Phase 4 | Complete |
+| SBOX-03 | Phase 4 | Complete |
+| SBOX-04 | Phase 4 | Complete |
+| SBOX-05 | Phase 4 | Complete |
+| SBOX-06 | Phase 4 | Complete |
+| SBOX-07 | Phase 4 | Complete |
+| SBOX-08 | Phase 4 | Complete |
 | AUTHZ-02 | Phase 5 | Pending |
 | GATE-01 | Phase 5 | Pending |
 | GATE-02 | Phase 5 | Pending |
@@ -307,4 +309,4 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 
 ---
 *Requirements defined: 2026-06-08*
-*Last updated: 2026-06-08 after roadmap generation*
+*Last updated: 2026-06-13 after Phase 04 ship metadata sync*
