@@ -6,3 +6,5 @@ __pycache__/
 node_modules/
 *.tsbuildinfo
 *.egg-info/
+.mcp.json
+seed.spec.ts
