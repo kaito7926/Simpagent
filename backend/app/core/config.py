@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
 
-from pydantic import Field, SecretStr, computed_field, model_validator
+from pydantic import AliasChoices, Field, SecretStr, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,6 +34,7 @@ class Settings(BaseSettings):
         extra="ignore",
         frozen=True,
         enable_decoding=False,
+        populate_by_name=True,
     )
 
     app_env: AppEnv = "development"
@@ -67,10 +68,30 @@ class Settings(BaseSettings):
     demo_admin_email: str = "demo.admin@simpagent.test"
     demo_admin_password: SecretStr | None = None
 
-    llm_api_base: str | None = None
-    llm_api_key: SecretStr | None = None
-    llm_api_key_file: str | None = None
-    llm_model: str | None = None
+    llm_api_base: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_LLM_API_BASE", "LLM_API_BASE"),
+    )
+    llm_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_LLM_API_KEY", "LLM_API_KEY"),
+    )
+    llm_api_key_file: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_LLM_API_KEY_FILE", "LLM_API_KEY_FILE"),
+    )
+    llm_model: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_LLM_MODEL", "LLM_MODEL"),
+    )
+    llm_timeout_seconds: int = Field(
+        default=30,
+        validation_alias=AliasChoices("SIMPAGENT_LLM_TIMEOUT_SECONDS", "LLM_TIMEOUT_SECONDS"),
+    )
+    llm_max_retries: int = Field(
+        default=1,
+        validation_alias=AliasChoices("SIMPAGENT_LLM_MAX_RETRIES", "LLM_MAX_RETRIES"),
+    )
     google_api_key: SecretStr | None = None
     google_api_key_file: str | None = None
     search_model: str | None = None
