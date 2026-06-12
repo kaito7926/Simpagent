@@ -46,11 +46,11 @@
 - [x] **CHAT-04**: User can delete an owned conversation according to a documented data and audit-retention policy.
 - [ ] **CHAT-05**: User can send a message to an owned conversation without duplicate submission creating duplicate provider work.
 - [ ] **CHAT-06**: Backend persists accepted user messages and successful assistant responses with immutable roles, timestamps, ordering, and safe metadata.
-- [ ] **CHAT-07**: A provider failure never creates a fabricated successful assistant message and returns a stable error containing a support correlation ID.
-- [ ] **CHAT-08**: A configurable OpenAI-compatible adapter handles normal chat through `LLM_API_BASE`, `LLM_API_KEY`, `LLM_MODEL`, and bounded timeout/retry settings.
+- [x] **CHAT-07**: A provider failure never creates a fabricated successful assistant message and returns a stable error containing a support correlation ID.
+- [x] **CHAT-08**: A configurable OpenAI-compatible adapter handles normal chat through `LLM_API_BASE`, `LLM_API_KEY`, `LLM_MODEL`, and bounded timeout/retry settings.
 - [ ] **CHAT-09**: Frontend supports registration, login, logout, conversation navigation, message composition, pending states, retryable errors, and history reload.
 - [ ] **CHAT-10**: Frontend renders Markdown and code blocks while sanitizing raw HTML, scripts, event handlers, and dangerous URL schemes.
-- [ ] **CHAT-11**: Chat supports a correct non-streaming JSON response path; streaming is enabled only if disconnect, persistence, and proxy behavior remain correct.
+- [x] **CHAT-11**: Chat supports a correct non-streaming JSON response path; streaming is enabled only if disconnect, persistence, and proxy behavior remain correct.
 - [ ] **CHAT-12**: User can distinguish direct LLM, Google-grounded Search, and Python-tool responses in the chat interface.
 
 ### Agent Coordination
@@ -226,11 +226,11 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | CHAT-04 | Phase 2 | Complete |
 | CHAT-05 | Phase 2 | Pending |
 | CHAT-06 | Phase 2 | Pending |
-| CHAT-07 | Phase 2 | Pending |
-| CHAT-08 | Phase 2 | Pending |
+| CHAT-07 | Phase 2 | Complete |
+| CHAT-08 | Phase 2 | Complete |
 | CHAT-09 | Phase 2 | Pending |
 | CHAT-10 | Phase 2 | Pending |
-| CHAT-11 | Phase 2 | Pending |
+| CHAT-11 | Phase 2 | Complete |
 | AUTHZ-04 | Phase 3 | Pending |
 | AUTHZ-07 | Phase 3 | Pending |
 | AGNT-01 | Phase 3 | Pending |

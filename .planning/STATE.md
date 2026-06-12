@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-06-12T07:23:08.165Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-06-12T07:55:44.007Z"
 last_activity: 2026-06-12 -- Phase 02 execution started
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 15
-  completed_plans: 9
-  percent: 60
+  completed_plans: 10
+  percent: 67
 ---
 
 # Project State
@@ -26,17 +26,17 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 02 (private-direct-chat) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
-Last activity: 2026-06-12 -- Phase 02 execution started
+Last activity: 2026-06-12 -- Phase 02 Plan 02 completed
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: Combined Phase 01 delivery commit + verification pass
 - Total execution time: Combined multi-session Phase 01 completion
 
@@ -48,11 +48,12 @@ Progress: [██████░░░░] 60%
 
 **Recent Trend:**
 
-- Last 5 plans: 01-05, 01-06, 01-07, 01-08, 02-01 completed through the Phase 1 closeout and Phase 2 conversation lifecycle pass
+- Last 5 plans: 01-06, 01-07, 01-08, 02-01, 02-02 completed through the Phase 1 closeout and Phase 2 provider-adapter pass
 - Trend: Stable
 
 *Updated after each plan completion*
 | Phase 02 P01 | 16 min | 2 tasks | 10 files |
+| Phase 02 P02 | 29 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,8 @@ Recent decisions affecting current work:
 - Provider-only readiness failures degrade the platform without blocking core account access.
 - [Phase 02]: Cross-user conversation access returns a generic not-found envelope to avoid existence signals. — Missing and unauthorized conversation IDs should not be distinguishable.
 - [Phase 02]: Conversation ownership is enforced in repository SQL predicates using both conversation ID and user ID. — Prevents BOLA by avoiding fetch-by-id then Python owner checks.
+- [Phase 02]: Use the official OpenAI Python SDK package openai>=2,<3 after human legitimacy approval. — The package matched PyPI/OpenAI/GitHub evidence and was explicitly approved before manifest changes.
+- [Phase 02]: Allow both SIMPAGENT_LLM_* and documented LLM_* provider env names for direct-chat settings. — This keeps Pydantic settings, .env.example, and Compose provider configuration aligned for custom LLM_API_BASE and LLM_MODEL.
 
 ### Pending Todos
 
@@ -86,6 +89,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-12T07:22:07.560Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-06-12T07:55:43.998Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
