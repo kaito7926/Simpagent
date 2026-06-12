@@ -1291,6 +1291,128 @@ summary:focus {
   white-space: pre-wrap;
 }
 
+.markdown-content {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.markdown-content > * {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.markdown-content > *:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content a {
+  color: var(--focus);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.markdown-link-inert {
+  color: inherit;
+  font-weight: 650;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  padding-left: 22px;
+}
+
+.markdown-content li {
+  margin: 4px 0;
+}
+
+.markdown-content input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: var(--focus);
+}
+
+.markdown-content table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid var(--line);
+  padding: 7px 9px;
+  text-align: left;
+}
+
+.markdown-content th {
+  background: #f5fafb;
+  font-weight: 750;
+}
+
+.markdown-content :not(pre) > code {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f5fafb;
+  padding: 1px 5px;
+  font-size: 0.92em;
+}
+
+.code-block {
+  margin: 14px 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #1b2420;
+}
+
+.code-block-header {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.12);
+  padding: 7px 10px;
+  background: #22302a;
+  color: #d7e4df;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.code-copy-button {
+  min-height: 30px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 0.08);
+  color: #ffffff;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.code-copy-button:hover {
+  background: rgb(255 255 255 / 0.14);
+}
+
+.code-copy-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.code-block pre {
+  overflow-x: auto;
+  padding: 12px;
+}
+
+.code-block-code {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .assistant-state {
   width: min(720px, 100%);
   border: 1px solid var(--line);

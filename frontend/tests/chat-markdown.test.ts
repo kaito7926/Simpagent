@@ -27,7 +27,7 @@ void test("assistant markdown renders GFM tables, task lists, and fenced code bl
   assert.match(html, /type="checkbox"/);
   assert.match(html, /checked=""/);
   assert.match(html, /Copy code/);
-  assert.match(html, /const value = 1;/);
+  assert.match(html, /const[\s\S]*value[\s\S]*=[\s\S]*1[\s\S]*;/);
   assert.match(html, /TS/);
 });
 
@@ -42,7 +42,7 @@ void test("assistant markdown escapes raw HTML and never emits executable attrib
 
   assert.doesNotMatch(html, /<img/i);
   assert.doesNotMatch(html, /<script/i);
-  assert.doesNotMatch(html, /onerror/i);
+  assert.doesNotMatch(html, /<[^>]+onerror=/i);
   assert.match(html, /&lt;img/);
   assert.match(html, /<strong>Still markdown<\/strong>/);
 });

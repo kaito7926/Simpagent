@@ -3,6 +3,7 @@ import React from "react";
 import type { ChatMessage } from "@/lib/chat-types";
 
 import { AssistantStateRows } from "./AssistantStateRows";
+import { MessageMarkdown } from "./MessageMarkdown";
 
 type MessageListProps = {
   messages: ChatMessage[];
@@ -56,7 +57,11 @@ export function MessageList({
                 <p className="message-role">
                   {message.role === "user" ? "You" : "SimpAgent"}
                 </p>
-                <div className="message-content">{message.content}</div>
+                {message.role === "assistant" ? (
+                  <MessageMarkdown content={message.content} />
+                ) : (
+                  <div className="message-content">{message.content}</div>
+                )}
               </article>
             )}
           </li>
