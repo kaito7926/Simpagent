@@ -8,7 +8,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, health
+from app.api.routes import auth, chat, health
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError, install_error_handlers
 from app.db.session import create_session_factory
@@ -39,7 +39,7 @@ def create_app(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Correlation-Id"],
         expose_headers=["X-Correlation-Id"],
     )
@@ -57,6 +57,7 @@ def create_app(
         raise ApiError(status_code=503, code="frontend_missing", message="Frontend route is not yet available.")
 
     app.include_router(auth.router)
+    app.include_router(chat.router)
     app.include_router(health.router)
     install_error_handlers(app)
     return app
