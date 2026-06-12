@@ -6,11 +6,26 @@ import React from "react";
 import { AuthSessionController } from "@/lib/auth-session";
 import {
   createConversationWithMessage,
+  deleteConversation,
   getConversation,
   retryMessage,
   sendMessage,
+  undoDeleteConversation,
 } from "@/lib/chat-api";
-import { ChatWorkspace } from "@/components/chat/ChatWorkspace";
+import {
+  ChatWorkspace,
+  removeConversationSummary,
+  restoreConversationSummary,
+} from "@/components/chat/ChatWorkspace";
+import { ChatDrawer } from "@/components/chat/ChatDrawer";
+import { ChatMobileBar } from "@/components/chat/ChatMobileBar";
+import {
+  ChatSidebar,
+  groupConversations,
+} from "@/components/chat/ChatSidebar";
+import { ConversationMenu } from "@/components/chat/ConversationMenu";
+import { UndoToast } from "@/components/chat/UndoToast";
+import type { ConversationSummary } from "@/lib/chat-types";
 
 type FetchResponse = {
   status: number;
@@ -49,6 +64,201 @@ const currentUser = {
   scopes: ["chat:read", "chat:write"],
   is_active: true,
 };
+
+const conversationSummaries: ConversationSummary[] = [
+  {
+    id: "today-pending",
+    owner_id: currentUser.id,
+    title: "Today pending",
+    message_count: 2,
+    state_label: "Pending reply",
+    created_at: "2026-06-12T07:00:00Z",
+    updated_at: "2026-06-12T08:00:00Z",
+  },
+  {
+    id: "yesterday-retry",
+    owner_id: currentUser.id,
+    title: "Yesterday retry",
+    message_count: 2,
+    state_label: "Retry available",
+    created_at: "2026-06-11T07:00:00Z",
+    updated_at: "2026-06-11T08:00:00Z",
+  },
+  {
+    id: "previous-week",
+    owner_id: currentUser.id,
+    title: "Previous week",
+    message_count: 1,
+    state_label: null,
+    created_at: "2026-06-08T07:00:00Z",
+    updated_at: "2026-06-08T08:00:00Z",
+  },
+  {
+    id: "older",
+    owner_id: currentUser.id,
+    title: "Older",
+    message_count: 1,
+    state_label: null,
+    created_at: "2026-05-01T07:00:00Z",
+    updated_at: "2026-05-01T08:00:00Z",
+  },
+];
+
+function navigationProps() {
+  return {
+    conversations: conversationSummaries,
+    activeConversationId: "today-pending",
+    currentUserEmail: currentUser.email,
+    nextCursor: "cursor-next",
+    loading: false,
+    loadingMore: false,
+    deletingConversationId: null,
+    onNewChat: () => undefined,
+    onSelectConversation: () => undefined,
+    onLoadMore: () => undefined,
+    onDeleteConversation: () => undefined,
+    onSignOut: () => undefined,
+  };
+}
+
+void test("sidebar groups newest-first navigation and pins account actions last", () => {
+  const groups = groupConversations(
+    conversationSummaries,
+    new Date("2026-06-12T12:00:00Z"),
+  );
+  assert.deepEqual(
+    groups.map((group) => [group.label, group.items.map((item) => item.id)]),
+    [
+      ["Today", ["today-pending"]],
+      ["Yesterday", ["yesterday-retry"]],
+      ["Previous 7 Days", ["previous-week"]],
+      ["Older", ["older"]],
+    ],
+  );
+
+  const html = renderToStaticMarkup(React.createElement(ChatSidebar, navigationProps()));
+  const copyOrder = [
+    "SimpAgent",
+    "New chat",
+    "Today",
+    "Pending reply",
+    "Yesterday",
+    "Retry available",
+    "Previous 7 Days",
+    "Older",
+    "Load more conversations",
+    currentUser.email,
+    "Sign out",
+  ];
+  let previousIndex = -1;
+  for (const copy of copyOrder) {
+    const index = html.indexOf(copy);
+    assert.ok(index > previousIndex, `${copy} should appear after the previous sidebar item`);
+    previousIndex = index;
+  }
+  assert.match(html, /conversation-row-active/);
+});
+
+void test("mobile bar and open drawer expose navigation without extra management actions", () => {
+  const mobileBar = renderToStaticMarkup(
+    React.createElement(ChatMobileBar, {
+      onOpenNavigation: () => undefined,
+      onNewChat: () => undefined,
+    }),
+  );
+  assert.match(mobileBar, /Open conversation navigation/);
+  assert.match(mobileBar, /SimpAgent/);
+  assert.match(mobileBar, /New chat/);
+
+  const drawer = renderToStaticMarkup(
+    React.createElement(ChatDrawer, {
+      open: true,
+      onClose: () => undefined,
+      navigationProps: navigationProps(),
+    }),
+  );
+  assert.match(drawer, /role="dialog"/);
+  assert.match(drawer, /Conversation navigation/);
+  assert.match(drawer, /Delete conversation/);
+  assert.doesNotMatch(drawer, /Rename|Archive|Search|Share|Export/);
+});
+
+void test("conversation menu confirms delete with exact copy and no extra row actions", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(ConversationMenu, {
+      conversationTitle: "Today pending",
+      open: true,
+      confirming: true,
+      deleting: false,
+      onOpenChange: () => undefined,
+      onDelete: () => undefined,
+      onKeep: () => undefined,
+    }),
+  );
+
+  assert.match(html, /Delete conversation/);
+  assert.match(
+    html,
+    /This removes the conversation from your sidebar now\. You can undo for a short time\./,
+  );
+  assert.match(html, /Keep conversation/);
+  assert.doesNotMatch(html, /Rename|Archive|Search|Share|Export/);
+});
+
+void test("delete removes a row immediately and undo restores it without a page refresh", async () => {
+  const calls: Array<{ url: string; method: string }> = [];
+  const controller = buildController(async (input, init) => {
+    const url = String(input);
+    if (url === "/api/auth/login") {
+      return jsonResponse({
+        status: 200,
+        body: { access_token: "token-1", token_type: "bearer", expires_in: 600 },
+      });
+    }
+    if (url === "/api/auth/me") {
+      return jsonResponse({ status: 200, body: currentUser });
+    }
+    calls.push({ url, method: init?.method ?? "GET" });
+    if (init?.method === "DELETE") {
+      return new Response(null, { status: 204 });
+    }
+    return jsonResponse({ status: 200, body: conversationSummaries[0] });
+  });
+  await signIn(controller);
+
+  const deleted = conversationSummaries[0];
+  const remaining = removeConversationSummary(conversationSummaries, deleted.id);
+  assert.deepEqual(remaining.map((item) => item.id), [
+    "yesterday-retry",
+    "previous-week",
+    "older",
+  ]);
+
+  await deleteConversation(controller, deleted.id);
+  const restored = await undoDeleteConversation(controller, deleted.id);
+  const visible = restoreConversationSummary(remaining, restored);
+  assert.equal(visible[0].id, deleted.id);
+  assert.deepEqual(calls, [
+    {
+      url: "/api/conversations/today-pending",
+      method: "DELETE",
+    },
+    {
+      url: "/api/conversations/today-pending/undo-delete",
+      method: "POST",
+    },
+  ]);
+
+  const toast = renderToStaticMarkup(
+    React.createElement(UndoToast, {
+      visible: true,
+      undoing: false,
+      onUndo: () => undefined,
+    }),
+  );
+  assert.match(toast, /Conversation deleted/);
+  assert.match(toast, /Undo/);
+});
 
 void test("authenticated empty workspace renders exact composer-first copy", async () => {
   const controller = buildController(async (input) => {
