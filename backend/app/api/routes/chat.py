@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent.coordinator import ChatCoordinator
 from app.ai.chat_adapter import OpenAIChatAdapter
 from app.authorization.policy import PolicyResult, Scope, evaluate_required_scopes
 from app.authorization.principal import AuthenticatedPrincipal, resolve_principal
@@ -83,6 +84,26 @@ def _chat_adapter(request: Request):
     return OpenAIChatAdapter(settings=request.app.state.settings)
 
 
+def _chat_coordinator(
+    request: Request,
+    *,
+    session: AsyncSession,
+    principal: AuthenticatedPrincipal,
+) -> ChatCoordinator:
+    factory = getattr(request.app.state, "chat_coordinator_factory", None)
+    if factory is not None:
+        return factory(request=request, session=session, principal=principal)
+    return ChatCoordinator(
+        session,
+        settings=request.app.state.settings,
+        clock=request.app.state.clock,
+        principal_scopes=set(principal.scopes),
+        chat_adapter_factory=lambda: _chat_adapter(request),
+        python_planner=getattr(request.app.state, "python_planner", None),
+        python_client=getattr(request.app.state, "python_client", None),
+    )
+
+
 def _provider_failed_error(exc: ProviderTurnFailedError) -> ApiError:
     provider_error = exc.provider_error
     return ApiError(
@@ -112,7 +133,7 @@ async def create_conversation(
                     user_id=principal.user_id,
                     content=payload.initial_message.content,
                     client_message_id=payload.initial_message.client_message_id,
-                    adapter=lambda: _chat_adapter(request),
+                    executor=lambda: _chat_coordinator(request, session=session, principal=principal),
                     correlation_id=getattr(request.state, "correlation_id", None),
                 )
             )
@@ -172,7 +193,7 @@ async def send_message(
             conversation_id=conversation_id,
             content=payload.content,
             client_message_id=payload.client_message_id,
-            adapter=lambda: _chat_adapter(request),
+            executor=lambda: _chat_coordinator(request, session=session, principal=principal),
             correlation_id=getattr(request.state, "correlation_id", None),
         )
     except ConversationNotFoundError as exc:
@@ -203,7 +224,7 @@ async def retry_message(
             user_id=principal.user_id,
             conversation_id=conversation_id,
             client_message_id=client_message_id,
-            adapter=lambda: _chat_adapter(request),
+            executor=lambda: _chat_coordinator(request, session=session, principal=principal),
             correlation_id=getattr(request.state, "correlation_id", None),
         )
     except ConversationNotFoundError as exc:

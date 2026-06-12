@@ -51,6 +51,18 @@ def settings() -> Settings:
         google_api_key=os.getenv("SIMPAGENT_GOOGLE_API_KEY"),
         google_api_key_file=os.getenv("SIMPAGENT_GOOGLE_API_KEY_FILE"),
         provider_check_timeout_seconds=int(os.getenv("SIMPAGENT_PROVIDER_CHECK_TIMEOUT_SECONDS", "2")),
+        python_supervisor_base_url=os.getenv("SIMPAGENT_PYTHON_SUPERVISOR_BASE_URL", "http://sandbox:8080"),
+        python_supervisor_request_timeout_seconds=int(
+            os.getenv("SIMPAGENT_PYTHON_SUPERVISOR_REQUEST_TIMEOUT_SECONDS", "30")
+        ),
+        python_capability_secret=os.getenv("SIMPAGENT_PYTHON_CAPABILITY_SECRET", "sandbox-dev-secret"),
+        python_capability_secret_file=os.getenv("SIMPAGENT_PYTHON_CAPABILITY_SECRET_FILE"),
+        python_capability_ttl_seconds=int(os.getenv("SIMPAGENT_PYTHON_CAPABILITY_TTL_SECONDS", "60")),
+        python_session_ttl_seconds=int(os.getenv("SIMPAGENT_PYTHON_SESSION_TTL_SECONDS", "900")),
+        python_artifact_storage_dir=os.getenv(
+            "SIMPAGENT_PYTHON_ARTIFACT_STORAGE_DIR",
+            "/tmp/simpagent-python-artifacts",
+        ),
     )
 
 

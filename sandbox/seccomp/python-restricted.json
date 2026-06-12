@@ -1,0 +1,10 @@
+{
+  "profile_name": "python-restricted",
+  "base_profile": "docker-default",
+  "defaultAction": "SCMP_ACT_ERRNO",
+  "notes": [
+    "The trusted supervisor currently inherits Docker's default seccomp profile by not setting a custom seccomp override.",
+    "This reviewed asset records the intended fixed seccomp policy family for Python runtime launches.",
+    "No caller input may replace or disable the seccomp selection."
+  ]
+}

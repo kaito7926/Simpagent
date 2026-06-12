@@ -96,6 +96,13 @@ class Settings(BaseSettings):
     google_api_key_file: str | None = None
     search_model: str | None = None
     provider_check_timeout_seconds: int = 2
+    python_supervisor_base_url: str = "http://sandbox:8080"
+    python_supervisor_request_timeout_seconds: int = 30
+    python_capability_secret: SecretStr | None = None
+    python_capability_secret_file: str | None = None
+    python_capability_ttl_seconds: int = 60
+    python_session_ttl_seconds: int = 15 * 60
+    python_artifact_storage_dir: str = "/tmp/simpagent-python-artifacts"
     test_now: str | None = None
 
     @model_validator(mode="before")
@@ -132,9 +139,19 @@ class Settings(BaseSettings):
                 raise ValueError("Production requires JWT key files.")
             if not self.refresh_hmac_key_file or not self.csrf_hmac_key_file:
                 raise ValueError("Production requires refresh and CSRF key files.")
+            if not self.python_capability_secret and not self.python_capability_secret_file:
+                raise ValueError("Production requires a Python capability secret.")
             for candidate in (self.llm_api_base,):
                 if candidate and (candidate.startswith("http://127.") or candidate.startswith("http://localhost")):
                     raise ValueError("Loopback provider URLs are forbidden in production.")
+        if self.python_supervisor_request_timeout_seconds <= 0:
+            raise ValueError("Python supervisor timeout must be positive.")
+        if self.python_capability_ttl_seconds <= 0:
+            raise ValueError("Python capability TTL must be positive.")
+        if self.python_session_ttl_seconds <= 0:
+            raise ValueError("Python session TTL must be positive.")
+        if not self.python_artifact_storage_dir.strip():
+            raise ValueError("Python artifact storage directory is required.")
         return self
 
     @computed_field  # type: ignore[misc]
@@ -184,6 +201,17 @@ class Settings(BaseSettings):
         if self.google_api_key:
             return self.google_api_key.get_secret_value()
         return _read_secret_file(self.google_api_key_file)
+
+    @property
+    def python_capability_secret_value(self) -> str:
+        if self.python_capability_secret:
+            return self.python_capability_secret.get_secret_value()
+        value = _read_secret_file(self.python_capability_secret_file)
+        if value:
+            return value
+        if self.app_env in {"development", "test"}:
+            return "sandbox-dev-secret"
+        raise ValueError("Python capability secret is required.")
 
     def __repr__(self) -> str:
         return (

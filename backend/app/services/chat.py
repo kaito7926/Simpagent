@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.chat_adapter import ChatProviderError
-from app.ai.schemas import ChatCompletionResult, ChatTurn
+from app.ai.schemas import ChatTurn
 from app.db.repositories.conversations import (
     ConversationDetailRow,
     ConversationListRow,
@@ -48,6 +49,12 @@ class PreparedProviderTurn:
     messages: list[ChatTurn]
 
 
+@dataclass(slots=True)
+class CompletedAssistantTurn:
+    content: str
+    metadata: dict[str, Any]
+
+
 class ChatService:
     UNDO_DELETE_WINDOW_SECONDS = 6
 
@@ -66,7 +73,7 @@ class ChatService:
         user_id: UUID,
         content: str,
         client_message_id: str,
-        adapter,
+        executor,
         correlation_id: str | None,
     ) -> ConversationDetailRow:
         title = _title_from_message(content)
@@ -93,7 +100,12 @@ class ChatService:
             raise
         await self.session.commit()
 
-        await self._complete_provider_turn(adapter=adapter, prepared=prepared, correlation_id=correlation_id)
+        await self._complete_turn(
+            executor=executor,
+            prepared=prepared,
+            user_id=user_id,
+            correlation_id=correlation_id,
+        )
         return await self.get_conversation(user_id=user_id, conversation_id=prepared.conversation_id)
 
     async def list_conversations(self, *, user_id: UUID, limit: int, cursor: str | None) -> ConversationPageResult:
@@ -134,7 +146,7 @@ class ChatService:
         conversation_id: UUID,
         content: str,
         client_message_id: str,
-        adapter,
+        executor,
         correlation_id: str | None,
     ) -> ConversationDetailRow:
         try:
@@ -181,7 +193,12 @@ class ChatService:
             raise
         await self.session.commit()
 
-        await self._complete_provider_turn(adapter=adapter, prepared=prepared, correlation_id=correlation_id)
+        await self._complete_turn(
+            executor=executor,
+            prepared=prepared,
+            user_id=user_id,
+            correlation_id=correlation_id,
+        )
         return await self.get_conversation(user_id=user_id, conversation_id=conversation_id)
 
     async def retry_message(
@@ -190,7 +207,7 @@ class ChatService:
         user_id: UUID,
         conversation_id: UUID,
         client_message_id: str,
-        adapter,
+        executor,
         correlation_id: str | None,
     ) -> ConversationDetailRow:
         try:
@@ -233,19 +250,30 @@ class ChatService:
             raise
         await self.session.commit()
 
-        await self._complete_provider_turn(adapter=adapter, prepared=prepared, correlation_id=correlation_id)
+        await self._complete_turn(
+            executor=executor,
+            prepared=prepared,
+            user_id=user_id,
+            correlation_id=correlation_id,
+        )
         return await self.get_conversation(user_id=user_id, conversation_id=conversation_id)
 
-    async def _complete_provider_turn(
+    async def _complete_turn(
         self,
         *,
-        adapter,
+        executor,
         prepared: PreparedProviderTurn,
+        user_id: UUID,
         correlation_id: str | None,
     ) -> None:
         try:
-            provider = adapter() if callable(adapter) else adapter
-            result: ChatCompletionResult = await provider.complete(messages=prepared.messages)
+            coordinator = executor() if callable(executor) else executor
+            result: CompletedAssistantTurn = await coordinator.complete(
+                user_id=user_id,
+                conversation_id=prepared.conversation_id,
+                messages=prepared.messages,
+                correlation_id=correlation_id,
+            )
         except ChatProviderError as exc:
             metadata = {
                 "error_code": exc.code,
@@ -261,16 +289,10 @@ class ChatService:
             await self.session.commit()
             raise ProviderTurnFailedError(exc) from exc
 
-        metadata = {
-            "provider_request_id": result.provider_request_id,
-            "prompt_tokens": result.prompt_tokens,
-            "completion_tokens": result.completion_tokens,
-            "finish_reason": result.finish_reason,
-        }
         await self.conversations.complete_assistant_message(
             assistant_message_id=prepared.assistant_message_id,
             content=result.content,
-            metadata=metadata,
+            metadata=result.metadata,
         )
         await self.conversations.touch_conversation(conversation_id=prepared.conversation_id)
         await self.session.commit()

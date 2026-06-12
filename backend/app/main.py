@@ -8,7 +8,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, chat, health
+from app.api.routes import auth, chat, health, python
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError, install_error_handlers
 from app.db.session import create_session_factory
@@ -59,6 +59,7 @@ def create_app(
     app.include_router(auth.router)
     app.include_router(chat.router)
     app.include_router(health.router)
+    app.include_router(python.router)
     install_error_handlers(app)
     return app
 

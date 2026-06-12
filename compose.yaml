@@ -104,8 +104,16 @@ services:
       SIMPAGENT_LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
       SIMPAGENT_LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-1}
       SIMPAGENT_SEARCH_MODEL: ${SEARCH_MODEL:-configured-search-model}
+      SIMPAGENT_PYTHON_SUPERVISOR_BASE_URL: http://sandbox:8080
+      SIMPAGENT_PYTHON_SUPERVISOR_REQUEST_TIMEOUT_SECONDS: 30
+      SIMPAGENT_PYTHON_CAPABILITY_SECRET: sandbox-dev-secret
+      SIMPAGENT_PYTHON_CAPABILITY_TTL_SECONDS: 60
+      SIMPAGENT_PYTHON_SESSION_TTL_SECONDS: 900
+      SIMPAGENT_PYTHON_ARTIFACT_STORAGE_DIR: /tmp/simpagent-python-artifacts
     volumes:
       - dev-secrets:/run/secrets
+      - ./sandbox:/workspace/sandbox:ro
+      - python-artifacts:/tmp/simpagent-python-artifacts
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
       interval: 10s
@@ -158,12 +166,18 @@ services:
   sandbox:
     build:
       context: ./sandbox
+    environment:
+      SIMPAGENT_SANDBOX_RUNTIME_IMAGE: simpagent-python-runtime:local
+      SIMPAGENT_SANDBOX_CAPABILITY_SECRET: sandbox-dev-secret
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - private
 
 volumes:
   postgres-data:
   dev-secrets:
+  python-artifacts:
 
 networks:
   private:

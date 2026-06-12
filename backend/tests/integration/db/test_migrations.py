@@ -17,12 +17,14 @@ EXPECTED_TABLES = {
     "conversations",
     "messages",
     "tool_executions",
+    "python_session_states",
+    "python_artifact_records",
 }
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_alembic_upgrade_creates_phase_one_tables(db_session) -> None:
+async def test_alembic_upgrade_creates_phase_one_and_python_tables(db_session) -> None:
     table_result = await db_session.execute(
         text("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public'")
     )
@@ -31,12 +33,12 @@ async def test_alembic_upgrade_creates_phase_one_tables(db_session) -> None:
 
 
 @pytest.mark.integration
-def test_alembic_head_matches_latest_revision(alembic_config) -> None:
+def test_alembic_head_matches_latest_python_revision(alembic_config) -> None:
     script = ScriptDirectory.from_config(alembic_config)
-    assert script.get_current_head() == "0002_platform_foundations"
+    assert script.get_current_head() == "0003_python_execution_contracts"
 
 
 @pytest.mark.integration
-def test_alembic_can_downgrade_and_upgrade(alembic_config) -> None:
+def test_alembic_can_downgrade_and_upgrade_with_python_contracts(alembic_config) -> None:
     command.downgrade(alembic_config, "0001_account_access")
     command.upgrade(alembic_config, "head")
