@@ -25,6 +25,14 @@ class ConversationDetailRow:
     message_count: int
 
 
+@dataclass(slots=True)
+class PreparedTurn:
+    conversation: Conversation
+    user_message: Message
+    assistant_message: Message
+    provider_messages: list[Message]
+
+
 @dataclass(frozen=True, slots=True)
 class ConversationCursor:
     updated_at: datetime
@@ -63,6 +71,18 @@ class ConversationsRepository:
         await self.session.flush()
         await self.session.refresh(conversation)
         return conversation
+
+    async def lock_owned(self, *, user_id: UUID, conversation_id: UUID) -> Conversation | None:
+        stmt = (
+            select(Conversation)
+            .where(
+                Conversation.id == conversation_id,
+                Conversation.user_id == user_id,
+                Conversation.deleted_at.is_(None),
+            )
+            .with_for_update()
+        )
+        return await self.session.scalar(stmt)
 
     async def list_owned(
         self,
@@ -117,6 +137,143 @@ class ConversationsRepository:
         )
         messages = list((await self.session.scalars(messages_stmt)).all())
         return ConversationDetailRow(conversation=conversation, messages=messages, message_count=len(messages))
+
+    async def get_existing_user_message(
+        self,
+        *,
+        conversation_id: UUID,
+        client_message_id: str,
+    ) -> Message | None:
+        stmt = select(Message).where(
+            Message.conversation_id == conversation_id,
+            Message.client_message_id == client_message_id,
+            Message.role == "user",
+        )
+        return await self.session.scalar(stmt)
+
+    async def get_paired_assistant_message(self, *, user_message: Message) -> Message | None:
+        stmt = select(Message).where(
+            Message.conversation_id == user_message.conversation_id,
+            Message.sequence_no == user_message.sequence_no + 1,
+            Message.role == "assistant",
+        )
+        return await self.session.scalar(stmt)
+
+    async def get_pending_assistant(self, *, conversation_id: UUID) -> Message | None:
+        stmt = (
+            select(Message)
+            .where(
+                Message.conversation_id == conversation_id,
+                Message.role == "assistant",
+                Message.status == "pending",
+            )
+            .order_by(Message.sequence_no.asc())
+            .limit(1)
+        )
+        return await self.session.scalar(stmt)
+
+    async def next_sequence_no(self, *, conversation_id: UUID) -> int:
+        current_max = await self.session.scalar(
+            select(func.max(Message.sequence_no)).where(Message.conversation_id == conversation_id)
+        )
+        return int(current_max or 0) + 1
+
+    async def create_user_message(
+        self,
+        *,
+        conversation_id: UUID,
+        sequence_no: int,
+        client_message_id: str,
+        content: str,
+    ) -> Message:
+        message = Message(
+            conversation_id=conversation_id,
+            sequence_no=sequence_no,
+            client_message_id=client_message_id,
+            role="user",
+            status="completed",
+            content=content,
+            message_metadata={},
+        )
+        self.session.add(message)
+        await self.session.flush()
+        await self.session.refresh(message)
+        return message
+
+    async def create_pending_assistant_message(self, *, conversation_id: UUID, sequence_no: int) -> Message:
+        message = Message(
+            conversation_id=conversation_id,
+            sequence_no=sequence_no,
+            role="assistant",
+            status="pending",
+            content="",
+            message_metadata={},
+        )
+        self.session.add(message)
+        await self.session.flush()
+        await self.session.refresh(message)
+        return message
+
+    async def provider_context(
+        self,
+        *,
+        conversation_id: UUID,
+        through_sequence_no: int,
+    ) -> list[Message]:
+        stmt = (
+            select(Message)
+            .where(
+                Message.conversation_id == conversation_id,
+                Message.sequence_no <= through_sequence_no,
+                Message.role.in_(("user", "assistant")),
+                Message.status == "completed",
+            )
+            .order_by(Message.sequence_no.asc())
+        )
+        return list((await self.session.scalars(stmt)).all())
+
+    async def complete_assistant_message(
+        self,
+        *,
+        assistant_message_id: UUID,
+        content: str,
+        metadata: dict,
+    ) -> None:
+        stmt = (
+            update(Message)
+            .where(Message.id == assistant_message_id, Message.role == "assistant")
+            .values(status="completed", content=content, message_metadata=metadata)
+        )
+        await self.session.execute(stmt)
+        await self.session.flush()
+
+    async def fail_assistant_message(
+        self,
+        *,
+        assistant_message_id: UUID,
+        metadata: dict,
+    ) -> None:
+        stmt = (
+            update(Message)
+            .where(Message.id == assistant_message_id, Message.role == "assistant")
+            .values(status="failed", content="", message_metadata=metadata)
+        )
+        await self.session.execute(stmt)
+        await self.session.flush()
+
+    async def reset_assistant_message_pending(self, *, assistant_message_id: UUID) -> None:
+        stmt = (
+            update(Message)
+            .where(Message.id == assistant_message_id, Message.role == "assistant")
+            .values(status="pending", content="", message_metadata={})
+        )
+        await self.session.execute(stmt)
+        await self.session.flush()
+
+    async def touch_conversation(self, *, conversation_id: UUID) -> None:
+        stmt = update(Conversation).where(Conversation.id == conversation_id).values(updated_at=func.now())
+        await self.session.execute(stmt)
+        await self.session.flush()
 
     async def soft_delete_owned(self, *, user_id: UUID, conversation_id: UUID) -> bool:
         stmt = (

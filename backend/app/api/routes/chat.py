@@ -3,9 +3,10 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.chat_adapter import OpenAIChatAdapter
 from app.authorization.policy import PolicyResult, Scope, evaluate_required_scopes
 from app.authorization.principal import AuthenticatedPrincipal, resolve_principal
 from app.core.errors import ApiError
@@ -14,12 +15,19 @@ from app.db.session import get_session
 from app.models.domain import Conversation, Message
 from app.schemas.chat import (
     ChatMessageResponse,
+    ChatMessageCreateRequest,
     ConversationCreateRequest,
     ConversationDetail,
     ConversationPage,
     ConversationSummary,
 )
-from app.services.chat import ChatService, ConversationNotFoundError
+from app.services.chat import (
+    ChatService,
+    ConversationNotFoundError,
+    ProviderTurnFailedError,
+    TurnInProgressError,
+    TurnNotRetryableError,
+)
 
 router = APIRouter(prefix="/api/conversations", tags=["chat"])
 
@@ -66,15 +74,49 @@ def _detail_from_row(row: ConversationDetailRow) -> ConversationDetail:
     )
 
 
+def _chat_adapter(request: Request):
+    adapter = getattr(request.app.state, "chat_adapter", None)
+    if adapter is not None:
+        return adapter
+    return OpenAIChatAdapter(settings=request.app.state.settings)
+
+
+def _provider_failed_error(exc: ProviderTurnFailedError) -> ApiError:
+    provider_error = exc.provider_error
+    return ApiError(
+        status_code=502,
+        code="provider_failed",
+        message="The chat provider could not complete this turn. Retry if the error is retryable.",
+        extra={
+            "provider_error_code": provider_error.code,
+            "retryable": provider_error.retryable,
+        },
+    )
+
+
 @router.post("", response_model=ConversationDetail, status_code=status.HTTP_201_CREATED)
 async def create_conversation(
     payload: ConversationCreateRequest,
+    request: Request,
     principal: Annotated[AuthenticatedPrincipal, Depends(resolve_principal)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> ConversationDetail:
     _require_scope(principal, Scope.chat_write)
     service = ChatService(session)
-    conversation = await service.create_conversation(user_id=principal.user_id, title=payload.title)
+    if payload.initial_message is not None:
+        try:
+            return _detail_from_row(
+                await service.create_conversation_with_initial_message(
+                    user_id=principal.user_id,
+                    content=payload.initial_message.content,
+                    client_message_id=payload.initial_message.client_message_id,
+                    adapter=lambda: _chat_adapter(request),
+                    correlation_id=getattr(request.state, "correlation_id", None),
+                )
+            )
+        except ProviderTurnFailedError as exc:
+            raise _provider_failed_error(exc) from exc
+    conversation = await service.create_conversation(user_id=principal.user_id, title=payload.title or "New conversation")
     return ConversationDetail(
         **_summary(conversation, message_count=0).model_dump(),
         messages=[],
@@ -109,6 +151,75 @@ async def get_conversation(
         row = await service.get_conversation(user_id=principal.user_id, conversation_id=conversation_id)
     except ConversationNotFoundError as exc:
         raise ApiError(status_code=404, code="conversation_not_found", message="Conversation not found.") from exc
+    return _detail_from_row(row)
+
+
+@router.post("/{conversation_id}/messages", response_model=ConversationDetail)
+async def send_message(
+    conversation_id: UUID,
+    payload: ChatMessageCreateRequest,
+    request: Request,
+    principal: Annotated[AuthenticatedPrincipal, Depends(resolve_principal)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ConversationDetail:
+    _require_scope(principal, Scope.chat_write)
+    service = ChatService(session)
+    try:
+        row = await service.send_message(
+            user_id=principal.user_id,
+            conversation_id=conversation_id,
+            content=payload.content,
+            client_message_id=payload.client_message_id,
+            adapter=lambda: _chat_adapter(request),
+            correlation_id=getattr(request.state, "correlation_id", None),
+        )
+    except ConversationNotFoundError as exc:
+        raise ApiError(status_code=404, code="conversation_not_found", message="Conversation not found.") from exc
+    except TurnInProgressError as exc:
+        raise ApiError(
+            status_code=409,
+            code="turn_in_progress",
+            message="A response is already pending for this conversation.",
+        ) from exc
+    except ProviderTurnFailedError as exc:
+        raise _provider_failed_error(exc) from exc
+    return _detail_from_row(row)
+
+
+@router.post("/{conversation_id}/messages/{client_message_id}/retry", response_model=ConversationDetail)
+async def retry_message(
+    conversation_id: UUID,
+    client_message_id: str,
+    request: Request,
+    principal: Annotated[AuthenticatedPrincipal, Depends(resolve_principal)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ConversationDetail:
+    _require_scope(principal, Scope.chat_write)
+    service = ChatService(session)
+    try:
+        row = await service.retry_message(
+            user_id=principal.user_id,
+            conversation_id=conversation_id,
+            client_message_id=client_message_id,
+            adapter=lambda: _chat_adapter(request),
+            correlation_id=getattr(request.state, "correlation_id", None),
+        )
+    except ConversationNotFoundError as exc:
+        raise ApiError(status_code=404, code="conversation_not_found", message="Conversation not found.") from exc
+    except TurnInProgressError as exc:
+        raise ApiError(
+            status_code=409,
+            code="turn_in_progress",
+            message="A response is already pending for this conversation.",
+        ) from exc
+    except TurnNotRetryableError as exc:
+        raise ApiError(
+            status_code=409,
+            code="turn_not_retryable",
+            message="This message turn cannot be retried.",
+        ) from exc
+    except ProviderTurnFailedError as exc:
+        raise _provider_failed_error(exc) from exc
     return _detail_from_row(row)
 
 
