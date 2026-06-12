@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-05-PLAN.md
-last_updated: "2026-06-12T10:43:52.572Z"
-last_activity: 2026-06-12 -- Phase 02 Plan 05 completed
+stopped_at: Completed 02-06-PLAN.md
+last_updated: "2026-06-12T12:36:00.000Z"
+last_activity: 2026-06-12 -- Phase 02 Plan 06 completed
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 15
-  completed_plans: 13
-  percent: 87
+  completed_plans: 14
+  percent: 93
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 02 (private-direct-chat) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
-Last activity: 2026-06-12 -- Phase 02 Plan 05 completed
+Last activity: 2026-06-12 -- Phase 02 Plan 06 completed
 
-Progress: [█████████░] 87%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -48,7 +48,7 @@ Progress: [█████████░] 87%
 
 **Recent Trend:**
 
-- Last 5 plans: 02-01, 02-02, 02-03, 02-04, 02-05 completed through the Phase 2 private direct-chat pass
+- Last 5 plans: 02-02, 02-03, 02-04, 02-05, 02-06 completed through the Phase 2 private direct-chat pass
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -57,6 +57,7 @@ Progress: [█████████░] 87%
 | Phase 02 P03 | 14 min | 2 tasks | 7 files |
 | Phase 02 P04 | 17 min | 2 tasks | 30 files |
 | Phase 02 P05 | 11 min | 2 tasks | 17 files |
+| Phase 02 P06 | 104 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,9 @@ Recent decisions affecting current work:
 - [Phase 02]: Undo-delete is implemented as a write-scoped owner-constrained SQL update with a 6-second deleted_at window. — Keeps recovery short-lived, database-backed, and tenant-safe.
 - [Phase 02]: Conversation list state labels expose only UI-safe values: Pending reply, Retry available, or null. — The sidebar does not leak provider internals or message counts from other owners.
 - [Phase 02]: Delete remains the only row management action, with undo handled through the existing authorized session request path. — Phase 2 avoids rename, archive, share, export, model, and tool controls.
+- [Phase 02]: Assistant Markdown is rendered only through a safe client component with no rehype-raw or dangerouslySetInnerHTML. — Raw HTML tags are escaped before Markdown parsing, unsafe hrefs render inertly, and links are scheme-allowlisted.
+- [Phase 02]: Code blocks are inert text with clipboard-only behavior. — Syntax highlighting and copy state never execute displayed code.
+- [Phase 02]: Next was patched to 16.2.9 with a narrow nested PostCSS override. — npm audit high/moderate findings are resolved while staying inside the selected >=16.2,<16.3 line.
 
 ### Pending Todos
 
@@ -101,6 +105,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-06-12T10:43:52.562Z
-Stopped at: Completed 02-05-PLAN.md
+Last session: 2026-06-12T12:36:00.000Z
+Stopped at: Completed 02-06-PLAN.md
 Resume file: None
