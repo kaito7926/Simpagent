@@ -18,6 +18,7 @@ export type ConversationSummary = {
   owner_id: string;
   title: string | null;
   message_count: number;
+  state_label: "Pending reply" | "Retry available" | null;
   created_at: string;
   updated_at: string;
 };

@@ -48,6 +48,7 @@ class ConversationSummary(BaseModel):
     owner_id: UUID
     title: str | None
     message_count: int
+    state_label: str | None = None
     created_at: datetime
     updated_at: datetime
 

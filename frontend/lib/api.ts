@@ -70,6 +70,10 @@ export async function requestJson<T>(
     throw await toApiError(response);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   const payload = await readJsonSafe<T>(response);
   if (payload === undefined) {
     throw new ApiError({

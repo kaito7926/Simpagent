@@ -875,6 +875,31 @@ summary:focus {
   list-style: none;
 }
 
+.conversation-groups {
+  display: grid;
+  gap: 16px;
+}
+
+.conversation-group {
+  display: grid;
+  gap: 8px;
+}
+
+.conversation-group h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.conversation-list-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px;
+  align-items: center;
+}
+
 .conversation-row {
   width: 100%;
   display: grid;
@@ -913,6 +938,114 @@ summary:focus {
   font-size: 12px;
 }
 
+.conversation-menu {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.conversation-menu-trigger {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  opacity: 0;
+  cursor: pointer;
+}
+
+.conversation-list-item:hover .conversation-menu-trigger,
+.conversation-list-item:focus-within .conversation-menu-trigger,
+.conversation-menu-trigger[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.conversation-menu-trigger:hover,
+.conversation-menu-trigger:focus-visible {
+  border-color: var(--line);
+  background: #ffffff;
+  color: var(--ink);
+}
+
+.conversation-menu-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 6;
+  width: min(260px, 82vw);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 16px 40px rgb(22 33 29 / 0.14);
+  padding: 8px;
+}
+
+.delete-confirmation {
+  display: grid;
+  gap: 10px;
+}
+
+.delete-confirmation-title,
+.delete-confirmation-body {
+  margin: 0;
+}
+
+.delete-confirmation-title {
+  color: var(--danger);
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.delete-confirmation-body {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.delete-confirmation-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.menu-delete-action,
+.menu-keep-action {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.menu-delete-action {
+  color: var(--danger);
+}
+
+.menu-delete-action:hover:not(:disabled) {
+  border-color: #efb2aa;
+  background: var(--danger-soft);
+}
+
+.menu-keep-action {
+  color: var(--muted);
+}
+
+.menu-keep-action:hover {
+  background: #f8fbfa;
+  color: var(--ink);
+}
+
 .conversation-empty {
   display: grid;
   gap: 5px;
@@ -944,6 +1077,11 @@ summary:focus {
 .load-more-button:hover {
   background: #f8fbfa;
   color: var(--ink);
+}
+
+.load-more-button:disabled {
+  cursor: wait;
+  background: var(--disabled);
 }
 
 .workspace-account {
@@ -1446,7 +1584,8 @@ summary:focus {
     backdrop-filter: blur(3px);
   }
 
-  .mobile-conversation-navigation {
+.mobile-conversation-navigation {
+    position: relative;
     width: min(360px, calc(100% - 28px));
     height: 100%;
     overflow: hidden;
@@ -1457,6 +1596,23 @@ summary:focus {
 
   .mobile-conversation-navigation .conversation-navigation-inner {
     min-height: 100dvh;
+  }
+
+  .drawer-close-button {
+    position: absolute;
+    top: 18px;
+    right: 16px;
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--muted);
+    cursor: pointer;
   }
 
   .empty-chat-state,
@@ -1510,10 +1666,64 @@ summary:focus {
     max-width: 150px;
   }
 
+  .mobile-chat-header button:last-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
   .workspace-error {
     top: 68px;
     right: 16px;
     left: 16px;
+  }
+}
+
+.undo-toast {
+  position: absolute;
+  left: 24px;
+  bottom: 28px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #cfead8;
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: var(--success-soft);
+  color: var(--success);
+  box-shadow: var(--shadow-soft);
+}
+
+.undo-toast p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.undo-toast button {
+  min-height: 36px;
+  border: 1px solid #b6dfc6;
+  border-radius: 10px;
+  padding: 7px 11px;
+  background: #ffffff;
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.undo-toast button:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+@media (max-width: 639px) {
+  .undo-toast {
+    right: 16px;
+    bottom: 96px;
+    left: 16px;
+    justify-content: space-between;
   }
 }
 

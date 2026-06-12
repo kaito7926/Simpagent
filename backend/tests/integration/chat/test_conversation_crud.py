@@ -237,6 +237,7 @@ async def test_owner_can_undo_recent_soft_delete_but_not_after_window(client, db
 
     deleted_again = await client.delete(f"/api/conversations/{conversation_id}", headers=_auth(token))
     assert deleted_again.status_code == 204
+    await db_session.rollback()
     async with db_session.begin():
         await db_session.execute(
             update(Conversation)

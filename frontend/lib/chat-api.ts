@@ -3,6 +3,7 @@ import type {
   ChatMessageInput,
   ConversationDetail,
   ConversationPage,
+  ConversationSummary,
 } from "@/lib/chat-types";
 
 const JSON_HEADERS = {
@@ -75,6 +76,26 @@ export function retryMessage(
 ): Promise<ConversationDetail> {
   return controller.authorizedJson<ConversationDetail>(
     `/api/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(clientMessageId)}/retry`,
+    { method: "POST" },
+  );
+}
+
+export async function deleteConversation(
+  controller: AuthSessionController,
+  conversationId: string,
+): Promise<void> {
+  await controller.authorizedJson<null>(
+    `/api/conversations/${encodeURIComponent(conversationId)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function undoDeleteConversation(
+  controller: AuthSessionController,
+  conversationId: string,
+): Promise<ConversationSummary> {
+  return controller.authorizedJson<ConversationSummary>(
+    `/api/conversations/${encodeURIComponent(conversationId)}/undo-delete`,
     { method: "POST" },
   );
 }

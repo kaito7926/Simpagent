@@ -16,6 +16,7 @@ from app.models.domain import Conversation, Message
 class ConversationListRow:
     conversation: Conversation
     message_count: int
+    state_label: str | None = None
 
 
 @dataclass(slots=True)
@@ -111,10 +112,34 @@ class ConversationsRepository:
                 )
             )
         result = await self.session.execute(stmt)
-        rows = [ConversationListRow(conversation=conversation, message_count=int(message_count)) for conversation, message_count in result.all()]
+        rows = [
+            ConversationListRow(conversation=conversation, message_count=int(message_count))
+            for conversation, message_count in result.all()
+        ]
         page = rows[:limit]
+        await self._hydrate_state_labels(page)
         next_cursor = encode_cursor(page[-1]) if len(rows) > limit and page else None
         return page, next_cursor
+
+    async def _hydrate_state_labels(self, rows: list[ConversationListRow]) -> None:
+        if not rows:
+            return
+        conversation_ids = [row.conversation.id for row in rows]
+        stmt = select(Message.conversation_id, Message.status, Message.message_metadata).where(
+            Message.conversation_id.in_(conversation_ids),
+            Message.role == "assistant",
+            Message.status.in_(("pending", "failed")),
+        )
+        result = await self.session.execute(stmt)
+        labels: dict[UUID, str] = {}
+        for conversation_id, status, metadata in result.all():
+            if status == "pending":
+                labels[conversation_id] = "Pending reply"
+            elif status == "failed" and labels.get(conversation_id) != "Pending reply":
+                if isinstance(metadata, dict) and metadata.get("retryable") is True:
+                    labels[conversation_id] = "Retry available"
+        for row in rows:
+            row.state_label = labels.get(row.conversation.id)
 
     async def get_owned(self, *, user_id: UUID, conversation_id: UUID) -> ConversationDetailRow | None:
         conversation_stmt = select(Conversation).where(
@@ -288,3 +313,25 @@ class ConversationsRepository:
         result = await self.session.execute(stmt)
         await self.session.flush()
         return bool(result.rowcount)
+
+    async def undo_soft_delete_owned(
+        self,
+        *,
+        user_id: UUID,
+        conversation_id: UUID,
+        deleted_since: datetime,
+    ) -> Conversation | None:
+        stmt = (
+            update(Conversation)
+            .where(
+                Conversation.id == conversation_id,
+                Conversation.user_id == user_id,
+                Conversation.deleted_at.is_not(None),
+                Conversation.deleted_at >= deleted_since,
+            )
+            .values(deleted_at=None, updated_at=func.now())
+            .returning(Conversation)
+        )
+        restored = await self.session.scalar(stmt)
+        await self.session.flush()
+        return restored

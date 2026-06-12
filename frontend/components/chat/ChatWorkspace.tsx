@@ -1,16 +1,18 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Menu, MessageSquarePlus, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { ApiError } from "@/lib/api";
 import type { AuthSessionController, CurrentUser } from "@/lib/auth-session";
 import {
   createConversationWithMessage,
+  deleteConversation,
   getConversation,
   listConversations,
   retryMessage,
   sendMessage,
+  undoDeleteConversation,
 } from "@/lib/chat-api";
 import type {
   ChatMessage,
@@ -18,7 +20,11 @@ import type {
   ConversationSummary,
 } from "@/lib/chat-types";
 
+import { ChatDrawer } from "./ChatDrawer";
+import { ChatMobileBar } from "./ChatMobileBar";
+import { ChatSidebar, type ChatNavigationProps } from "./ChatSidebar";
 import { ChatThread } from "./ChatThread";
+import { UndoToast } from "./UndoToast";
 
 type ChatWorkspaceProps = {
   controller: AuthSessionController;
@@ -30,6 +36,20 @@ type ChatWorkspaceProps = {
 
 function sortConversations(items: ConversationSummary[]): ConversationSummary[] {
   return [...items].sort((left, right) => right.updated_at.localeCompare(left.updated_at));
+}
+
+export function removeConversationSummary(
+  items: ConversationSummary[],
+  conversationId: string,
+): ConversationSummary[] {
+  return items.filter((item) => item.id !== conversationId);
+}
+
+export function restoreConversationSummary(
+  items: ConversationSummary[],
+  restored: ConversationSummary,
+): ConversationSummary[] {
+  return sortConversations([restored, ...items.filter((item) => item.id !== restored.id)]);
 }
 
 function summaryFromDetail(detail: ConversationDetail): ConversationSummary {
@@ -76,12 +96,17 @@ export function ChatWorkspace({
   const [draft, setDraft] = useState("");
   const [listLoading, setListLoading] = useState(false);
   const [threadLoading, setThreadLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [sending, setSending] = useState(false);
   const [retryingClientMessageId, setRetryingClientMessageId] = useState<string | null>(null);
+  const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null);
+  const [deletedConversationId, setDeletedConversationId] = useState<string | null>(null);
+  const [undoingDelete, setUndoingDelete] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [workspaceCorrelationId, setWorkspaceCorrelationId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pending = useMemo(
     () =>
@@ -120,6 +145,25 @@ export function ChatWorkspace({
     [controller],
   );
 
+  const clearUndoTimer = useCallback(() => {
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+  }, []);
+
+  const showUndoToast = useCallback(
+    (conversationId: string) => {
+      clearUndoTimer();
+      setDeletedConversationId(conversationId);
+      undoTimerRef.current = setTimeout(() => {
+        setDeletedConversationId(null);
+        undoTimerRef.current = null;
+      }, 6000);
+    },
+    [clearUndoTimer],
+  );
+
   useEffect(() => {
     let cancelled = false;
 
@@ -148,6 +192,8 @@ export function ChatWorkspace({
     };
   }, [controller, handleApiError]);
 
+  useEffect(() => clearUndoTimer, [clearUndoTimer]);
+
   async function selectConversation(conversationId: string) {
     setThreadLoading(true);
     setWorkspaceError(null);
@@ -167,6 +213,56 @@ export function ChatWorkspace({
     setWorkspaceError(null);
     setWorkspaceCorrelationId(null);
     setMobileNavOpen(false);
+  }
+
+  async function loadMoreConversations() {
+    if (!nextCursor || loadingMore) {
+      return;
+    }
+    setLoadingMore(true);
+    try {
+      await refreshConversationList(nextCursor);
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
+  async function deleteVisibleConversation(conversationId: string) {
+    setDeletingConversationId(conversationId);
+    setWorkspaceError(null);
+    try {
+      await deleteConversation(controller, conversationId);
+      setConversations((current) => removeConversationSummary(current, conversationId));
+      if (activeConversation?.id === conversationId) {
+        setActiveConversation(null);
+      }
+      setMobileNavOpen(false);
+      showUndoToast(conversationId);
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setDeletingConversationId(null);
+    }
+  }
+
+  async function undoDeletedConversation() {
+    if (!deletedConversationId || undoingDelete) {
+      return;
+    }
+    const conversationId = deletedConversationId;
+    setUndoingDelete(true);
+    try {
+      const restored = await undoDeleteConversation(controller, conversationId);
+      setConversations((current) => restoreConversationSummary(current, restored));
+      setDeletedConversationId(null);
+      clearUndoTimer();
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setUndoingDelete(false);
+    }
   }
 
   async function recoverPersistedFailure(
@@ -306,62 +402,20 @@ export function ChatWorkspace({
     }
   }
 
-  const navigation = (
-    <div className="conversation-navigation-inner">
-      <div className="workspace-brand-row">
-        <span className="workspace-brand-mark" aria-hidden="true">S</span>
-        <span>SimpAgent</span>
-      </div>
-      <button className="new-chat-button" type="button" onClick={startNewChat}>
-        <MessageSquarePlus aria-hidden="true" size={18} strokeWidth={1.8} />
-        <span>New chat</span>
-      </button>
-      <div className="conversation-list-region">
-        <p className="conversation-list-label">Conversations</p>
-        {listLoading ? (
-          <p className="conversation-empty" role="status">Loading conversations...</p>
-        ) : conversations.length === 0 ? (
-          <div className="conversation-empty">
-            <p>No conversations yet</p>
-            <span>Your first message will create a conversation here.</span>
-          </div>
-        ) : (
-          <ul className="conversation-list">
-            {conversations.map((conversation) => (
-              <li key={conversation.id}>
-                <button
-                  className={`conversation-row ${
-                    activeConversation?.id === conversation.id ? "conversation-row-active" : ""
-                  }`}
-                  type="button"
-                  onClick={() => void selectConversation(conversation.id)}
-                >
-                  <span>{conversation.title ?? "New chat"}</span>
-                  <small>{conversation.message_count} messages</small>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {nextCursor ? (
-          <button
-            className="load-more-button"
-            type="button"
-            onClick={() => void refreshConversationList(nextCursor)}
-          >
-            Load more conversations
-          </button>
-        ) : null}
-      </div>
-      <div className="workspace-account">
-        <div>
-          <span className="account-email">{currentUser.email}</span>
-          <span className="account-state">Protected session</span>
-        </div>
-        <button type="button" onClick={() => void onLogout()}>Sign out</button>
-      </div>
-    </div>
-  );
+  const navigationProps: ChatNavigationProps = {
+    conversations,
+    activeConversationId: activeConversation?.id ?? null,
+    currentUserEmail: currentUser.email,
+    nextCursor,
+    loading: listLoading,
+    loadingMore,
+    deletingConversationId,
+    onNewChat: startNewChat,
+    onSelectConversation: (conversationId) => void selectConversation(conversationId),
+    onLoadMore: () => void loadMoreConversations(),
+    onDeleteConversation: (conversationId) => void deleteVisibleConversation(conversationId),
+    onSignOut: onLogout,
+  };
 
   return (
     <main
@@ -372,7 +426,7 @@ export function ChatWorkspace({
         className={`conversation-navigation ${sidebarOpen ? "" : "conversation-navigation-collapsed"}`}
         aria-label="Conversation navigation"
       >
-        {navigation}
+        <ChatSidebar {...navigationProps} />
         <button
           className="sidebar-toggle"
           type="button"
@@ -392,24 +446,15 @@ export function ChatWorkspace({
           <PanelLeftOpen aria-hidden="true" size={19} />
         </button>
       ) : null}
-      <header className="mobile-chat-header">
-        <button type="button" aria-label="Open conversation navigation" onClick={() => setMobileNavOpen(true)}>
-          <Menu aria-hidden="true" size={20} />
-        </button>
-        <span>SimpAgent</span>
-        <button type="button" onClick={startNewChat}>New chat</button>
-      </header>
-      {mobileNavOpen ? (
-        <div className="mobile-nav-overlay" role="presentation" onClick={() => setMobileNavOpen(false)}>
-          <aside
-            className="mobile-conversation-navigation"
-            aria-label="Conversation navigation"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {navigation}
-          </aside>
-        </div>
-      ) : null}
+      <ChatMobileBar
+        onOpenNavigation={() => setMobileNavOpen(true)}
+        onNewChat={startNewChat}
+      />
+      <ChatDrawer
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        navigationProps={navigationProps}
+      />
       <section className="chat-main" id="chat-content">
         {workspaceError ? (
           <div className="workspace-error" role="alert">
@@ -429,6 +474,11 @@ export function ChatWorkspace({
           onDraftChange={setDraft}
           onSubmit={submitMessage}
           onRetry={(clientMessageId) => void retryFailedMessage(clientMessageId)}
+        />
+        <UndoToast
+          visible={deletedConversationId !== null}
+          undoing={undoingDelete}
+          onUndo={undoDeletedConversation}
         />
       </section>
     </main>

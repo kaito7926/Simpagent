@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,6 +49,8 @@ class PreparedProviderTurn:
 
 
 class ChatService:
+    UNDO_DELETE_WINDOW_SECONDS = 6
+
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.conversations = ConversationsRepository(session)
@@ -110,6 +113,19 @@ class ChatService:
             await self.session.rollback()
             raise ConversationNotFoundError("Conversation not found")
         await self.session.commit()
+
+    async def undo_delete_conversation(self, *, user_id: UUID, conversation_id: UUID) -> ConversationDetailRow:
+        deleted_since = datetime.now(UTC) - timedelta(seconds=self.UNDO_DELETE_WINDOW_SECONDS)
+        restored = await self.conversations.undo_soft_delete_owned(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            deleted_since=deleted_since,
+        )
+        if restored is None:
+            await self.session.rollback()
+            raise ConversationNotFoundError("Conversation not found")
+        await self.session.commit()
+        return await self.get_conversation(user_id=user_id, conversation_id=conversation_id)
 
     async def send_message(
         self,

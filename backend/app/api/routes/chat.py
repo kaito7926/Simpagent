@@ -64,7 +64,9 @@ def _summary(conversation: Conversation, *, message_count: int) -> ConversationS
 
 
 def _summary_from_row(row: ConversationListRow) -> ConversationSummary:
-    return _summary(row.conversation, message_count=row.message_count)
+    summary = _summary(row.conversation, message_count=row.message_count)
+    summary.state_label = row.state_label
+    return summary
 
 
 def _detail_from_row(row: ConversationDetailRow) -> ConversationDetail:
@@ -236,3 +238,18 @@ async def delete_conversation(
     except ConversationNotFoundError as exc:
         raise ApiError(status_code=404, code="conversation_not_found", message="Conversation not found.") from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{conversation_id}/undo-delete", response_model=ConversationSummary)
+async def undo_delete_conversation(
+    conversation_id: UUID,
+    principal: Annotated[AuthenticatedPrincipal, Depends(resolve_principal)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> ConversationSummary:
+    _require_scope(principal, Scope.chat_write)
+    service = ChatService(session)
+    try:
+        row = await service.undo_delete_conversation(user_id=principal.user_id, conversation_id=conversation_id)
+    except ConversationNotFoundError as exc:
+        raise ApiError(status_code=404, code="conversation_not_found", message="Conversation not found.") from exc
+    return _summary(row.conversation, message_count=row.message_count)
