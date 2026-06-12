@@ -165,13 +165,13 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 **Execution Order:**
 Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
-**Progress note:** Historical phases are not yet fully backfilled with summary artifacts in the current planning tree. The table below is therefore most accurate for the active Phase 3 branch, where implementation summaries now exist for Plans 03-01 through 03-04.
+**Progress note:** Historical phases are not yet fully backfilled with summary artifacts in the current planning tree. The table below is therefore most accurate for the active Phase 3 branch, where implementation summaries now exist for Plans 03-01 through 03-04 and the full backend/frontend/smoke verification was rerun successfully on 2026-06-13.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Secure Platform and Account Access | 0/8 | Not started | - |
 | 2. Private Direct Chat | 0/TBD | Not started | - |
-| 3. Policy-Controlled Google Search | 4/4 | In progress - implementation landed, final phase verification pending | - |
+| 3. Policy-Controlled Google Search | 4/4 | Complete - reverified after backend clock fix | 2026-06-13 |
 | 4. Isolated Python Execution | 0/TBD | Not started | - |
 | 5. Gateway, Administration, and Security Evidence | 0/TBD | Not started | - |
 | 6. Adversarial Verification and Vietnamese Delivery | 0/TBD | Not started | - |

@@ -1,6 +1,6 @@
 # SimpAgent
 
-SimpAgent là prototype môn học về chatbot SaaS có định hướng an toàn. Trạng thái hiện tại của repo không còn dừng ở nền Phase 1 nữa: nền tảng xác thực/phiên vẫn là lớp cơ sở, còn nhánh làm việc hiện nay tập trung vào **Phase 3: Policy-Controlled Google Search** cùng các phần hỗ trợ như admin evidence, logging tập trung, và smoke test topology đầy đủ.
+SimpAgent là prototype môn học về chatbot SaaS có định hướng an toàn. Trạng thái hiện tại của repo không còn dừng ở nền Phase 1 nữa: nền tảng xác thực/phiên vẫn là lớp cơ sở, **Phase 3: Policy-Controlled Google Search** đã được verify lại trọn gói, và bước tiếp theo là **Phase 4: Isolated Python Execution**.
 
 ## Mục tiêu repo
 
@@ -142,12 +142,12 @@ docker compose run --rm backend alembic check
   - backend integration/security cho search, admin, token boundary, guardrails
   - unit test cho logging và attack detection
   - smoke test cho topology, search, admin, và logging flow
+  - rerun đầy đủ ngày 2026-06-13: backend `79 passed, 5 skipped`, frontend search `9 passed`, `typecheck` pass, smoke `5 passed`
 
 ### Đang còn mở
 
-- Verify full assembled topology bằng Docker Compose trong một phiên có `docker` khả dụng.
-- Chốt phase-level verification/closeout artifact cho Phase 3.
 - Bắt đầu cắm attack-detection vào runtime Python execution khi sang Phase 4.
+- Lập plan chi tiết cho **Phase 4: Isolated Python Execution**.
 
 ## Góp ý và cộng tác theo GSD
 
@@ -212,6 +212,4 @@ Sau khi sửa xong, chạy test liên quan và báo các file đã đổi.
 
 ## Việc nên làm tiếp theo
 
-- Chạy assembled smoke thật trên Docker Compose với `SIMPAGENT_RUN_SMOKE=true`.
-- Chốt verification cho Phase 3 rồi cập nhật phase status trong `.planning/`.
 - Nếu tiếp tục sang nhánh Python execution, bắt đầu bằng `/gsd-plan-phase 4`.

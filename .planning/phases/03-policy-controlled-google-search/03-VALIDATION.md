@@ -5,7 +5,7 @@ status: validated
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-06-11
-updated: 2026-06-12
+updated: 2026-06-13
 ---
 
 # Phase 03 - Validation Strategy
@@ -128,7 +128,7 @@ Wave 0 is complete. Every path below now exists in the repository and is linked 
 - [x] Grounding, denied, unavailable, timeout, prompt-injection, and retention-allowlist suites are green.
 - [x] `nyquist_compliant` and `wave_0_complete` are now true because the planned Wave 0 test inventory exists and is passing.
 
-**Approval:** validated on 2026-06-12; full assembled Compose smoke execution remains a separate phase-closeout activity.
+**Approval:** validated on 2026-06-12; assembled Compose smoke execution and post-fix full rerun completed on 2026-06-13.
 
 ## Validation Audit 2026-06-12
 
@@ -141,3 +141,20 @@ Wave 0 is complete. Every path below now exists in the repository and is linked 
 - Verified backend search integration and security suites locally with PostgreSQL test data: `30 passed`.
 - Verified frontend search session/rendering contract and static typing: `9 passed`, `typecheck passed`.
 - Verified smoke-test presence for the public search flow: `tests/smoke/test_google_search_flow.py` exists but is skipped in this shell because the assembled Compose topology is not running and `docker` is unavailable on `PATH`.
+
+## Validation Audit 2026-06-13
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 2 |
+| Remaining smoke gaps | 0 |
+
+- Fixed a Compose startup defect where Kong could not open `/var/log/simpagent/kong/error.log` from the shared `kong-logs` volume.
+- Fixed Phase 03 backend test-clock drift by normalizing `test_now`, quoting `SIMPAGENT_TEST_NOW` in `compose.test.yaml`, and validating search capability JWT timing against the provided backend clock rather than PyJWT's wall clock.
+- Reverified the full backend test topology with `docker compose -f compose.test.yaml run --rm backend-test pytest -q --tb=short`: `79 passed, 5 skipped in 5.59s`.
+- Reverified the Phase 03 frontend suite with `docker compose run --rm frontend npm run test -- tests/search-session.test.ts tests/search-rendering.test.tsx`: `9 passed`.
+- Reverified frontend static typing with `docker compose run --rm frontend npm run typecheck`: `passed`.
+- Verified the assembled topology with `docker compose up --build --wait`.
+- Verified live smoke execution with `docker compose run --rm -e SIMPAGENT_RUN_SMOKE=true backend python -m pytest -q tests/smoke --tb=short`: `5 passed in 11.61s`.
+- Phase 03 now has executed public-stack smoke coverage for topology, account access, search, admin, and logging flows.

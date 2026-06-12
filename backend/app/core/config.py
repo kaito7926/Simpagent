@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
 
-from pydantic import Field, SecretStr, computed_field, model_validator
+from pydantic import Field, SecretStr, computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,6 +27,52 @@ def _read_secret_file(path: str | None) -> str | None:
     if not path:
         return None
     return Path(path).read_text(encoding="utf-8").strip()
+
+
+def _looks_like_utc_offset(value: str) -> bool:
+    return len(value) == 5 and value[0] in "+-" and value[1:].isdigit()
+
+
+def _with_colonized_utc_offset(value: str) -> str:
+    suffix = value[-5:]
+    if _looks_like_utc_offset(suffix):
+        return f"{value[:-5]}{suffix[:3]}:{suffix[3:]}"
+    return value
+
+
+def _normalize_test_now(value: str | datetime | None) -> datetime | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    if not isinstance(value, str):
+        raise ValueError("test_now must be a datetime or string.")
+
+    candidate = value.strip()
+    if not candidate:
+        return None
+
+    variants: list[str] = [candidate]
+    if candidate.endswith("Z"):
+        variants.append(f"{candidate[:-1]}+00:00")
+
+    parts = candidate.split()
+    if len(parts) >= 3 and parts[-1] == parts[-2] and _looks_like_utc_offset(parts[-1]):
+        variants.append(" ".join(parts[:-1]))
+
+    seen: set[str] = set()
+    for variant in variants:
+        for normalized in (variant, _with_colonized_utc_offset(variant)):
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            try:
+                moment = datetime.fromisoformat(normalized)
+            except ValueError:
+                continue
+            return moment if moment.tzinfo is not None else moment.replace(tzinfo=UTC)
+
+    raise ValueError("test_now must be a valid ISO 8601 datetime.")
 
 
 class Settings(BaseSettings):
@@ -83,7 +130,7 @@ class Settings(BaseSettings):
     search_capability_ttl_seconds: int = Field(default=30, ge=5, le=300)
     search_capability_audience: str = "simpagent-search-worker"
     provider_check_timeout_seconds: int = 2
-    test_now: str | None = None
+    test_now: datetime | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -92,6 +139,11 @@ class Settings(BaseSettings):
         if isinstance(raw, str):
             values["allowed_origins"] = [item.strip() for item in raw.split(",") if item.strip()]
         return values
+
+    @field_validator("test_now", mode="before")
+    @classmethod
+    def _parse_test_now(cls, value: str | datetime | None) -> datetime | None:
+        return _normalize_test_now(value)
 
     @model_validator(mode="after")
     def _validate_security(self) -> "Settings":
@@ -171,6 +223,9 @@ class Settings(BaseSettings):
         if self.google_api_key:
             return self.google_api_key.get_secret_value()
         return _read_secret_file(self.google_api_key_file)
+
+    def now_utc(self) -> datetime:
+        return self.test_now or datetime.now(UTC)
 
     def __repr__(self) -> str:
         return (

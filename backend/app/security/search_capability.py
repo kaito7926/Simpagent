@@ -78,6 +78,9 @@ def validate_search_capability(
     settings: Settings,
     now: datetime | None = None,
 ) -> SearchCapabilityClaims:
+    reference_now = now or settings.now_utc()
+    reference_timestamp = _timestamp(reference_now)
+
     try:
         header = jwt.get_unverified_header(token)
     except jwt.InvalidTokenError as exc:  # pragma: no cover - library detail
@@ -110,9 +113,9 @@ def validate_search_capability(
                     "jti",
                 ],
                 "verify_signature": True,
-                "verify_exp": True,
-                "verify_iat": True,
-                "verify_nbf": True,
+                "verify_exp": False,
+                "verify_iat": False,
+                "verify_nbf": False,
                 "verify_aud": True,
                 "verify_iss": True,
             },
@@ -140,9 +143,11 @@ def validate_search_capability(
         raise SearchCapabilityError("Invalid expiry ordering")
     if payload["exp"] - payload["iat"] > settings.search_capability_ttl_seconds:
         raise SearchCapabilityError("Capability lifetime exceeds policy")
-    if payload["nbf"] > payload["iat"] + SEARCH_CAPABILITY_LEEWAY_SECONDS:
-        raise SearchCapabilityError("nbf is too far after iat")
-    if now is not None and payload["iat"] > _timestamp(now) + SEARCH_CAPABILITY_LEEWAY_SECONDS:
+    if payload["nbf"] > reference_timestamp + SEARCH_CAPABILITY_LEEWAY_SECONDS:
+        raise SearchCapabilityError("Capability is not yet valid")
+    if payload["exp"] <= reference_timestamp - SEARCH_CAPABILITY_LEEWAY_SECONDS:
+        raise SearchCapabilityError("Capability has expired")
+    if payload["iat"] > reference_timestamp + SEARCH_CAPABILITY_LEEWAY_SECONDS:
         raise SearchCapabilityError("Capability iat is too far in the future")
 
     return SearchCapabilityClaims(

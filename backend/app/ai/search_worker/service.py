@@ -115,7 +115,7 @@ class GoogleSearchWorkerService:
             claims = validate_search_capability(
                 capability_token or "",
                 settings=self.settings,
-                now=datetime.now(UTC),
+                now=self.settings.now_utc(),
             )
             if claims.sub != UUID(user_id):
                 raise SearchCapabilityError("Capability subject does not match the user")

@@ -24,7 +24,7 @@ def make_search_settings(settings, **overrides):
 def mint_capability_token(settings, *, correlation_id: str | None = "corr-test"):
     user_id = uuid4()
     conversation_id = uuid4()
-    now = datetime.fromisoformat(settings.test_now) if settings.test_now else datetime.now(UTC)
+    now = settings.now_utc()
     token = mint_search_capability(
         user_id=user_id,
         conversation_id=conversation_id,

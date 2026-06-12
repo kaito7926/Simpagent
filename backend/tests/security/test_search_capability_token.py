@@ -19,7 +19,7 @@ from tests.integration.search._worker_fakes import make_search_settings, mint_ca
 
 def test_search_capability_round_trips_with_expected_bindings(settings) -> None:
     search_settings = make_search_settings(settings)
-    now = datetime.now(UTC)
+    now = search_settings.now_utc()
     token, user_id, conversation_id = mint_capability_token(
         search_settings,
         correlation_id="corr-capability",
@@ -38,21 +38,22 @@ def test_search_capability_round_trips_with_expected_bindings(settings) -> None:
 
 
 def test_user_access_token_is_not_a_worker_capability(settings) -> None:
+    now = settings.now_utc()
     token = issue_access_token(
         user_id=uuid4(),
         role="user",
         scopes=STANDARD_USER_SCOPES,
         settings=settings,
-        now=datetime.now(UTC),
+        now=now,
     )
 
     with pytest.raises(SearchCapabilityError):
-        validate_search_capability(token, settings=settings, now=datetime.now(UTC))
+        validate_search_capability(token, settings=settings, now=now)
 
 
 def test_capability_token_fails_when_tool_binding_is_tampered(settings) -> None:
     search_settings = make_search_settings(settings)
-    now = datetime.now(UTC)
+    now = search_settings.now_utc()
     payload = {
         "iss": search_settings.jwt_issuer,
         "aud": search_settings.search_capability_audience,

@@ -37,7 +37,7 @@ services:
       SIMPAGENT_LLM_API_BASE: https://api.example.test/v1
       SIMPAGENT_LLM_MODEL: fake-model
       SIMPAGENT_SEARCH_MODEL: configured-search-model
-      SIMPAGENT_TEST_NOW: 2026-06-09T00:00:00+00:00
+      SIMPAGENT_TEST_NOW: "2026-06-09T00:00:00+00:00"
     depends_on:
       postgres-test:
         condition: service_healthy

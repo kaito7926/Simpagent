@@ -231,23 +231,23 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | CHAT-09 | Phase 2 | Pending |
 | CHAT-10 | Phase 2 | Pending |
 | CHAT-11 | Phase 2 | Pending |
-| AUTHZ-04 | Phase 3 | Pending |
-| AUTHZ-07 | Phase 3 | Pending |
-| AGNT-01 | Phase 3 | Pending |
-| AGNT-02 | Phase 3 | Pending |
-| AGNT-03 | Phase 3 | Pending |
-| AGNT-04 | Phase 3 | Pending |
-| AGNT-05 | Phase 3 | Pending |
-| AGNT-06 | Phase 3 | Pending |
-| AGNT-07 | Phase 3 | Pending |
-| SRCH-01 | Phase 3 | Pending |
-| SRCH-02 | Phase 3 | Pending |
-| SRCH-03 | Phase 3 | Pending |
-| SRCH-04 | Phase 3 | Pending |
-| SRCH-05 | Phase 3 | Pending |
-| SRCH-06 | Phase 3 | Pending |
-| SRCH-07 | Phase 3 | Pending |
-| SRCH-08 | Phase 3 | Pending |
+| AUTHZ-04 | Phase 3 | Validated (2026-06-13) |
+| AUTHZ-07 | Phase 3 | Validated (2026-06-13) |
+| AGNT-01 | Phase 3 | Validated (2026-06-13) |
+| AGNT-02 | Phase 3 | Validated (2026-06-13) |
+| AGNT-03 | Phase 3 | Validated (2026-06-13) |
+| AGNT-04 | Phase 3 | Validated (2026-06-13) |
+| AGNT-05 | Phase 3 | Validated (2026-06-13) |
+| AGNT-06 | Phase 3 | Validated (2026-06-13) |
+| AGNT-07 | Phase 3 | Validated (2026-06-13) |
+| SRCH-01 | Phase 3 | Validated (2026-06-13) |
+| SRCH-02 | Phase 3 | Validated (2026-06-13) |
+| SRCH-03 | Phase 3 | Validated (2026-06-13) |
+| SRCH-04 | Phase 3 | Validated (2026-06-13) |
+| SRCH-05 | Phase 3 | Validated (2026-06-13) |
+| SRCH-06 | Phase 3 | Validated (2026-06-13) |
+| SRCH-07 | Phase 3 | Validated (2026-06-13) |
+| SRCH-08 | Phase 3 | Validated (2026-06-13) |
 | CHAT-12 | Phase 4 | Pending |
 | SBOX-01 | Phase 4 | Pending |
 | SBOX-02 | Phase 4 | Pending |

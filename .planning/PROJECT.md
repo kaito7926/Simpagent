@@ -14,7 +14,7 @@ Users can safely authenticate and use an AI chatbot with controlled agent tools 
 
 ### Validated
 
-(None yet - ship to validate)
+- Phase 3 search controls (`AUTHZ-04`, `AUTHZ-07`, `AGNT-01`..`AGNT-07`, `SRCH-01`..`SRCH-08`) were revalidated on 2026-06-13 through the full backend suite, frontend search suite, frontend typecheck, and assembled Compose smoke suite.
 
 ### Active
 
@@ -98,4 +98,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with implementation evidence, feedback, and known limitations
 
 ---
-*Last updated: 2026-06-08 after initialization*
+*Last updated: 2026-06-13 after Phase 03 reverification*

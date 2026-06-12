@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 planned
-last_updated: "2026-06-12T00:37:01.8760464+07:00"
-last_activity: 2026-06-12 -- Completed quick task 260612-rv6: sync phase 3 documentation and commit grouped updates
+stopped_at: Phase 03 fully reverified
+last_updated: "2026-06-13T02:33:02.7920388+07:00"
+last_activity: 2026-06-13 -- Reverified Phase 03 after backend test clock fix; backend 79 passed, frontend 9 passed + typecheck, smoke 5 passed
 progress:
   total_phases: 6
   completed_phases: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-08)
 
 **Core value:** Users can safely authenticate and use an AI chatbot with controlled agent tools without crossing tenant, role, scope, network, or host-execution boundaries.
-**Current focus:** Phase 03 — policy-controlled-google-search
+**Current focus:** Phase 04 — isolated-python-execution planning
 
 ## Current Position
 
-Phase: 03 (policy-controlled-google-search) — EXECUTING
+Phase: 03 (policy-controlled-google-search) — VERIFIED
 Plan: 4 of 4
-Status: Phase 03 implementation landed; final phase verification pending
-Last activity: 2026-06-12 -- Completed quick task 260612-rv6: sync phase 3 documentation and commit grouped updates
+Status: Phase 03 is fully reverified after the backend `test_now` / capability-clock fix; ready to advance to Phase 04 planning
+Last activity: 2026-06-13 -- Reverified Phase 03 after backend test clock fix; backend 79 passed, frontend 9 passed + typecheck, smoke 5 passed
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -71,7 +71,6 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 3: Reconfirm current Gemini 2 availability, ADK grounding behavior, and Google retention terms before implementation.
 - Phase 4: Verify effective Docker Desktop/WSL2 resource, seccomp, and network controls before claiming isolation.
 - Phase 5: Validate Kong OSS support status and trusted proxy behavior for the chosen deployment profile.
 
@@ -93,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-06-11T11:02:47.409Z
-Stopped at: Phase 3 planned
-Resume file: .planning/phases/03-policy-controlled-google-search/03-01-PLAN.md
+Last session: 2026-06-13T02:33:02.7920388+07:00
+Stopped at: Phase 03 fully reverified; next action is Phase 04 planning
+Resume file: .planning/ROADMAP.md

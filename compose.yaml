@@ -137,11 +137,30 @@ services:
       - private
       - public
 
+  init-kong-logs:
+    image: alpine:3.20
+    command:
+      - /bin/sh
+      - -c
+      - >
+        mkdir -p /var/log/simpagent/kong &&
+        touch
+        /var/log/simpagent/kong/access.log
+        /var/log/simpagent/kong/error.log
+        /var/log/simpagent/kong/admin-error.log &&
+        chown -R 1001:1001 /var/log/simpagent/kong
+    volumes:
+      - kong-logs:/var/log/simpagent/kong
+    networks:
+      - private
+
   kong:
     image: kong:3.9.1
     depends_on:
       backend:
         condition: service_healthy
+      init-kong-logs:
+        condition: service_completed_successfully
     environment:
       KONG_DATABASE: off
       KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml

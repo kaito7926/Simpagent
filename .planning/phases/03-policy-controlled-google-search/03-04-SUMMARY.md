@@ -14,8 +14,13 @@
 
 - `$env:SIMPAGENT_DATABASE_URL='postgresql+psycopg://postgres:postgres@127.0.0.1:55432/simpagent_test'; python -m pytest tests/integration/search/test_search_persistence.py tests/integration/search/test_search_failure_states.py tests/security/test_search_prompt_injection.py tests/security/test_search_secret_leakage.py tests/security/test_search_retention_allowlist.py tests/security/test_search_capability_token.py -q --tb=short`
 - `python -m pytest tests/smoke -q --tb=short`
+- `docker compose -f compose.test.yaml run --rm backend-test pytest -q --tb=short`
+- `docker compose run --rm frontend npm run test -- tests/search-session.test.ts tests/search-rendering.test.tsx`
+- `docker compose run --rm frontend npm run typecheck`
+- `docker compose run --rm -e SIMPAGENT_RUN_SMOKE=true backend python -m pytest -q tests/smoke --tb=short`
 
 ## Ghi chú
 
-- Trong shell hiện tại, smoke suite chỉ verify ở mức collection/skip vì chưa chạy assembled Compose topology với `SIMPAGENT_RUN_SMOKE=true`.
-- Full phase closeout vẫn cần một lượt `docker compose up --build --wait` + smoke/admin/search/logging verification trong topology thật.
+- Ngày 2026-06-13 đã chạy assembled Compose topology bằng `docker compose up --build --wait`.
+- Sau closeout đầu tiên, đã sửa thêm lỗi backend ở nhánh kiểm thử Phase 3: `test_now` bị Compose ép kiểu timestamp làm lệch clock capability token và khiến search worker tests rơi về `search_unavailable`.
+- Đã rerun full verification của Phase 3: backend `79 passed, 5 skipped`, frontend search `9 passed`, `typecheck` pass, smoke suite `5 passed in 11.61s`.
