@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import React, { useId, useState } from "react";
 
 import { FormField } from "./FormField";
 
@@ -28,7 +28,7 @@ export function PasswordField({
   const generatedId = useId();
   const fieldId = id ?? generatedId;
   const [visible, setVisible] = useState(false);
-  const actionLabel = visible ? "Ẩn mật khẩu" : "Hiện mật khẩu";
+  const actionLabel = visible ? "Hide password" : "Show password";
 
   return (
     <FormField id={fieldId} label={label} hint={hint} error={error}>

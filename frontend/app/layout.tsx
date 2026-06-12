@@ -12,8 +12,8 @@ const beVietnamPro = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Đăng nhập | SimpAgent",
-  description: "Truy cập an toàn cho tài khoản và phiên SimpAgent.",
+  title: "SimpAgent",
+  description: "Private direct chat with protected SimpAgent sessions.",
   icons: {
     icon: "/icon.svg",
   },
@@ -25,7 +25,7 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="vi">
+    <html lang="en">
       <body className={beVietnamPro.variable}>{children}</body>
     </html>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { DemoConfig } from "@/lib/demo-config";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/lib/auth-session";
 import { formsEnabled, toAggregateUiState } from "@/lib/readiness";
 
+import { ChatWorkspace } from "@/components/chat/ChatWorkspace";
 import { ActionButton } from "./ActionButton";
 import { AuthCard } from "./AuthCard";
 import { BrandLockup } from "./BrandLockup";
@@ -36,17 +37,17 @@ type FormErrors = {
 };
 
 const SCOPE_LABELS: Record<string, string> = {
-  "chat:read": "Đọc hội thoại",
-  "chat:write": "Tạo và cập nhật hội thoại",
-  "tool:websearch": "Dùng tìm kiếm web",
-  "tool:python": "Dùng Python giới hạn",
-  "admin:read": "Xem dữ liệu quản trị",
-  "admin:write": "Thay đổi dữ liệu quản trị",
+  "chat:read": "Read conversations",
+  "chat:write": "Create and update conversations",
+  "tool:websearch": "Use web search",
+  "tool:python": "Use limited Python",
+  "admin:read": "View administration data",
+  "admin:write": "Change administration data",
 };
 
-const NETWORK_ERROR_COPY = "Không thể kết nối đến máy chủ. Kiểm tra hệ thống đang chạy rồi thử lại.";
-const SERVER_ERROR_COPY = "Đã xảy ra lỗi phía máy chủ. Vui lòng thử lại.";
-const READINESS_RECOVERED_COPY = "Hệ thống đã sẵn sàng cho đăng ký và đăng nhập.";
+const NETWORK_ERROR_COPY = "Can't reach the server. Check that the local stack is running and try again.";
+const SERVER_ERROR_COPY = "The server couldn't complete this request. Try again.";
+const READINESS_RECOVERED_COPY = "The system is ready for registration and sign in.";
 
 function readCsrfToken(): string | null {
   if (typeof document === "undefined") {
@@ -73,46 +74,46 @@ function buildEmptyErrors(): FormErrors {
 function labelForState(state: SessionState): string {
   switch (state) {
     case "checking_session":
-      return "Đang kiểm tra phiên";
+      return "Checking your session";
     case "registration_accepted":
-      return "Yêu cầu đã được tiếp nhận";
+      return "Request received";
     case "authenticated":
-      return "Bạn đã đăng nhập";
+      return "You are signed in";
     case "session_expired":
-      return "Đăng nhập vào SimpAgent";
+      return "Session ended";
     case "core_not_ready":
-      return "Hệ thống chưa sẵn sàng";
+      return "System not ready";
     case "anonymous_register":
-      return "Tạo tài khoản";
+      return "Create account";
     case "anonymous_login":
     default:
-      return "Đăng nhập vào SimpAgent";
+      return "Sign in to SimpAgent";
   }
 }
 
 function bodyForState(state: SessionState): string {
   switch (state) {
     case "checking_session":
-      return "SimpAgent đang xác nhận phiên được bảo vệ trên thiết bị này.";
+      return "SimpAgent is checking for a protected session on this device.";
     case "registration_accepted":
-      return "Nếu địa chỉ này có thể đăng ký, bạn có thể tiếp tục đăng nhập.";
+      return "If this address can be registered, you can continue to sign in.";
     case "authenticated":
-      return "Đây là thông tin an toàn mà máy chủ cho phép hiển thị cho tài khoản hiện tại.";
+      return "Your protected workspace is ready.";
     case "session_expired":
-      return "Sử dụng tài khoản cục bộ để mở một phiên được bảo vệ.";
+      return "Your session is no longer valid. Sign in again to continue.";
     case "core_not_ready":
-      return "Đăng nhập tạm thời không khả dụng. Hãy đợi hệ thống hoàn tất khởi động rồi thử lại.";
+      return "Sign in is temporarily unavailable. Wait for the local stack to finish starting, then try again.";
     case "anonymous_register":
-      return "Tài khoản mới nhận quyền Người dùng tiêu chuẩn. Vai trò và quyền không thể chọn trong biểu mẫu này.";
+      return "New accounts start with the Standard User role. Roles and scopes are not selectable here.";
     case "anonymous_login":
     default:
-      return "Sử dụng tài khoản cục bộ để mở một phiên được bảo vệ.";
+      return "Use your local account to open a protected session.";
   }
 }
 
 function titleForViewModel(viewModel: ShellViewModel): string {
   if (viewModel.sessionState === "authenticated") {
-    return "Tài khoản của bạn | SimpAgent";
+    return "Private chat | SimpAgent";
   }
 
   if (
@@ -120,12 +121,12 @@ function titleForViewModel(viewModel: ShellViewModel): string {
     toAggregateUiState(viewModel.readiness) === "not_ready" ||
     toAggregateUiState(viewModel.readiness) === "disconnected"
   ) {
-    return "Hệ thống chưa sẵn sàng | SimpAgent";
+    return "System not ready | SimpAgent";
   }
 
   return viewModel.authMode === "register"
-    ? "Đăng ký | SimpAgent"
-    : "Đăng nhập | SimpAgent";
+    ? "Create account | SimpAgent"
+    : "Sign in | SimpAgent";
 }
 
 export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShellProps) {
@@ -262,10 +263,10 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
   function validateLogin(): boolean {
     const nextErrors = buildEmptyErrors();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formFields.email.trim())) {
-      nextErrors.email = "Nhập địa chỉ email hợp lệ.";
+      nextErrors.email = "Enter a valid email address.";
     }
     if (!formFields.password) {
-      nextErrors.password = "Nhập mật khẩu.";
+      nextErrors.password = "Enter your password.";
     }
     setFormErrors(nextErrors);
     return !nextErrors.email && !nextErrors.password;
@@ -275,17 +276,17 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
     const nextErrors = buildEmptyErrors();
     const normalizedPassword = normalizePasswordForClient(formFields.password);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formFields.email.trim())) {
-      nextErrors.email = "Nhập địa chỉ email hợp lệ.";
+      nextErrors.email = "Enter a valid email address.";
     }
     if (!formFields.password) {
-      nextErrors.password = "Nhập mật khẩu.";
+      nextErrors.password = "Enter a password.";
     } else if (normalizedPassword.length < 15) {
-      nextErrors.password = "Mật khẩu cần ít nhất 15 ký tự.";
+      nextErrors.password = "Password must contain at least 15 characters.";
     } else if (normalizedPassword.length > 128) {
-      nextErrors.password = "Mật khẩu không được vượt quá 128 ký tự.";
+      nextErrors.password = "Password must not exceed 128 characters.";
     }
     if (formFields.confirmPassword !== formFields.password) {
-      nextErrors.confirmPassword = "Mật khẩu nhập lại chưa khớp.";
+      nextErrors.confirmPassword = "The passwords do not match.";
     }
     setFormErrors(nextErrors);
     return !nextErrors.email && !nextErrors.password && !nextErrors.confirmPassword;
@@ -364,7 +365,7 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
     setViewModel(nextState);
     const failed =
       nextState.globalMessage ===
-      "Không thể hoàn tất đăng xuất. Hãy kiểm tra kết nối và thử lại.";
+      "Sign out could not be completed. Check your connection and try again.";
     setLogoutRetryVisible(failed);
     setIsSubmitting(false);
   }
@@ -392,14 +393,14 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
         password: demoConfig.userPassword,
         confirmPassword: "",
       });
-      setAnnouncement("Đã điền tài khoản demo Người dùng.");
+      setAnnouncement("Standard User demo account filled.");
     } else {
       setFormFields({
         email: demoConfig.adminEmail,
         password: demoConfig.adminPassword,
         confirmPassword: "",
       });
-      setAnnouncement("Đã điền tài khoản demo Quản trị viên.");
+      setAnnouncement("Administrator demo account filled.");
     }
 
     window.setTimeout(() => submitButtonRef.current?.focus(), 0);
@@ -409,6 +410,17 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
   const disabled = !formsAreEnabled || isSubmitting;
   const combinedGlobalMessage = announcement ?? viewModel.globalMessage;
   const combinedCorrelationId = errorCorrelationId ?? viewModel.correlationId;
+
+  if (viewModel.sessionState === "authenticated" && viewModel.currentUser) {
+    return (
+      <ChatWorkspace
+        controller={controller}
+        currentUser={viewModel.currentUser}
+        onSessionExpired={() => setViewModel(controller.snapshot)}
+        onLogout={handleLogout}
+      />
+    );
+  }
 
   const loginForm = (
     <>
@@ -425,7 +437,7 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
       />
       <PasswordField
         id="login-password"
-        label="Mật khẩu"
+        label="Password"
         autoComplete="current-password"
         value={formFields.password}
         disabled={disabled}
@@ -433,12 +445,12 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
         onChange={(value) => setFormFields((current) => ({ ...current, password: value }))}
       />
       <ActionButton ref={submitButtonRef} type="submit" disabled={disabled}>
-        {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
+        {isSubmitting ? "Signing in..." : "Sign in"}
       </ActionButton>
       <p className="mode-prompt">
-        <span>Chưa có tài khoản?</span>
+        <span>Need an account?</span>
         <button className="text-link-button" type="button" onClick={() => switchMode("register")}>
-          Đăng ký
+          Create account
         </button>
       </p>
     </>
@@ -459,17 +471,17 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
       />
       <PasswordField
         id="register-password"
-        label="Mật khẩu"
+        label="Password"
         autoComplete="new-password"
         value={formFields.password}
         disabled={disabled}
-        hint="Từ 15 đến 128 ký tự; cho phép khoảng trắng và tiếng Việt. Không bắt buộc chữ hoa, số hoặc ký hiệu."
+        hint="Use 15 to 128 characters. Spaces are allowed; uppercase letters, numbers, and symbols are optional."
         error={formErrors.password}
         onChange={(value) => setFormFields((current) => ({ ...current, password: value }))}
       />
       <PasswordField
         id="register-confirm-password"
-        label="Nhập lại mật khẩu"
+        label="Confirm password"
         autoComplete="new-password"
         value={formFields.confirmPassword}
         disabled={disabled}
@@ -479,12 +491,12 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
         }
       />
       <ActionButton type="submit" disabled={disabled}>
-        {isSubmitting ? "Đang gửi yêu cầu..." : "Gửi yêu cầu đăng ký"}
+        {isSubmitting ? "Sending request..." : "Create account"}
       </ActionButton>
       <p className="mode-prompt">
-        <span>Đã có tài khoản?</span>
+        <span>Already have an account?</span>
         <button className="text-link-button" type="button" onClick={() => switchMode("login")}>
-          Đăng nhập
+          Sign in
         </button>
       </p>
     </>
@@ -493,7 +505,7 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
   return (
     <main className="page-shell">
       <a className="skip-link" href="#account-content">
-        Bỏ qua đến nội dung tài khoản
+        Skip to account access
       </a>
       <section className="layout-grid">
         <div className="context-column">

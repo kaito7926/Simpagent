@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import React from "react";
+
 type InlineAlertProps = {
   tone: "info" | "success" | "warning" | "danger";
   title?: string;

@@ -1,3 +1,5 @@
+import React from "react";
+
 import { ActionButton } from "./ActionButton";
 
 type AuthModeSwitchProps = {
@@ -7,7 +9,7 @@ type AuthModeSwitchProps = {
 
 export function AuthModeSwitch({ mode, onChange }: AuthModeSwitchProps) {
   return (
-    <div className="auth-mode-switch" role="group" aria-label="Chế độ tài khoản">
+    <div className="auth-mode-switch" role="group" aria-label="Account mode">
       <ActionButton
         type="button"
         variant={mode === "login" ? "secondary" : "quiet"}
@@ -15,7 +17,7 @@ export function AuthModeSwitch({ mode, onChange }: AuthModeSwitchProps) {
         aria-pressed={mode === "login"}
         onClick={() => onChange("login")}
       >
-        Đăng nhập
+        Sign in
       </ActionButton>
       <ActionButton
         type="button"
@@ -24,7 +26,7 @@ export function AuthModeSwitch({ mode, onChange }: AuthModeSwitchProps) {
         aria-pressed={mode === "register"}
         onClick={() => onChange("register")}
       >
-        Đăng ký
+        Create account
       </ActionButton>
     </div>
   );

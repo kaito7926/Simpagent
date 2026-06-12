@@ -1,3 +1,4 @@
+import React from "react";
 import type { InputHTMLAttributes, ReactNode } from "react";
 
 type FormFieldProps = {
@@ -18,7 +19,7 @@ export function FormField({ id, label, required = true, hint, error, children, .
     <div className="form-field">
       <label className="form-label" htmlFor={id}>
         <span>{label}</span>
-        {required ? <span className="required-note">Bắt buộc</span> : null}
+        {required ? <span className="required-note">Required</span> : null}
       </label>
       {children ?? (
         <input

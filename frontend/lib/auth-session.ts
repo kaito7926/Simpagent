@@ -185,7 +185,7 @@ export class AuthSessionController {
         ...this.model,
         readiness: null,
         sessionState: "core_not_ready",
-        globalMessage: "Không đọc được trạng thái nền tảng. Kiểm tra hệ thống đang chạy rồi thử lại.",
+        globalMessage: "Can't reach the server. Check that the local stack is running and try again.",
         correlationId: null,
       };
     }
@@ -283,7 +283,7 @@ export class AuthSessionController {
       if (error instanceof ApiError) {
         this.model = {
           ...this.model,
-          globalMessage: "Không thể hoàn tất đăng xuất. Hãy kiểm tra kết nối và thử lại.",
+          globalMessage: "Sign out could not be completed. Check your connection and try again.",
           correlationId: error.correlationId ?? null,
         };
       }
@@ -295,7 +295,7 @@ export class AuthSessionController {
       ...this.model,
       sessionState: "anonymous_login",
       authMode: "login",
-      globalMessage: "Bạn đã đăng xuất khỏi phiên hiện tại.",
+      globalMessage: "You signed out of this session.",
       correlationId: null,
     };
     return this.snapshot;
@@ -443,7 +443,7 @@ export class AuthSessionController {
       ...this.model,
       authMode: "login",
       sessionState: "session_expired",
-      globalMessage: "Phiên của bạn không còn hợp lệ. Vui lòng đăng nhập lại để tiếp tục.",
+      globalMessage: "Your session is no longer valid. Sign in again to continue.",
       correlationId: correlationId ?? null,
     };
   }

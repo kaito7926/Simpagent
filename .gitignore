@@ -4,4 +4,7 @@ __pycache__/
 .pytest_cache/
 .next/
 node_modules/
+*.tsbuildinfo
 *.egg-info/
+.mcp.json
+seed.spec.ts

@@ -1,5 +1,5 @@
+import React, { forwardRef } from "react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { forwardRef } from "react";
 
 type ActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "quiet";
