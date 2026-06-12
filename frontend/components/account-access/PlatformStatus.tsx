@@ -1,3 +1,5 @@
+import React from "react";
+
 import type { ReadinessResponse } from "@/lib/auth-session";
 import {
   AGGREGATE_STATE_BODIES,
@@ -36,7 +38,7 @@ export function PlatformStatus({ readiness, isLoading, isRefreshing, onRefresh }
           disabled={isRefreshing}
           fullWidth={false}
         >
-          {isRefreshing ? "Đang kiểm tra..." : "Kiểm tra lại"}
+          {isRefreshing ? "Checking..." : "Check again"}
         </ActionButton>
       </div>
       <h2 className="section-heading" id="platform-status-heading">
@@ -46,7 +48,7 @@ export function PlatformStatus({ readiness, isLoading, isRefreshing, onRefresh }
 
       {detailRows.length > 0 ? (
         <details className="status-details" open={detailsDefaultOpen(readiness)}>
-          <summary>Xem trạng thái thành phần</summary>
+          <summary>View component status</summary>
           <div className="status-detail-list">
             {detailRows.map(([key, value]) => (
               <div className="status-detail-row" key={key}>
@@ -60,7 +62,7 @@ export function PlatformStatus({ readiness, isLoading, isRefreshing, onRefresh }
           </div>
         </details>
       ) : (
-        <p className="body-copy status-empty">Chưa có dữ liệu trạng thái thành phần.</p>
+        <p className="body-copy status-empty">Component status is not available yet.</p>
       )}
     </section>
   );

@@ -25,10 +25,10 @@ export function CurrentUserCard({
     <div className="identity-card">
       <div className="identity-header-row">
         <div>
-          <StatusBadge tone="success">{user.role === "admin" ? "Quản trị viên" : "Người dùng"}</StatusBadge>
+          <StatusBadge tone="success">{user.role === "admin" ? "Administrator" : "Standard User"}</StatusBadge>
         </div>
         <StatusBadge tone={user.is_active ? "success" : "danger"}>
-          {user.is_active ? "Đang hoạt động" : "Không hoạt động"}
+          {user.is_active ? "Active" : "Inactive"}
         </StatusBadge>
       </div>
 
@@ -38,24 +38,24 @@ export function CurrentUserCard({
           <dd>{user.email}</dd>
         </div>
         <div>
-          <dt>Mã tài khoản</dt>
+          <dt>Account ID</dt>
           <dd>{user.id}</dd>
         </div>
       </dl>
 
       <section className="scope-section" aria-labelledby="scope-section-heading">
         <h3 className="label-heading" id="scope-section-heading">
-          Quyền được cấp
+          Granted scopes
         </h3>
         <ScopeList scopes={user.scopes} labels={scopeLabels} />
       </section>
 
       <section className="phase-note" aria-labelledby="phase-note-heading">
         <h3 className="label-heading" id="phase-note-heading">
-          Nền tảng tài khoản đã sẵn sàng
+          Account foundation ready
         </h3>
         <p className="body-copy max-copy">
-          Giao diện trò chuyện và các công cụ tác tử sẽ được bổ sung ở giai đoạn sau.
+          Your protected account session is active.
         </p>
       </section>
 

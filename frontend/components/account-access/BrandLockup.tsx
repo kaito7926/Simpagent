@@ -1,11 +1,13 @@
+import React from "react";
+
 type BrandLockupProps = {
   authenticated: boolean;
 };
 
 export function BrandLockup({ authenticated }: BrandLockupProps) {
   return (
-    <section className="brand-hero" aria-label="Giới thiệu SimpAgent">
-      <p className="eyebrow">TRUY CẬP AN TOÀN</p>
+    <section className="brand-hero" aria-label="About SimpAgent">
+      <p className="eyebrow">PROTECTED ACCESS</p>
       <div className="brand-hero-copy">
         <div className="brand-row">
           <span className="brand-mark-wrap" aria-hidden="true">
@@ -16,11 +18,12 @@ export function BrandLockup({ authenticated }: BrandLockupProps) {
         </div>
         <h1 className="page-heading">
           {authenticated
-            ? "Một điểm vào rõ ràng cho tài khoản và phiên."
-            : "Một điểm vào rõ ràng cho tài khoản và phiên."}
+            ? "A clear entry point for your protected workspace."
+            : "A clear entry point for your account and session."}
         </h1>
         <p className="body-copy max-copy">
-          Giai đoạn này chứng minh đăng ký, đăng nhập, phiên làm mới được bảo vệ và trạng thái danh tính hiện tại.
+          Sign in with a local account while SimpAgent keeps access tokens in memory and refresh
+          sessions protected from JavaScript.
         </p>
       </div>
     </section>

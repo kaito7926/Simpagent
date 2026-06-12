@@ -36,14 +36,14 @@ export async function readJsonSafe<T>(response: Response): Promise<T | undefined
 
 function fallbackMessage(status: number): string {
   if (status >= 500) {
-    return "Đã xảy ra lỗi phía máy chủ. Vui lòng thử lại.";
+    return "The server couldn't complete this request. Try again.";
   }
 
   if (status === 401) {
-    return "Phiên của bạn không còn hợp lệ. Vui lòng đăng nhập lại để tiếp tục.";
+    return "Your session is no longer valid. Sign in again to continue.";
   }
 
-  return "Không thể kết nối đến máy chủ. Kiểm tra hệ thống đang chạy rồi thử lại.";
+  return "Can't reach the server. Check that the local stack is running and try again.";
 }
 
 export async function toApiError(response: Response): Promise<ApiError> {
@@ -75,7 +75,7 @@ export async function requestJson<T>(
     throw new ApiError({
       status: response.status,
       code: "invalid_response",
-      message: "Máy chủ trả về dữ liệu không hợp lệ.",
+      message: "The server returned an invalid response.",
     });
   }
 

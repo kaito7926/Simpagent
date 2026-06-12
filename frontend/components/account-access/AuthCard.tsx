@@ -1,3 +1,4 @@
+import React from "react";
 import type { FormEvent, ReactNode } from "react";
 
 import type { CurrentUser, SessionState } from "@/lib/auth-session";
@@ -36,14 +37,14 @@ function alertForState(sessionState: SessionState, globalMessage: string | null,
   if (sessionState === "session_expired") {
     return {
       tone: "warning" as const,
-      title: "Phiên đã kết thúc",
-      message: "Phiên của bạn không còn hợp lệ. Vui lòng đăng nhập lại để tiếp tục.",
-      detail: correlationId ? `Mã tham chiếu: ${correlationId}` : null,
+      title: "Session ended",
+      message: "Your session is no longer valid. Sign in again to continue.",
+      detail: correlationId ? `Reference code: ${correlationId}` : null,
       urgent: true,
     };
   }
 
-  if (globalMessage === "Bạn đã đăng xuất khỏi phiên hiện tại.") {
+  if (globalMessage === "You signed out of this session.") {
     return {
       tone: "success" as const,
       title: undefined,
@@ -53,7 +54,7 @@ function alertForState(sessionState: SessionState, globalMessage: string | null,
     };
   }
 
-  if (globalMessage === "Hệ thống đã sẵn sàng cho đăng ký và đăng nhập.") {
+  if (globalMessage === "The system is ready for registration and sign in.") {
     return {
       tone: "success" as const,
       title: undefined,
@@ -68,7 +69,7 @@ function alertForState(sessionState: SessionState, globalMessage: string | null,
       tone: "info" as const,
       title: undefined,
       message: globalMessage,
-      detail: correlationId ? `Mã tham chiếu: ${correlationId}` : null,
+      detail: correlationId ? `Reference code: ${correlationId}` : null,
       urgent: false,
     };
   }
@@ -122,7 +123,7 @@ export function AuthCard({
       {sessionState === "checking_session" ? (
         <div className="checking-state" aria-busy="true">
           <div className="spinner" aria-hidden="true" />
-          <span className="body-copy">Vui lòng chờ trong giây lát.</span>
+          <span className="body-copy">Please wait a moment.</span>
         </div>
       ) : null}
 
@@ -131,7 +132,7 @@ export function AuthCard({
           user={currentUser}
           scopeLabels={scopeLabels}
           onLogout={onLogout}
-          logoutLabel={isSubmitting ? "Đang đăng xuất..." : logoutRetryVisible ? "Thử đăng xuất lại" : "Đăng xuất"}
+          logoutLabel={isSubmitting ? "Signing out..." : logoutRetryVisible ? "Try sign out again" : "Sign out"}
           isSubmitting={isSubmitting}
           logoutRetryVisible={logoutRetryVisible}
         />
@@ -139,7 +140,7 @@ export function AuthCard({
 
       {sessionState === "registration_accepted" ? (
         <ActionButton type="button" onClick={onGoToLogin}>
-          Chuyển sang đăng nhập
+          Continue to sign in
         </ActionButton>
       ) : null}
 

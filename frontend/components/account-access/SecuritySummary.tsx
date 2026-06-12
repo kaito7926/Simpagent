@@ -1,19 +1,20 @@
+import React from "react";
 import { ShieldCheck, SquareDashedMousePointer, UserRoundCog } from "lucide-react";
 
 const ITEMS = [
   {
-    heading: "Mã truy cập ngắn hạn",
-    body: "Mã truy cập chỉ được giữ trong bộ nhớ của giao diện.",
+    heading: "Short-lived access",
+    body: "The access token stays only in browser memory.",
     icon: SquareDashedMousePointer,
   },
   {
-    heading: "Cookie được bảo vệ",
-    body: "Phiên làm mới không khả dụng cho JavaScript.",
+    heading: "Protected refresh cookie",
+    body: "The refresh session is unavailable to JavaScript.",
     icon: ShieldCheck,
   },
   {
-    heading: "Máy chủ là nguồn quyết định",
-    body: "Vai trò, quyền và trạng thái tài khoản được kiểm tra lại phía máy chủ.",
+    heading: "Server-side authority",
+    body: "The server rechecks roles, scopes, and account status.",
     icon: UserRoundCog,
   },
 ] as const;
@@ -22,7 +23,7 @@ export function SecuritySummary() {
   return (
     <section className="security-summary" aria-labelledby="security-summary-heading">
       <h2 className="visually-hidden" id="security-summary-heading">
-        Tóm tắt bảo vệ phiên
+        Session protection summary
       </h2>
       {ITEMS.map((item) => {
         const Icon = item.icon;

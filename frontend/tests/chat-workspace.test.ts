@@ -166,7 +166,7 @@ void test("first submit sends generated client_message_id through authorizedJson
       content: "Explain retry safety",
     },
   });
-  assert.equal(globalThis.localStorage?.getItem("access_token"), null);
+  assert.equal(globalThis.localStorage?.getItem("access_token") ?? null, null);
 });
 
 void test("active thread reload, pending lockout, failed row, and retry copy are represented", async () => {
