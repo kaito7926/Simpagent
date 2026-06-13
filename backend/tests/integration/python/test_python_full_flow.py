@@ -291,7 +291,7 @@ async def test_successful_python_turn_persists_artifacts_reuses_state_and_extend
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_user_code_exception_stays_completed_and_not_infra_failure(
+async def test_user_code_exception_is_failed_and_not_infra_failure(
     app,
     client,
     db_session,
@@ -313,9 +313,9 @@ async def test_user_code_exception_stays_completed_and_not_infra_failure(
             PythonExecutionResponse(
                 result=_result(
                     execution_id=UUID("00000000-0000-0000-0000-000000000103"),
-                    status=PythonExecutionStatus.succeeded,
+                    status=PythonExecutionStatus.failed,
                     profile_name=PythonExecutionProfile.basic,
-                    summary="Execution completed with a Python exception from user code.",
+                    summary="Execution failed with a Python exception from user code.",
                     duration_ms=37,
                     stderr_excerpt="Traceback (most recent call last):\nValueError: boom",
                     correlation_id="corr-user-exception",
@@ -340,20 +340,19 @@ async def test_user_code_exception_stays_completed_and_not_infra_failure(
     body = response.json()
     python_result = body["messages"][1]["metadata"]["python_result"]
 
-    assert python_result["status"] == "succeeded"
+    assert python_result["status"] == "failed"
     assert python_result["infra_failure_reason"] is None
     assert "Traceback" in (python_result["stderr_excerpt"] or "")
     assert body["messages"][1]["status"] == "completed"
 
     tool_row = await db_session.scalar(select(ToolExecution).where(ToolExecution.conversation_id == UUID(body["id"])))
     assert tool_row is not None
-    assert tool_row.status == "succeeded"
+    assert tool_row.status == "failed"
     assert tool_row.output_summary is not None
-    assert "status=succeeded" in tool_row.output_summary
+    assert "status=failed" in tool_row.output_summary
     assert "infra=" not in tool_row.output_summary
 
     state_row = await db_session.scalar(
         select(PythonSessionState).where(PythonSessionState.conversation_id == UUID(body["id"]))
     )
-    assert state_row is not None
-    assert state_row.profile_name == PythonExecutionProfile.basic.value
+    assert state_row is None

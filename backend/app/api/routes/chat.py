@@ -93,6 +93,9 @@ def _chat_coordinator(
     factory = getattr(request.app.state, "chat_coordinator_factory", None)
     if factory is not None:
         return factory(request=request, session=session, principal=principal)
+    resolved_search_status = getattr(request.app.state, "search_status", "unconfigured")
+    if bool(getattr(request.app.state, "search_ready", False)):
+        resolved_search_status = "ready"
     return ChatCoordinator(
         session,
         settings=request.app.state.settings,
@@ -101,6 +104,8 @@ def _chat_coordinator(
         chat_adapter_factory=lambda: _chat_adapter(request),
         python_planner=getattr(request.app.state, "python_planner", None),
         python_client=getattr(request.app.state, "python_client", None),
+        search_worker=getattr(request.app.state, "search_worker", None),
+        search_status=str(resolved_search_status),
     )
 
 

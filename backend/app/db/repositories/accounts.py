@@ -106,8 +106,22 @@ class AccountsRepository:
         bundle = await self.get_user_bundle_by_id(user_id)
         if bundle is None:
             raise ValueError("User not found")
-        for row in list(bundle.scopes):
+        await self.replace_bundle_scopes(bundle, scopes)
+
+    async def replace_bundle_scopes(self, bundle: UserBundle, scopes: list[str]) -> None:
+        expected_scopes = list(dict.fromkeys(scopes))
+        current_by_scope = {row.scope: row for row in bundle.scopes}
+
+        for scope, row in list(current_by_scope.items()):
+            if scope in expected_scopes:
+                continue
             await self.session.delete(row)
-        for scope in scopes:
-            self.session.add(UserScope(user_id=user_id, scope=scope))
+            bundle.scopes.remove(row)
+
+        for scope in expected_scopes:
+            if scope in current_by_scope:
+                continue
+            scope_row = UserScope(user_id=bundle.user.id, scope=scope)
+            self.session.add(scope_row)
+            bundle.scopes.append(scope_row)
         await self.session.flush()

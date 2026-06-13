@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -16,6 +16,24 @@ TOOL_STATUS_CHECK = (
     "status in ('queued', 'running', 'succeeded', 'failed', 'denied', 'timed_out', "
     "'policy_error', 'limit_reached', 'infra_failure')"
 )
+SEARCH_METADATA_ALLOWED_ROOT_KEYS = frozenset(
+    {
+        "mode",
+        "state",
+        "google_grounded",
+        "tool_executed",
+        "correlation_id",
+        "sources",
+        "citations",
+        "suggestions",
+        "retry_of_message_id",
+        "web_search_queries",
+        "lifecycle",
+    }
+)
+SEARCH_METADATA_ALLOWED_SOURCE_KEYS = frozenset({"index", "title", "domain", "uri"})
+SEARCH_METADATA_ALLOWED_CITATION_KEYS = frozenset({"index", "source_index", "start", "end"})
+SEARCH_METADATA_ALLOWED_SUGGESTION_KEYS = frozenset({"trusted", "items"})
 
 
 class Conversation(Base):
@@ -76,3 +94,20 @@ class ToolExecution(Base):
     duration_ms: Mapped[int | None] = mapped_column(Integer)
     correlation_id: Mapped[str | None] = mapped_column(String(64), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class AgentRuntimeSetting(Base):
+    __tablename__ = "agent_runtime_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
+    updated_by_user_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )

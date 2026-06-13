@@ -108,12 +108,13 @@ class PythonExecutionResult(BaseModel):
         elif self.limit_triggered is not None:
             raise ValueError("Only limit-reached results may expose a terminating limit.")
 
-        if self.status is PythonExecutionStatus.succeeded and self.duration_ms is None:
-            raise ValueError("Succeeded results must report bounded duration.")
+        if self.status in {PythonExecutionStatus.succeeded, PythonExecutionStatus.failed} and self.duration_ms is None:
+            raise ValueError("Completed runtime results must report bounded duration.")
 
         if self.status in {
             PythonExecutionStatus.accepted,
             PythonExecutionStatus.running,
+            PythonExecutionStatus.failed,
             PythonExecutionStatus.denied,
             PythonExecutionStatus.policy_error,
             PythonExecutionStatus.infra_failure,

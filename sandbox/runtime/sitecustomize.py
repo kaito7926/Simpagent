@@ -27,5 +27,29 @@ subprocess.check_call = _blocked("External command execution is blocked in the r
 subprocess.check_output = _blocked("External command execution is blocked in the reviewed Python sandbox.")  # type: ignore[assignment]
 os.system = _blocked("Shell execution is blocked in the reviewed Python sandbox.")  # type: ignore[assignment]
 os.popen = _blocked("Shell execution is blocked in the reviewed Python sandbox.")  # type: ignore[assignment]
+for _os_attr in (
+    "_exit",
+    "abort",
+    "execv",
+    "execve",
+    "execvp",
+    "execvpe",
+    "fork",
+    "forkpty",
+    "kill",
+    "killpg",
+    "posix_spawn",
+    "posix_spawnp",
+    "spawnl",
+    "spawnle",
+    "spawnlp",
+    "spawnlpe",
+    "spawnv",
+    "spawnve",
+    "spawnvp",
+    "spawnvpe",
+):
+    if hasattr(os, _os_attr):
+        setattr(os, _os_attr, _blocked("Process control is blocked in the reviewed Python sandbox."))
 socket.socket = _blocked("Network access is blocked in the reviewed Python sandbox.")  # type: ignore[assignment]
 socket.create_connection = _blocked("Network access is blocked in the reviewed Python sandbox.")  # type: ignore[assignment]

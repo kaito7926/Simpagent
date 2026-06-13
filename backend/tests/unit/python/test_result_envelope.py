@@ -52,6 +52,7 @@ def test_python_result_uses_phase_four_status_taxonomy() -> None:
         "accepted",
         "running",
         "succeeded",
+        "failed",
         "denied",
         "policy_error",
         "limit_reached",
@@ -121,6 +122,20 @@ def test_policy_error_requires_a_reviewed_policy_code() -> None:
     )
 
     assert result.policy_error_code is PythonPolicyErrorCode.blocked_import
+
+
+def test_failed_runtime_exception_is_bounded_but_not_successful() -> None:
+    result = build_result(
+        status=PythonExecutionStatus.failed,
+        summary="Execution failed with a Python exception from user code.",
+        artifacts=[],
+        stdout_excerpt=None,
+        stderr_excerpt="Traceback (most recent call last):\nValueError: boom",
+    )
+
+    assert result.status is PythonExecutionStatus.failed
+    assert result.duration_ms == 420
+    assert result.artifacts == []
 
 
 def test_infrastructure_failure_is_the_only_retryable_terminal_state() -> None:

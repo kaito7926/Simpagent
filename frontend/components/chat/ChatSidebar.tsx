@@ -13,6 +13,7 @@ export type ChatNavigationProps = {
   loading: boolean;
   loadingMore: boolean;
   deletingConversationId: string | null;
+  now?: Date;
   onNewChat: () => void;
   onSelectConversation: (conversationId: string) => void;
   onLoadMore: () => void;
@@ -75,6 +76,7 @@ export function ChatSidebar({
   loading,
   loadingMore,
   deletingConversationId,
+  now,
   onNewChat,
   onSelectConversation,
   onLoadMore,
@@ -82,7 +84,7 @@ export function ChatSidebar({
   onSignOut,
 }: ChatNavigationProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const groups = useMemo(() => groupConversations(conversations), [conversations]);
+  const groups = useMemo(() => groupConversations(conversations, now), [conversations, now]);
 
   return (
     <div className="conversation-navigation-inner">

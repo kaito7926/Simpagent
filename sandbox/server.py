@@ -28,8 +28,8 @@ MAX_REQUEST_BYTES = 96 * 1024
 MAX_STDIO_EXCERPT_CHARS = 8_192
 RUNTIME_SOURCE_ROOT = Path(__file__).resolve().parent / "runtime"
 RESULT_LOG_PREFIX = "SIMPAGENT_RESULT_JSON="
-SECCOMP_PROFILE_NAME = "python-restricted"
-SECCOMP_PROFILE_PATH = Path("/opt/simpagent/seccomp/python-restricted.json")
+SECCOMP_PROFILE_NAME = "docker-default"
+SECCOMP_PROFILE_PATH: Path | None = None
 # Docker already applies its default seccomp profile when no seccomp override is provided.
 SECURITY_OPTS = ("no-new-privileges",)
 CONTAINER_LABEL_PREFIX = "simpagent.python"
@@ -530,7 +530,7 @@ def _health_payload() -> dict[str, Any]:
         "profiles": [asdict(profile) for profile in PROFILES.values()],
         "docker_socket_present": Path("/var/run/docker.sock").exists(),
         "seccomp_profile_name": SECCOMP_PROFILE_NAME,
-        "seccomp_profile_path": str(SECCOMP_PROFILE_PATH),
+        "seccomp_profile_path": str(SECCOMP_PROFILE_PATH) if SECCOMP_PROFILE_PATH is not None else None,
     }
 
 

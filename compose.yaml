@@ -81,6 +81,8 @@ services:
         condition: service_completed_successfully
     environment:
       SIMPAGENT_APP_ENV: development
+      SIMPAGENT_LOG_LEVEL: INFO
+      SIMPAGENT_LOG_FILE_PATH: /var/log/simpagent/backend/backend.log
       SIMPAGENT_DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/simpagent
       SIMPAGENT_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8000
       SIMPAGENT_JWT_ISSUER: simpagent.local
@@ -103,7 +105,10 @@ services:
       SIMPAGENT_LLM_MODEL: ${LLM_MODEL:-fake-model}
       SIMPAGENT_LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
       SIMPAGENT_LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-1}
-      SIMPAGENT_SEARCH_MODEL: ${SEARCH_MODEL:-configured-search-model}
+      SIMPAGENT_GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      SIMPAGENT_GOOGLE_API_KEY_FILE: ${GOOGLE_API_KEY_FILE:-}
+      SIMPAGENT_SEARCH_MODEL: ${SEARCH_MODEL:-gemini-2.5-flash}
+      SIMPAGENT_GUARDRAIL_SAFETY_ENABLED_DEFAULT: ${GUARDRAIL_SAFETY_ENABLED_DEFAULT:-true}
       SIMPAGENT_PYTHON_SUPERVISOR_BASE_URL: http://sandbox:8080
       SIMPAGENT_PYTHON_SUPERVISOR_REQUEST_TIMEOUT_SECONDS: 30
       SIMPAGENT_PYTHON_CAPABILITY_SECRET: sandbox-dev-secret
@@ -114,6 +119,7 @@ services:
       - dev-secrets:/run/secrets
       - ./sandbox:/workspace/sandbox:ro
       - python-artifacts:/tmp/simpagent-python-artifacts
+      - backend-logs:/var/log/simpagent/backend
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
       interval: 10s
@@ -145,20 +151,89 @@ services:
       - private
       - public
 
+  init-kong-logs:
+    image: alpine:3.20
+    command:
+      - /bin/sh
+      - -c
+      - >
+        mkdir -p /var/log/simpagent/kong &&
+        touch
+        /var/log/simpagent/kong/access.log
+        /var/log/simpagent/kong/error.log
+        /var/log/simpagent/kong/admin-error.log &&
+        chown -R 1001:1001 /var/log/simpagent/kong
+    volumes:
+      - kong-logs:/var/log/simpagent/kong
+    networks:
+      - private
+
   kong:
     image: kong:3.9.1
     depends_on:
       backend:
         condition: service_healthy
+      init-kong-logs:
+        condition: service_completed_successfully
     environment:
       KONG_DATABASE: off
       KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
       KONG_PROXY_LISTEN: 0.0.0.0:8000
       KONG_ADMIN_LISTEN: 127.0.0.1:8001
+      KONG_PROXY_ACCESS_LOG: /var/log/simpagent/kong/access.log
+      KONG_PROXY_ERROR_LOG: /var/log/simpagent/kong/error.log
+      KONG_ADMIN_ACCESS_LOG: off
+      KONG_ADMIN_ERROR_LOG: /var/log/simpagent/kong/admin-error.log
+      KONG_LOG_LEVEL: notice
     volumes:
       - ./kong/kong.yml:/etc/kong/kong.yml:ro
+      - kong-logs:/var/log/simpagent/kong
     ports:
       - "8000:8000"
+    networks:
+      - private
+      - public
+
+  loki:
+    image: grafana/loki:3.0.0
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./observability/loki-config.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    networks:
+      - private
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    command: ["-config.file=/etc/promtail/config.yaml"]
+    depends_on:
+      loki:
+        condition: service_started
+      backend:
+        condition: service_healthy
+      kong:
+        condition: service_started
+    volumes:
+      - ./observability/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - backend-logs:/var/log/simpagent/backend:ro
+      - kong-logs:/var/log/simpagent/kong:ro
+    networks:
+      - private
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    depends_on:
+      loki:
+        condition: service_started
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3001:3000"
     networks:
       - private
       - public
@@ -178,6 +253,10 @@ volumes:
   postgres-data:
   dev-secrets:
   python-artifacts:
+  backend-logs:
+  kong-logs:
+  loki-data:
+  grafana-data:
 
 networks:
   private:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
@@ -9,7 +10,7 @@ from uuid import UUID
 from sqlalchemy import Select, and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.domain import Conversation, Message
+from app.models.domain import Conversation, Message, ToolExecution
 
 
 @dataclass(slots=True)
@@ -72,6 +73,23 @@ class ConversationsRepository:
         await self.session.flush()
         await self.session.refresh(conversation)
         return conversation
+
+    async def create_conversation(
+        self,
+        *,
+        conversation_id: UUID,
+        user_id: UUID,
+        title: str | None,
+    ) -> Conversation:
+        conversation = Conversation(id=conversation_id, user_id=user_id, title=title)
+        self.session.add(conversation)
+        await self.session.flush()
+        await self.session.refresh(conversation)
+        return conversation
+
+    async def get_conversation_for_update(self, *, conversation_id: UUID) -> Conversation | None:
+        stmt = select(Conversation).where(Conversation.id == conversation_id).with_for_update()
+        return await self.session.scalar(stmt)
 
     async def lock_owned(self, *, user_id: UUID, conversation_id: UUID) -> Conversation | None:
         stmt = (
@@ -197,6 +215,31 @@ class ConversationsRepository:
         )
         return await self.session.scalar(stmt)
 
+    async def get_message_for_update(
+        self,
+        *,
+        conversation_id: UUID,
+        message_id: UUID,
+    ) -> Message | None:
+        stmt = (
+            select(Message)
+            .where(Message.conversation_id == conversation_id, Message.id == message_id)
+            .with_for_update()
+        )
+        return await self.session.scalar(stmt)
+
+    async def get_message_by_sequence_no(
+        self,
+        *,
+        conversation_id: UUID,
+        sequence_no: int,
+    ) -> Message | None:
+        stmt = select(Message).where(
+            Message.conversation_id == conversation_id,
+            Message.sequence_no == sequence_no,
+        )
+        return await self.session.scalar(stmt)
+
     async def next_sequence_no(self, *, conversation_id: UUID) -> int:
         current_max = await self.session.scalar(
             select(func.max(Message.sequence_no)).where(Message.conversation_id == conversation_id)
@@ -219,6 +262,29 @@ class ConversationsRepository:
             status="completed",
             content=content,
             message_metadata={},
+        )
+        self.session.add(message)
+        await self.session.flush()
+        await self.session.refresh(message)
+        return message
+
+    async def add_message(
+        self,
+        *,
+        conversation_id: UUID,
+        sequence_no: int,
+        role: str,
+        content: str,
+        metadata: dict | None = None,
+    ) -> Message:
+        message = Message(
+            conversation_id=conversation_id,
+            sequence_no=sequence_no,
+            client_message_id=None,
+            role=role,
+            status="completed",
+            content=content,
+            message_metadata=metadata or {},
         )
         self.session.add(message)
         await self.session.flush()
@@ -294,6 +360,57 @@ class ConversationsRepository:
         )
         await self.session.execute(stmt)
         await self.session.flush()
+
+    async def update_message(
+        self,
+        message: Message,
+        *,
+        content: str,
+        metadata: dict | None = None,
+    ) -> Message:
+        message.content = content
+        message.message_metadata = metadata or {}
+        await self.session.flush()
+        await self.session.refresh(message)
+        return message
+
+    async def add_tool_execution(
+        self,
+        *,
+        user_id: UUID,
+        conversation_id: UUID,
+        tool_name: str,
+        input_summary: str,
+        output_summary: str | None,
+        status: str,
+        duration_ms: int | None,
+        correlation_id: str | None,
+    ) -> ToolExecution:
+        execution = ToolExecution(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            tool_name=tool_name,
+            input_summary=input_summary,
+            output_summary=output_summary,
+            status=status,
+            duration_ms=duration_ms,
+            correlation_id=correlation_id,
+        )
+        self.session.add(execution)
+        await self.session.flush()
+        logging.getLogger("simpagent.tool").info(
+            "tool_execution_recorded",
+            extra={
+                "event": "tool_execution",
+                "tool_name": tool_name,
+                "status": status,
+                "user_id": str(user_id),
+                "conversation_id": str(conversation_id),
+                "duration_ms": duration_ms,
+                "correlation_id": correlation_id,
+            },
+        )
+        return execution
 
     async def touch_conversation(self, *, conversation_id: UUID) -> None:
         stmt = update(Conversation).where(Conversation.id == conversation_id).values(updated_at=func.now())

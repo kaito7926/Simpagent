@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
 from app.core.config import Settings
@@ -35,3 +37,19 @@ def test_production_rejects_demo_seed() -> None:
 
 def test_repr_redacts_database_url(settings: Settings) -> None:
     assert "postgres-test" not in repr(settings)
+
+
+def test_settings_parse_compose_rendered_test_now() -> None:
+    settings = Settings(
+        app_env="test",
+        database_url="postgresql+psycopg://postgres:postgres@db:5432/app",
+        allowed_origins=["http://localhost:3000"],
+        jwt_private_key="secret",
+        jwt_public_key="secret",
+        refresh_hmac_key="refresh",
+        csrf_hmac_key="csrf",
+        test_now="2026-06-09 00:00:00 +0000 +0000",
+    )
+
+    assert settings.test_now == datetime(2026, 6, 9, 0, 0, tzinfo=UTC)
+    assert settings.now_utc() == datetime(2026, 6, 9, 0, 0, tzinfo=UTC)

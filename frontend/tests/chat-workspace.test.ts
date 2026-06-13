@@ -113,6 +113,7 @@ function navigationProps() {
     loading: false,
     loadingMore: false,
     deletingConversationId: null,
+    now: new Date("2026-06-12T12:00:00Z"),
     onNewChat: () => undefined,
     onSelectConversation: () => undefined,
     onLoadMore: () => undefined,

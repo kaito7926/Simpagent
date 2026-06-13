@@ -21,6 +21,7 @@ async def health() -> dict[str, str]:
 async def ready(request: Request) -> JSONResponse:
     session_factory: async_sessionmaker[AsyncSession] = request.app.state.session_factory
     settings = request.app.state.settings
+    search_override = getattr(request.app.state, "search_status", None)
     database_status = "ready"
     migrations_status = "unknown"
     try:
@@ -31,7 +32,7 @@ async def ready(request: Request) -> JSONResponse:
         database_status = "unavailable"
         migrations_status = "unknown"
 
-    providers = compute_provider_snapshot(settings)
+    providers = compute_provider_snapshot(settings, search_override=search_override)
     components = ReadinessComponents(
         database=database_status,
         migrations=migrations_status,

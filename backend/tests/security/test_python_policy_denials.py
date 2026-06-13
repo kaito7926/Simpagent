@@ -69,3 +69,38 @@ def test_package_install_and_external_command_attempts_are_rejected() -> None:
     assert result["status"] == "policy_error"
     assert result["policy_error_code"] == "disallowed_behavior"
     assert result["artifacts"] == []
+
+
+def test_os_process_control_attempts_are_rejected_before_execution() -> None:
+    runner = load_module("runtime/runner.py", "sandbox_runner_policy_os_process")
+    blocked_calls = {
+        "os.fork()": "os.fork",
+        "os.execv('/bin/echo', ['echo', 'x'])": "os.execv",
+        "os.posix_spawn('/bin/echo', ['echo', 'x'], {})": "os.posix_spawn",
+        "os.kill(1, 9)": "os.kill",
+    }
+
+    for source, blocked_symbol in blocked_calls.items():
+        temp_dir, spec = build_spec(runner, f"import os\n{source}\n")
+        try:
+            result = runner.execute_run_spec(spec)
+        finally:
+            temp_dir.cleanup()
+
+        assert result["status"] == "policy_error"
+        assert result["policy_error_code"] == "disallowed_behavior"
+        assert blocked_symbol in (result["stderr_excerpt"] or "")
+
+
+def test_user_exception_reports_failed_not_succeeded() -> None:
+    runner = load_module("runtime/runner.py", "sandbox_runner_runtime_exception")
+    temp_dir, spec = build_spec(runner, "print('before')\nraise ValueError('boom')\n")
+    try:
+        result = runner.execute_run_spec(spec)
+    finally:
+        temp_dir.cleanup()
+
+    assert result["status"] == "failed"
+    assert result["summary"] == "Execution failed with a Python exception from user code."
+    assert result["stdout_excerpt"] == "before\n"
+    assert "ValueError: boom" in (result["stderr_excerpt"] or "")

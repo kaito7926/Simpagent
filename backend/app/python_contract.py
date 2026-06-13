@@ -16,6 +16,7 @@ class PythonExecutionStatus(str, Enum):
     accepted = "accepted"
     running = "running"
     succeeded = "succeeded"
+    failed = "failed"
     denied = "denied"
     policy_error = "policy_error"
     limit_reached = "limit_reached"

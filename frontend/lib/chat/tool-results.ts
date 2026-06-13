@@ -87,7 +87,7 @@ type PresentedResultBase = {
 
 export type PresentedPythonResultCard = PresentedResultBase & {
   kind: "python-result";
-  status: "accepted" | "running" | "succeeded" | "policy_error" | "infra_failure";
+  status: "accepted" | "running" | "succeeded" | "failed" | "policy_error" | "infra_failure";
   title: string;
   helperText: string | null;
 };
@@ -150,6 +150,7 @@ function presentArtifacts(artifacts: PythonExecutionArtifactEnvelope[]): Present
 function presentAnnouncement(status: PythonExecutionStatus): PresentedAnnouncement {
   switch (status) {
     case "denied":
+    case "failed":
     case "policy_error":
     case "infra_failure":
       return {
@@ -247,6 +248,16 @@ export function presentPythonToolResult(
       status: "infra_failure",
       title: "Không thể hoàn tất phiên Python giới hạn.",
       helperText: pythonInfraBody(result.infra_failure_reason, result.retryable),
+      ...buildResultBase(result),
+    };
+  }
+
+  if (result.status === "failed") {
+    return {
+      kind: "python-result",
+      status: "failed",
+      title: "Mã Python dừng do ngoại lệ.",
+      helperText: "Traceback đã được giới hạn trong phần chi tiết để bạn sửa đoạn mã và chạy lại.",
       ...buildResultBase(result),
     };
   }

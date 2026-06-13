@@ -95,6 +95,11 @@ def prompt_requires_external_search(prompt: str) -> bool:
     return prompt_requests_python(prompt) and any(re.search(pattern, lowered) for pattern in EXTERNAL_DATA_PATTERNS)
 
 
+def prompt_requests_search(prompt: str) -> bool:
+    lowered = prompt.lower()
+    return any(re.search(pattern, lowered) for pattern in EXTERNAL_DATA_PATTERNS)
+
+
 def python_scope_allowed(principal_scopes: set[str]) -> bool:
     result = evaluate_required_scopes(principal_scopes=principal_scopes, required={Scope.tool_python.value})
     return result is PolicyResult.allow

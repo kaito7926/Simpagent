@@ -2,6 +2,7 @@ export type PythonExecutionStatus =
   | "accepted"
   | "running"
   | "succeeded"
+  | "failed"
   | "denied"
   | "policy_error"
   | "limit_reached"
@@ -49,6 +50,8 @@ export function pythonStatusLabel(status: PythonExecutionStatus): string {
       return "Đang thực thi";
     case "succeeded":
       return "Hoàn tất";
+    case "failed":
+      return "Lỗi mã Python";
     case "denied":
       return "Bị từ chối";
     case "policy_error":
@@ -68,6 +71,8 @@ export function pythonToneForStatus(status: PythonExecutionStatus): ToolTone {
       return "warning";
     case "succeeded":
       return "success";
+    case "failed":
+      return "danger";
     case "denied":
     case "policy_error":
     case "infra_failure":

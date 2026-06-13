@@ -67,3 +67,11 @@ def test_reviewed_seccomp_asset_is_present_and_fixed() -> None:
     assert payload["profile_name"] == "python-restricted"
     assert payload["base_profile"] == "docker-default"
     assert payload["defaultAction"] == "SCMP_ACT_ERRNO"
+
+
+def test_supervisor_health_reports_only_applied_seccomp_profile() -> None:
+    server = load_module("server.py", "sandbox_server_seccomp_health")
+    payload = server._health_payload()
+
+    assert payload["seccomp_profile_name"] == "docker-default"
+    assert payload["seccomp_profile_path"] is None

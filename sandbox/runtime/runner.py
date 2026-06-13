@@ -68,7 +68,27 @@ BLOCKED_IMPORT_ROOTS = {
 }
 FORBIDDEN_NAME_CALLS = {"compile", "eval", "exec", "__import__"}
 FORBIDDEN_ATTRIBUTE_CHAINS = {
+    ("os", "_exit"),
+    ("os", "abort"),
+    ("os", "execv"),
+    ("os", "execve"),
+    ("os", "execvp"),
+    ("os", "execvpe"),
+    ("os", "fork"),
+    ("os", "forkpty"),
+    ("os", "kill"),
+    ("os", "killpg"),
     ("os", "popen"),
+    ("os", "posix_spawn"),
+    ("os", "posix_spawnp"),
+    ("os", "spawnl"),
+    ("os", "spawnle"),
+    ("os", "spawnlp"),
+    ("os", "spawnlpe"),
+    ("os", "spawnv"),
+    ("os", "spawnve"),
+    ("os", "spawnvp"),
+    ("os", "spawnvpe"),
     ("os", "system"),
     ("socket", "create_connection"),
     ("socket", "socket"),
@@ -360,8 +380,8 @@ def execute_run_spec(spec: RunSpec) -> dict[str, Any]:
                 stdout_excerpt = stdout_buffer.getvalue() or None
                 result = build_result(
                     spec=spec,
-                    status="succeeded",
-                    summary="Execution completed with a Python exception from user code.",
+                    status="failed",
+                    summary="Execution failed with a Python exception from user code.",
                     stdout_excerpt=stdout_excerpt,
                     stderr_excerpt=stderr_excerpt,
                     artifacts=[],
