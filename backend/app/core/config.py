@@ -291,10 +291,11 @@ class Settings(BaseSettings):
 
     @property
     def google_oauth_configured(self) -> bool:
+        secret = self.google_client_secret
+        secret_value = secret.get_secret_value() if isinstance(secret, SecretStr) else secret
         return bool(
             self.google_client_id
-            and self.google_client_secret
-            and self.google_client_secret.get_secret_value()
+            and secret_value
             and self.google_redirect_uri
         )
 

@@ -68,6 +68,23 @@ class AccountsRepository:
             return None
         return UserBundle(user=user, scopes=list(user.scopes), identities=list(user.identities), local_credential=user.local_credential)
 
+    async def get_user_bundle_by_identity(self, *, issuer: str, subject: str) -> UserBundle | None:
+        stmt = (
+            select(User)
+            .join(Identity, Identity.user_id == User.id)
+            .options(
+                selectinload(User.scopes),
+                selectinload(User.identities),
+                selectinload(User.local_credential),
+            )
+            .where(Identity.issuer == issuer, Identity.subject == subject)
+        )
+        result = await self.session.execute(stmt)
+        user = result.scalar_one_or_none()
+        if user is None:
+            return None
+        return UserBundle(user=user, scopes=list(user.scopes), identities=list(user.identities), local_credential=user.local_credential)
+
     async def create_user_with_local_credentials(self, *, email: str, password_hash: str, role: str = "user", is_demo: bool = False) -> UserBundle:
         normalized, email_key = normalize_email(email)
         user = User(id=uuid4(), email=normalized, email_key=email_key, role=role, is_active=True, is_demo=is_demo)
@@ -82,6 +99,19 @@ class AccountsRepository:
         except IntegrityError as exc:
             raise DuplicateEmailError("Duplicate email") from exc
         return UserBundle(user=user, scopes=scope_rows, identities=[], local_credential=credential)
+
+    async def create_user_without_local_credentials(self, *, email: str, role: str = "user", is_demo: bool = False) -> UserBundle:
+        normalized, email_key = normalize_email(email)
+        user = User(id=uuid4(), email=normalized, email_key=email_key, role=role, is_active=True, is_demo=is_demo)
+        scopes = ADMIN_SCOPES if role == "admin" else STANDARD_USER_SCOPES
+        scope_rows = [UserScope(user_id=user.id, scope=scope) for scope in scopes]
+        self.session.add(user)
+        self.session.add_all(scope_rows)
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            raise DuplicateEmailError("Duplicate email") from exc
+        return UserBundle(user=user, scopes=scope_rows, identities=[], local_credential=None)
 
     async def create_identity(self, *, user_id: UUID, issuer: str, subject: str, email_at_provider: str | None, email_verified: bool) -> Identity:
         identity = Identity(

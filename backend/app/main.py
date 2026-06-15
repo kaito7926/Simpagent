@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.ai.search_worker.service import GoogleSearchWorkerService
-from app.api.routes import admin, auth, chat, conversations, health, python
+from app.api.routes import admin, auth, auth_oauth, chat, conversations, health, python
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError, install_error_handlers
 from app.core.logging import configure_logging, reset_correlation_id, set_correlation_id
@@ -106,6 +106,7 @@ def create_app(
         )
 
     app.include_router(auth.router)
+    app.include_router(auth_oauth.router)
     app.include_router(admin.router)
     app.include_router(chat.router)
     app.include_router(conversations.router)
