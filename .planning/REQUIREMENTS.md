@@ -39,7 +39,7 @@
 ### Authorization
 
 - [x] **AUTHZ-01**: Every protected endpoint rejects inactive users and tokens missing the required authenticated principal.
-- [ ] **AUTHZ-02**: Admin APIs require the Admin role and the corresponding `admin:read` or `admin:write` scope.
+- [x] **AUTHZ-02**: Admin APIs require the Admin role and the corresponding `admin:read` or `admin:write` scope.
 - [x] **AUTHZ-03**: Chat read operations require `chat:read`, and chat mutation operations require `chat:write`.
 - [ ] **AUTHZ-04**: Web Search execution requires `tool:websearch`, and Python execution requires `tool:python`.
 - [x] **AUTHZ-05**: Conversation and message queries constrain resource ID and authenticated owner in the same data-access operation.
@@ -111,9 +111,9 @@
 - [ ] **OBS-02**: Application logs are structured JSON with allowlisted fields and recursive redaction of credentials, tokens, cookies, API keys, secrets, and sensitive raw content.
 - [ ] **OBS-03**: Auth failures, forbidden access, refresh replay, rate-limit events, tool decisions, sandbox violations, and admin actions create typed redacted evidence.
 - [ ] **OBS-04**: Tool execution records contain actor, conversation, tool, safe input/output summaries, status, duration, and correlation ID.
-- [ ] **OBS-05**: Properly authorized admin can list users and paginated recent audit logs, security events, tool executions, failed logins, and available rate-limit evidence.
-- [ ] **OBS-06**: Ordinary users and under-scoped admins cannot access administrative evidence endpoints.
-- [ ] **OBS-07**: Admin metrics expose bounded aggregate operational/security counts without leaking user content or credentials.
+- [x] **OBS-05**: Properly authorized admin can list users and paginated recent audit logs, security events, tool executions, failed logins, and available rate-limit evidence.
+- [x] **OBS-06**: Ordinary users and under-scoped admins cannot access administrative evidence endpoints.
+- [x] **OBS-07**: Admin metrics expose bounded aggregate operational/security counts without leaking user content or credentials.
 
 ### Small Production Readiness
 
@@ -274,7 +274,7 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | SBOX-06 | Phase 4 | Complete |
 | SBOX-07 | Phase 4 | Complete |
 | SBOX-08 | Phase 4 | Complete |
-| AUTHZ-02 | Phase 5 | Pending |
+| AUTHZ-02 | Phase 5 | Complete |
 | IDEN-03 | Phase 5 | Complete |
 | IDEN-06 | Phase 5 | Complete |
 | IDEN-07 | Phase 5 | Pending |
@@ -291,9 +291,9 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | OBS-02 | Phase 5 | Pending |
 | OBS-03 | Phase 5 | Pending |
 | OBS-04 | Phase 5 | Pending |
-| OBS-05 | Phase 5 | Pending |
-| OBS-06 | Phase 5 | Pending |
-| OBS-07 | Phase 5 | Pending |
+| OBS-05 | Phase 5 | Complete |
+| OBS-06 | Phase 5 | Complete |
+| OBS-07 | Phase 5 | Complete |
 | PRODREADY-01 | Phase 5 | Pending |
 | PRODREADY-02 | Phase 5 | Pending |
 | PRODREADY-03 | Phase 5 | Pending |
