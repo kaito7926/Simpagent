@@ -120,6 +120,8 @@ async def test_public_stack_admin_flow_covers_search_evidence_and_role_changes()
             "security_events_last_24h",
             "tool_executions_total",
             "tool_executions_last_24h",
+            "correlation_references_total",
+            "rate_limit_events_total",
         }
         assert user_email not in metrics_response.text
         assert user_password not in metrics_response.text

@@ -121,3 +121,5 @@ class AdminMetricsResponse(BaseModel):
     security_events_last_24h: int = Field(ge=0)
     tool_executions_total: int = Field(ge=0)
     tool_executions_last_24h: int = Field(ge=0)
+    correlation_references_total: int = Field(ge=0)
+    rate_limit_events_total: int = Field(ge=0)

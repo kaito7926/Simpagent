@@ -36,6 +36,8 @@ class FakeAdminRepository:
             security_events_last_24h=0,
             tool_executions_total=0,
             tool_executions_last_24h=0,
+            correlation_references_total=0,
+            rate_limit_events_total=0,
         )
     )
 
@@ -280,6 +282,8 @@ async def test_metrics_uses_repository_snapshot() -> None:
                 security_events_last_24h=3,
                 tool_executions_total=7,
                 tool_executions_last_24h=2,
+                correlation_references_total=6,
+                rate_limit_events_total=1,
             )
         ),
         security_events=FakeSecurityEventSink(),
@@ -291,6 +295,8 @@ async def test_metrics_uses_repository_snapshot() -> None:
     assert result.users_active == 4
     assert result.security_events_last_24h == 3
     assert result.tool_executions_last_24h == 2
+    assert result.correlation_references_total == 6
+    assert result.rate_limit_events_total == 1
 
 
 @pytest.mark.asyncio

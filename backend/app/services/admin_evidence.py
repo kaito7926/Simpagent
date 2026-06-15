@@ -209,6 +209,8 @@ class AdminEvidenceService:
             security_events_last_24h=snapshot.security_events_last_24h,
             tool_executions_total=snapshot.tool_executions_total,
             tool_executions_last_24h=snapshot.tool_executions_last_24h,
+            correlation_references_total=snapshot.correlation_references_total,
+            rate_limit_events_total=snapshot.rate_limit_events_total,
         )
 
     async def get_orchestration_settings(
