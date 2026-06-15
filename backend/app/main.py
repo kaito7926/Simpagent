@@ -3,12 +3,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 import logging
+import re
 from time import perf_counter
 from typing import Any
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.ai.search_worker.service import GoogleSearchWorkerService
 from app.api.routes import admin, auth, auth_oauth, chat, conversations, health, python
@@ -20,6 +22,7 @@ from app.db.session import create_session_factory
 
 Clock = Callable[[], datetime]
 access_logger = logging.getLogger("simpagent.access")
+CORRELATION_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 
 
 def utc_now() -> datetime:
@@ -57,8 +60,20 @@ def create_app(
 
     @app.middleware("http")
     async def correlation_middleware(request: Request, call_next):
-        correlation_id = request.headers.get("X-Correlation-Id") or str(uuid4())
+        supplied_correlation_id = request.headers.get("X-Correlation-Id")
+        correlation_id = supplied_correlation_id or str(uuid4())
         request.state.correlation_id = correlation_id
+        if not CORRELATION_ID_PATTERN.fullmatch(correlation_id):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "code": "invalid_correlation_id",
+                        "message": "X-Correlation-Id must be 1-128 characters of letters, numbers, dot, underscore, colon, or dash.",
+                        "correlation_id": str(uuid4()),
+                    }
+                },
+            )
         token = set_correlation_id(correlation_id)
         started_at = perf_counter()
         try:
