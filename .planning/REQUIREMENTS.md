@@ -96,18 +96,18 @@
 
 ### Gateway and Edge Security
 
-- [ ] **GATE-01**: Kong OSS runs in DB-less mode with declarative services and routes for approved `/api/*`, `/health`, and readiness traffic.
-- [ ] **GATE-02**: Kong applies strict configured CORS origins, methods, and headers without using a wildcard credentialed origin.
-- [ ] **GATE-03**: Kong applies stricter limits to login, registration, and tool routes than to ordinary chat routes and returns useful `429` metadata.
-- [ ] **GATE-04**: Kong applies request-size limits and propagates or creates a validated correlation ID.
-- [ ] **GATE-05**: Kong may reject coarse invalid JWT traffic early, but FastAPI independently remains authoritative for complete token, account, role, scope, ownership, and tool-policy validation.
-- [ ] **GATE-06**: Kong Admin API, PostgreSQL, search worker, and sandbox control plane are not exposed as public application ports.
+- [x] **GATE-01**: Kong OSS runs in DB-less mode with declarative services and routes for approved `/api/*`, `/health`, and readiness traffic.
+- [x] **GATE-02**: Kong applies strict configured CORS origins, methods, and headers without using a wildcard credentialed origin.
+- [x] **GATE-03**: Kong applies stricter limits to login, registration, and tool routes than to ordinary chat routes and returns useful `429` metadata.
+- [x] **GATE-04**: Kong applies request-size limits and propagates or creates a validated correlation ID.
+- [x] **GATE-05**: Kong may reject coarse invalid JWT traffic early, but FastAPI independently remains authoritative for complete token, account, role, scope, ownership, and tool-policy validation.
+- [x] **GATE-06**: Kong Admin API, PostgreSQL, search worker, and sandbox control plane are not exposed as public application ports.
 - [ ] **GATE-07**: Documentation defines the optional request path `Client -> Cloudflare -> Kong -> FastAPI -> PostgreSQL/LLM/Tools` and trusted proxy assumptions.
 - [ ] **GATE-08**: Cloudflare documentation covers Tunnel, DNS, TLS, Free-plan WAF guidance, Turnstile integration points, Bot Fight Mode, limitations, and source-IP trust.
 
 ### Logging and Administration
 
-- [ ] **OBS-01**: Every request receives a validated correlation ID propagated through Kong, FastAPI, provider calls, tool calls, audit records, and the response.
+- [x] **OBS-01**: Every request receives a validated correlation ID propagated through Kong, FastAPI, provider calls, tool calls, audit records, and the response.
 - [ ] **OBS-02**: Application logs are structured JSON with allowlisted fields and recursive redaction of credentials, tokens, cookies, API keys, secrets, and sensitive raw content.
 - [ ] **OBS-03**: Auth failures, forbidden access, refresh replay, rate-limit events, tool decisions, sandbox violations, and admin actions create typed redacted evidence.
 - [ ] **OBS-04**: Tool execution records contain actor, conversation, tool, safe input/output summaries, status, duration, and correlation ID.
@@ -118,7 +118,7 @@
 ### Small Production Readiness
 
 - [ ] **PRODREADY-01**: Operator can configure a small production deployment profile for about 100 users/month through environment variables without hardcoded origins, cookie settings, OAuth secrets, JWT keys, database credentials, or provider credentials.
-- [ ] **PRODREADY-02**: Production-mode cookies, CORS, trusted proxy handling, HTTPS assumptions, and frontend/backend public URLs are documented and enforced consistently for the selected deployment profile.
+- [x] **PRODREADY-02**: Production-mode cookies, CORS, trusted proxy handling, HTTPS assumptions, and frontend/backend public URLs are documented and enforced consistently for the selected deployment profile.
 - [ ] **PRODREADY-03**: Database migrations, seed/admin bootstrap, backup, restore, and rollback guidance are documented and testable against the Compose-based deployment target.
 - [ ] **PRODREADY-04**: Startup, readiness, smoke-test, and basic operational checks cover local credentials, Google login, GitHub login, gateway routing, admin evidence, chat, Search, and Python paths.
 - [ ] **PRODREADY-05**: Documentation states realistic capacity, reliability, security, rate-limit, observability, and external-provider limitations for a 100 users/month prototype and does not claim high availability or enterprise production guarantees.
@@ -279,15 +279,15 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | IDEN-06 | Phase 5 | Complete |
 | IDEN-07 | Phase 5 | Pending |
 | IDEN-08 | Phase 5 | Pending |
-| GATE-01 | Phase 5 | Pending |
-| GATE-02 | Phase 5 | Pending |
-| GATE-03 | Phase 5 | Pending |
-| GATE-04 | Phase 5 | Pending |
-| GATE-05 | Phase 5 | Pending |
-| GATE-06 | Phase 5 | Pending |
+| GATE-01 | Phase 5 | Complete |
+| GATE-02 | Phase 5 | Complete |
+| GATE-03 | Phase 5 | Complete |
+| GATE-04 | Phase 5 | Complete |
+| GATE-05 | Phase 5 | Complete |
+| GATE-06 | Phase 5 | Complete |
 | GATE-07 | Phase 5 | Pending |
 | GATE-08 | Phase 5 | Pending |
-| OBS-01 | Phase 5 | Pending |
+| OBS-01 | Phase 5 | Complete |
 | OBS-02 | Phase 5 | Pending |
 | OBS-03 | Phase 5 | Pending |
 | OBS-04 | Phase 5 | Pending |
@@ -295,7 +295,7 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | OBS-06 | Phase 5 | Complete |
 | OBS-07 | Phase 5 | Complete |
 | PRODREADY-01 | Phase 5 | Pending |
-| PRODREADY-02 | Phase 5 | Pending |
+| PRODREADY-02 | Phase 5 | Complete |
 | PRODREADY-03 | Phase 5 | Pending |
 | PRODREADY-04 | Phase 5 | Pending |
 | PRODREADY-05 | Phase 5 | Pending |

@@ -133,12 +133,12 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   6. Properly scoped administrators can page through bounded users, audits, security events, tool executions, failed logins, rate-limit evidence, aggregate metrics, and orchestration controls, while ordinary and under-scoped users are denied.
   7. Operator can follow a documented small-production deployment profile for about 100 users/month, including Cloudflare-to-Kong routing, trusted-proxy assumptions, secure cookies/origins, migrations, backup/restore, smoke checks, and explicit limits without overclaiming distributed rate limiting, edge protection, or production-grade guarantees.
 
-**Plans:** 2/8 plans executed
+**Plans:** 3/8 plans executed
 **Wave 1**
 
 - [x] 05-02-PLAN.md - Hold the Authlib legitimacy gate inside the Google OAuth implementation plan, then ship the Google OAuth redirect/callback slice.
 - [x] 05-04-PLAN.md - Deliver the first real admin slice with Overview and Orchestration surfaces.
-- [ ] 05-05-PLAN.md - Harden DB-less Kong ingress, correlation handling, and trusted-proxy hooks.
+- [x] 05-05-PLAN.md - Harden DB-less Kong ingress, correlation handling, and trusted-proxy hooks.
 
 **Wave 2** *(blocked on Wave 1 completion where referenced)*
 
@@ -186,5 +186,5 @@ Note: PR #2 ships the Phase 4 Python slice before Phase 3 planning metadata was 
 | 2. Private Direct Chat | 7/7 | Complete | 2026-06-12 |
 | 3. Policy-Controlled Google Search | 0/TBD | Artifact closeout pending | - |
 | 4. Isolated Python Execution | 5/5 | Shipped (PR #2) | 2026-06-13 |
-| 5. Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 2/8 | In Progress|  |
+| 5. Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 3/8 | In Progress|  |
 | 6. Adversarial Verification and Vietnamese Delivery | 0/TBD | Not started | - |
