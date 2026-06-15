@@ -133,7 +133,27 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   6. Properly scoped administrators can page through bounded users, audits, security events, tool executions, failed logins, rate-limit evidence, aggregate metrics, and orchestration controls, while ordinary and under-scoped users are denied.
   7. Operator can follow a documented small-production deployment profile for about 100 users/month, including Cloudflare-to-Kong routing, trusted-proxy assumptions, secure cookies/origins, migrations, backup/restore, smoke checks, and explicit limits without overclaiming distributed rate limiting, edge protection, or production-grade guarantees.
 
-**Plans:** TBD
+**Plans:** 8 plans
+**Wave 1**
+
+- [ ] 05-02-PLAN.md - Hold the Authlib legitimacy gate inside the Google OAuth implementation plan, then ship the Google OAuth redirect/callback slice.
+- [ ] 05-04-PLAN.md - Deliver the first real admin slice with Overview and Orchestration surfaces.
+- [ ] 05-05-PLAN.md - Harden DB-less Kong ingress, correlation handling, and trusted-proxy hooks.
+
+**Wave 2** *(blocked on Wave 1 completion where referenced)*
+
+- [ ] 05-03-PLAN.md - Add GitHub OAuth and fail-closed account-linking rules.
+- [ ] 05-06-PLAN.md - Build recursive redaction and gateway-evidence backend contracts.
+
+**Wave 3** *(blocked on Wave 2 completion where referenced)*
+
+- [ ] 05-07-PLAN.md - Wire all six admin evidence surfaces into the shared shell and expose gateway evidence through the admin API.
+
+**Wave 4** *(blocked on Wave 2-3 completion where referenced)*
+
+- [ ] 05-09-PLAN.md - Wire the shared Google and GitHub auth-shell CTA/readiness experience.
+- [ ] 05-08-PLAN.md - Finalize the small-production profile, Cloudflare/trusted-proxy documentation, and assembled smoke coverage.
+
 **UI hint:** no
 
 ### Phase 6: Adversarial Verification and Vietnamese Delivery
@@ -144,7 +164,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 **Requirements:** TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06, TEST-07, TEST-08, TEST-09, TEST-10, DOCS-01, DOCS-02, DOCS-03, DOCS-04, DOCS-05, DOCS-06
 **Success Criteria** (what must be TRUE):
 
-  1. Automated tests prove authentication lifecycle, strict token handling, two-user BOLA denial, role/scope/tool denial, chat ordering and idempotency, and provider failure behavior.
+  1. Automated tests prove authentication lifecycle, strict token handling, two-user BOLA denial, role/scope/tool denial, chat ordering and idempotency, provider failure behavior.
   2. Automated search and sandbox tests prove grounding contracts, prompt-injection resistance, time and resource limits, network and host denial, cleanup, and escape resistance through side-effect assertions.
   3. Evaluator can run attack scripts against the Compose topology and observe denied brute force, token replay, SSRF, BOLA, prompt/tool abuse, and sandbox escape attempts without forbidden side effects.
   4. Evaluator has practical SAST, dependency, container, Burp, AWVS, and DAST guidance plus a finding template and canary-secret evidence showing protected values do not leak.
@@ -166,5 +186,5 @@ Note: PR #2 ships the Phase 4 Python slice before Phase 3 planning metadata was 
 | 2. Private Direct Chat | 7/7 | Complete | 2026-06-12 |
 | 3. Policy-Controlled Google Search | 0/TBD | Artifact closeout pending | - |
 | 4. Isolated Python Execution | 5/5 | Shipped (PR #2) | 2026-06-13 |
-| 5. Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 0/TBD | Not started | - |
+| 5. Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 0/8 | Planned | - |
 | 6. Adversarial Verification and Vietnamese Delivery | 0/TBD | Not started | - |

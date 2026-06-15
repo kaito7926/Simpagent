@@ -8,7 +8,7 @@ last_updated: "2026-06-15T09:27:34.651Z"
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 24
+  total_plans: 32
   completed_plans: 24
   percent: 67
 ---
@@ -28,7 +28,7 @@ Roadmap order complete: Phases 01-02
 Integrated shipped slice: Phase 04 (isolated-python-execution) - PR #2
 Latest verification: `04-VERIFICATION.md` passed on 2026-06-13 with 5/5 end-to-end truths verified
 
-Progress: 20/20 shipped plans tracked
+Progress: 20/20 shipped plans tracked, Phase 05 Planned
 
 ## Performance Metrics
 
@@ -46,6 +46,7 @@ Progress: 20/20 shipped plans tracked
 | 02 Private Direct Chat | 7/7 | Shipped | PR #1 |
 | 03 Policy-Controlled Google Search | 0/TBD | Artifact closeout pending | `03-VERIFICATION.md` is stale and no plan/summaries are present |
 | 04 Isolated Python Execution | 5/5 | Shipped | PR #2 integrated slice; `04-VERIFICATION.md` passed |
+| 05 Gateway, Administration, and Security Evidence | 8/8 | Planned | Ready for execution |
 
 **Recent Trend:**
 

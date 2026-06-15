@@ -398,22 +398,16 @@ services:
 | A2 | A backend-only OAuth callback design is preferable to a Next.js callback handler for this codebase. [ASSUMED] | Architecture Patterns / Alternatives Considered | Planner could miss a frontend routing requirement if a different deployment topology is later chosen. |
 | A3 | Recording trusted-hop provenance alongside restored client IP will be sufficient for gateway/admin evidence needs. [ASSUMED] | Common Pitfalls | Evidence schema may need more fields if operators require richer proxy-chain inspection. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should Phase 5 pin `Authlib 1.7.x` immediately or gate it behind a human package review?**
-   - What we know: The package is documented for Starlette OAuth flows and exists on PyPI, but the legitimacy seam rated it `SUS` because download data was unavailable. [CITED: https://docs.authlib.org/en/v1.6.2/client/starlette.html][VERIFIED: package-legitimacy check]
-   - What's unclear: Whether the team wants to accept the package after manual provenance review or instead hand-build/provider-build around HTTPX. [VERIFIED: package-legitimacy check]
-   - Recommendation: Keep `Authlib` as the planning default, but add a `checkpoint:human-verify` task before installation. [VERIFIED: package-legitimacy check]
+   - Resolution: Gate it behind a human package review, then pin `Authlib>=1.7,<2` only after that checkpoint passes. This aligns with the Phase 5 package legitimacy audit, keeps Authlib as the approved default implementation path, and satisfies the package-legitimacy rule without hand-rolling OAuth. [VERIFIED: package-legitimacy check][CITED: https://docs.authlib.org/en/v1.6.2/client/starlette.html]
 
 2. **Does the team want to keep the repo’s current `kong:3.9.1` pin for Phase 5, or spend scope upgrading to a newer 3.9 patch/LTS line first?**
-   - What we know: The repo is pinned to `3.9.1`, and Kong’s support-policy page emphasizes selecting supported lines deliberately and reading changelogs before upgrading. [VERIFIED: compose.yaml][CITED: https://developer.konghq.com/gateway/version-support-policy/]
-   - What's unclear: Whether version uplift is in-scope for this phase or should be treated as separate debt. [VERIFIED: compose.yaml]
-   - Recommendation: Plan against the current repo pin unless the planner explicitly adds a bounded upgrade task. [VERIFIED: compose.yaml]
+   - Resolution: Keep the existing `kong:3.9.1` pin for Phase 5 and plan hardening work against the current repo version. A Kong upgrade is not required by any locked decision or Phase 5 requirement, so it should remain out of this phase unless a later bounded upgrade task is explicitly introduced. [VERIFIED: compose.yaml][CITED: https://developer.konghq.com/gateway/version-support-policy/]
 
 3. **How much gateway evidence should be persisted versus derived at request time?**
-   - What we know: Locked decisions forbid fabricated FastAPI rows for Kong-only denials. [VERIFIED: 05-CONTEXT.md]
-   - What's unclear: Whether the admin gateway page should read a generated summary file/log slice, a lightweight snapshot table, or static verification artifacts only. [ASSUMED]
-   - Recommendation: Add an early design checkpoint in the plan for the admin gateway evidence data contract before frontend wiring starts. [ASSUMED]
+   - Resolution: Do not invent a new persistence table for Kong-only denials. Represent gateway-only `429` and oversized-body evidence from Kong config, read-only log evidence, and verification artifacts, while keeping FastAPI persistence limited to requests that actually reach the backend. This matches D-14 exactly and keeps the admin gateway surface truthful. [VERIFIED: 05-CONTEXT.md][CITED: https://developer.konghq.com/gateway/db-less-mode/]
 
 ## Environment Availability
 
