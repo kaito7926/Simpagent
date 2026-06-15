@@ -160,6 +160,18 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("SIMPAGENT_GOOGLE_API_KEY_FILE", "GOOGLE_API_KEY_FILE"),
     )
+    google_client_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"),
+    )
+    google_client_secret: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_GOOGLE_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET"),
+    )
+    google_redirect_uri: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_GOOGLE_REDIRECT_URI", "GOOGLE_REDIRECT_URI"),
+    )
     search_model: str | None = None
     search_worker_timeout_seconds: float = Field(default=8.0, gt=0)
     search_max_prompt_chars: int = Field(default=2000, ge=128, le=4000)
@@ -276,6 +288,15 @@ class Settings(BaseSettings):
     @property
     def google_api_key_value(self) -> str | None:
         return _resolve_secret_value(self.google_api_key, self.google_api_key_file)
+
+    @property
+    def google_oauth_configured(self) -> bool:
+        return bool(
+            self.google_client_id
+            and self.google_client_secret
+            and self.google_client_secret.get_secret_value()
+            and self.google_redirect_uri
+        )
 
     @property
     def python_capability_secret_value(self) -> str:
