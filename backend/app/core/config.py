@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from functools import lru_cache
+from ipaddress import ip_network
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
@@ -86,6 +87,25 @@ def _normalize_test_now(value: str | datetime | None) -> datetime | None:
     raise ValueError("test_now must be a valid ISO 8601 datetime.")
 
 
+def _parse_csv_list(value: list[str] | str | None) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [item.strip() for item in value.split(",") if item.strip()]
+    return value
+
+
+def _is_exact_origin(value: str, *, require_https: bool) -> bool:
+    parsed = urlparse(value)
+    if not parsed.scheme or not parsed.netloc:
+        return False
+    if parsed.path not in ("", "/") or parsed.query or parsed.fragment:
+        return False
+    if require_https and parsed.scheme != "https":
+        return False
+    return True
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="SIMPAGENT_",
@@ -102,6 +122,9 @@ class Settings(BaseSettings):
     database_url: SecretStr | None = None
     database_url_file: str | None = None
     allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    public_app_origin: str | None = None
+    public_api_origin: str | None = None
+    trusted_proxy_cidrs: list[str] = Field(default_factory=list)
 
     jwt_issuer: str = "simpagent.local"
     jwt_audience: str = "simpagent-api"
@@ -197,6 +220,8 @@ class Settings(BaseSettings):
         raw = values.get("allowed_origins")
         if isinstance(raw, str):
             values["allowed_origins"] = [item.strip() for item in raw.split(",") if item.strip()]
+        if "trusted_proxy_cidrs" in values:
+            values["trusted_proxy_cidrs"] = _parse_csv_list(values.get("trusted_proxy_cidrs"))
         return values
 
     @field_validator("test_now", mode="before")
@@ -212,9 +237,13 @@ class Settings(BaseSettings):
         if not self.allowed_origins:
             raise ValueError("At least one exact allowed origin is required.")
         for origin in self.allowed_origins:
-            parsed = urlparse(origin)
-            if not parsed.scheme or not parsed.netloc or parsed.path not in ("", "/"):
+            if not _is_exact_origin(origin, require_https=False):
                 raise ValueError("Allowed origins must be exact origins without path/query/fragment.")
+        for cidr in self.trusted_proxy_cidrs:
+            try:
+                ip_network(cidr, strict=False)
+            except ValueError as exc:
+                raise ValueError("trusted proxy CIDRs must be valid IP networks.") from exc
         if self.app_env == "production":
             if self.debug:
                 raise ValueError("Debug mode is forbidden in production.")
@@ -224,6 +253,16 @@ class Settings(BaseSettings):
                 raise ValueError("Secure cookies are required in production.")
             if "*" in self.allowed_origins:
                 raise ValueError("Wildcard origins are forbidden in production.")
+            if not self.public_app_origin:
+                raise ValueError("Production requires a public app origin.")
+            if not self.public_api_origin:
+                raise ValueError("Production requires a public API origin.")
+            if not _is_exact_origin(self.public_app_origin, require_https=True):
+                raise ValueError("Production public app origin must be an exact HTTPS origin.")
+            if not _is_exact_origin(self.public_api_origin, require_https=True):
+                raise ValueError("Production public API origin must be an exact HTTPS origin.")
+            if not self.trusted_proxy_cidrs:
+                raise ValueError("Production requires trusted proxy CIDRs.")
             if not self.database_url_file:
                 raise ValueError("Production requires DATABASE_URL_FILE.")
             if not self.jwt_private_key_file or not self.jwt_public_key_file:
