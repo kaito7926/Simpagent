@@ -1,0 +1,15 @@
+[submodule ".planning/debug/ui-ref/login"]
+	path = .planning/debug/ui-ref/login
+	url = https://github.com/kaito7926/ai-chatbot-login-page
+[submodule ".planning/debug/ui-ref/modern"]
+	path = .planning/debug/ui-ref/modern
+	url = https://github.com/kaito7926/modern-ai-chatbot-interface-tem
+[submodule "_ref/chatbot-ui"]
+	path = _ref/chatbot-ui
+	url = https://github.com/kaito7926/modern-ai-chatbot-interface-tem
+[submodule "_ref/login-page"]
+	path = _ref/login-page
+	url = https://github.com/kaito7926/ai-chatbot-login-page
+[submodule "_ref/settings-page"]
+	path = _ref/settings-page
+	url = https://github.com/kaito7926/settings-page-design
