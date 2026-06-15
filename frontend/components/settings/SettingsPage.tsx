@@ -12,15 +12,22 @@ import type { CurrentUser } from "@/lib/auth-session";
 
 type SettingsPageProps = {
   currentUser: CurrentUser;
-  adminSettings: { trustedSupervisorEnabled: boolean } | null;
+  adminSettings: {
+    guardrailSafetyEnabled: boolean;
+    trustedSupervisorEnabled: boolean;
+  } | null;
   adminCanWrite: boolean;
   adminBusy: boolean;
   adminError: string | null;
   searchEnabled: boolean;
+  initialSection?: SettingsSectionId;
+  initialConfirmingSetting?: OrchestrationSettingId | null;
+  onGuardrailSafetyToggle: (enabled: boolean) => void;
   onTrustedSupervisorToggle: (enabled: boolean) => void;
 };
 
 type SettingsSectionId = "profile" | "roles" | "tools" | "readiness";
+type OrchestrationSettingId = "guardrail" | "trusted-supervisor";
 
 const settingsNavigation: Array<{
   id: SettingsSectionId;
@@ -40,10 +47,16 @@ export function SettingsPage({
   adminCanWrite,
   adminBusy,
   adminError,
+  initialSection = "profile",
+  initialConfirmingSetting = null,
+  onGuardrailSafetyToggle,
   searchEnabled,
   onTrustedSupervisorToggle,
 }: SettingsPageProps) {
-  const [activeSection, setActiveSection] = React.useState<SettingsSectionId>("profile");
+  const [activeSection, setActiveSection] = React.useState<SettingsSectionId>(initialSection);
+  const [confirmingSetting, setConfirmingSetting] = React.useState<OrchestrationSettingId | null>(
+    initialConfirmingSetting,
+  );
 
   const groupedNavigation = React.useMemo(() => {
     return {
@@ -65,7 +78,10 @@ export function SettingsPage({
             adminBusy={adminBusy}
             adminCanWrite={adminCanWrite}
             adminError={adminError}
+            confirmingSetting={confirmingSetting}
             currentUser={currentUser}
+            onConfirmingSettingChange={setConfirmingSetting}
+            onGuardrailSafetyToggle={onGuardrailSafetyToggle}
             onTrustedSupervisorToggle={onTrustedSupervisorToggle}
             searchEnabled={searchEnabled}
           />
@@ -187,14 +203,23 @@ function ToolsSection({
   adminCanWrite,
   adminBusy,
   adminError,
+  confirmingSetting,
+  onConfirmingSettingChange,
+  onGuardrailSafetyToggle,
   onTrustedSupervisorToggle,
   searchEnabled,
 }: {
   currentUser: CurrentUser;
-  adminSettings: { trustedSupervisorEnabled: boolean } | null;
+  adminSettings: {
+    guardrailSafetyEnabled: boolean;
+    trustedSupervisorEnabled: boolean;
+  } | null;
   adminCanWrite: boolean;
   adminBusy: boolean;
   adminError: string | null;
+  confirmingSetting: OrchestrationSettingId | null;
+  onConfirmingSettingChange: (setting: OrchestrationSettingId | null) => void;
+  onGuardrailSafetyToggle: (enabled: boolean) => void;
   onTrustedSupervisorToggle: (enabled: boolean) => void;
   searchEnabled: boolean;
 }) {
@@ -240,52 +265,140 @@ function ToolsSection({
         <Card className="admin-card">
           <CardHeader>
             <CardTitle>Administrative controls</CardTitle>
-            <CardDescription>Canonical control point for trusted Python orchestration.</CardDescription>
+            <CardDescription>Canonical control point for guarded tool orchestration.</CardDescription>
           </CardHeader>
           <CardContent className="admin-content">
-            <div className="scope-list-item">
-              <div className="inline-actions flex-wrap">
-                <Shield className="h-4 w-4" />
-                <span className="scope-label">Trusted supervisor</span>
-                <Badge variant={adminSettings?.trustedSupervisorEnabled ? "success" : "warning"}>
-                  {adminSettings?.trustedSupervisorEnabled ? "Active" : "Inactive"}
-                </Badge>
-              </div>
-              <span className="scope-code">
-                Validates Python activity against orchestration safety policy.
-              </span>
-            </div>
             {adminError ? (
               <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100" role="alert">
                 {adminError}
               </div>
             ) : null}
-            {adminCanWrite ? (
-              <div className="admin-card-actions">
-                <ActionButton
-                  type="button"
-                  variant={adminSettings?.trustedSupervisorEnabled ? "quiet" : "secondary"}
-                  fullWidth={false}
-                  disabled={adminBusy || !adminSettings || adminSettings.trustedSupervisorEnabled}
-                  onClick={() => onTrustedSupervisorToggle(true)}
-                >
-                  {adminBusy && !adminSettings?.trustedSupervisorEnabled ? "Updating..." : "Enable trusted supervisor"}
-                </ActionButton>
-                <ActionButton
-                  type="button"
-                  variant={adminSettings?.trustedSupervisorEnabled ? "secondary" : "quiet"}
-                  fullWidth={false}
-                  disabled={adminBusy || !adminSettings || !adminSettings.trustedSupervisorEnabled}
-                  onClick={() => onTrustedSupervisorToggle(false)}
-                >
-                  {adminBusy && adminSettings?.trustedSupervisorEnabled ? "Updating..." : "Disable trusted supervisor"}
-                </ActionButton>
-              </div>
-            ) : (
-              <span className="body-copy">This account can review trusted supervisor status but cannot change it.</span>
-            )}
+            <OrchestrationSettingCard
+              id="guardrail"
+              title="Guardrail safety"
+              description="One layer of safety checks before tool orchestration."
+              enabled={adminSettings?.guardrailSafetyEnabled ?? false}
+              canWrite={adminCanWrite}
+              busy={adminBusy}
+              loaded={adminSettings !== null}
+              confirming={confirmingSetting === "guardrail"}
+              disableTitle="Disable guardrail safety?"
+              disableBody="You are removing one layer of safety checks before tool orchestration."
+              disableConfirm="Disable guardrail safety"
+              onEnable={() => onGuardrailSafetyToggle(true)}
+              onRequestDisable={() => onConfirmingSettingChange("guardrail")}
+              onCancelDisable={() => onConfirmingSettingChange(null)}
+              onConfirmDisable={() => {
+                onConfirmingSettingChange(null);
+                onGuardrailSafetyToggle(false);
+              }}
+            />
+            <OrchestrationSettingCard
+              id="trusted-supervisor"
+              title="Trusted supervisor Agent"
+              description="Validates Python activity against orchestration safety policy."
+              enabled={adminSettings?.trustedSupervisorEnabled ?? false}
+              canWrite={adminCanWrite}
+              busy={adminBusy}
+              loaded={adminSettings !== null}
+              confirming={confirmingSetting === "trusted-supervisor"}
+              disableTitle="Disable trusted supervisor Agent?"
+              disableBody="Python turns that depend on this supervision layer will be denied until it is enabled again."
+              disableConfirm="Disable trusted supervisor"
+              onEnable={() => onTrustedSupervisorToggle(true)}
+              onRequestDisable={() => onConfirmingSettingChange("trusted-supervisor")}
+              onCancelDisable={() => onConfirmingSettingChange(null)}
+              onConfirmDisable={() => {
+                onConfirmingSettingChange(null);
+                onTrustedSupervisorToggle(false);
+              }}
+            />
+            {!adminCanWrite ? (
+              <span className="body-copy">This account can review orchestration status but cannot change it.</span>
+            ) : null}
           </CardContent>
         </Card>
+      ) : null}
+    </div>
+  );
+}
+
+function OrchestrationSettingCard({
+  id: _id,
+  title,
+  description,
+  enabled,
+  canWrite,
+  busy,
+  loaded,
+  confirming,
+  disableTitle,
+  disableBody,
+  disableConfirm,
+  onEnable,
+  onRequestDisable,
+  onCancelDisable,
+  onConfirmDisable,
+}: {
+  id: OrchestrationSettingId;
+  title: string;
+  description: string;
+  enabled: boolean;
+  canWrite: boolean;
+  busy: boolean;
+  loaded: boolean;
+  confirming: boolean;
+  disableTitle: string;
+  disableBody: string;
+  disableConfirm: string;
+  onEnable: () => void;
+  onRequestDisable: () => void;
+  onCancelDisable: () => void;
+  onConfirmDisable: () => void;
+}) {
+  return (
+    <div className="scope-list-item">
+      <div className="inline-actions flex-wrap">
+        <Shield className="h-4 w-4" />
+        <span className="scope-label">{title}</span>
+        <Badge variant={enabled ? "success" : "warning"}>{enabled ? "Active" : "Inactive"}</Badge>
+      </div>
+      <span className="scope-code">{description}</span>
+      {canWrite ? (
+        <div className="admin-card-actions">
+          <ActionButton
+            type="button"
+            variant={enabled ? "quiet" : "secondary"}
+            fullWidth={false}
+            disabled={busy || !loaded || enabled}
+            onClick={onEnable}
+          >
+            {busy && !enabled ? "Updating..." : `Enable ${title}`}
+          </ActionButton>
+          <ActionButton
+            type="button"
+            variant={enabled ? "secondary" : "quiet"}
+            fullWidth={false}
+            disabled={busy || !loaded || !enabled}
+            onClick={onRequestDisable}
+          >
+            {busy && enabled ? "Updating..." : disableConfirm}
+          </ActionButton>
+        </div>
+      ) : null}
+      {confirming ? (
+        <div className="rounded-2xl border border-[var(--destructive)]/30 bg-[var(--destructive-soft)] p-4 text-[var(--foreground)]" role="alertdialog" aria-modal="true">
+          <h3 className="card-title">{disableTitle}</h3>
+          <p className="body-copy">{disableBody}</p>
+          <div className="admin-card-actions">
+            <ActionButton type="button" variant="quiet" fullWidth={false} onClick={onCancelDisable}>
+              Keep enabled
+            </ActionButton>
+            <ActionButton type="button" variant="secondary" fullWidth={false} disabled={busy} onClick={onConfirmDisable}>
+              {disableConfirm}
+            </ActionButton>
+          </div>
+        </div>
       ) : null}
     </div>
   );

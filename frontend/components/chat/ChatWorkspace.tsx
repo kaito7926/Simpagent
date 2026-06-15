@@ -4,9 +4,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { ApiError } from "@/lib/api";
 import {
+  getAdminMetrics,
   getOrchestrationSettings,
+  setGuardrailSafetyEnabled,
   setTrustedSupervisorEnabled,
 } from "@/lib/admin-api";
+import type { AdminMetricsResponse } from "@/lib/admin-api";
 import type { AuthSessionController, CurrentUser } from "@/lib/auth-session";
 import {
   createConversationWithMessage,
@@ -35,6 +38,7 @@ import { UndoToast } from "./UndoToast";
 import { SettingsPage } from "@/components/settings/SettingsPage";
 
 type AdminOrchestrationSettings = {
+  guardrailSafetyEnabled: boolean;
   trustedSupervisorEnabled: boolean;
 };
 
@@ -42,6 +46,8 @@ type ChatWorkspaceProps = {
   controller: AuthSessionController;
   currentUser: CurrentUser;
   initialConversation?: ConversationDetail;
+  initialView?: AppWorkspaceView;
+  initialAdminMetrics?: AdminMetricsResponse | null;
   onSessionExpired: () => void;
   onLogout: () => void | Promise<void>;
 };
@@ -157,26 +163,66 @@ function EmptyAdminState(props: { title: string; body: string }) {
   );
 }
 
-function OverviewView(props: { conversations: ConversationSummary[]; currentUser: CurrentUser; adminSettings: AdminOrchestrationSettings | null }) {
-  const adminScopeCount = props.currentUser.scopes.filter((scope) => scope.startsWith("admin:")).length;
+function OverviewView(props: {
+  metrics: AdminMetricsResponse | null;
+  adminSettings: AdminOrchestrationSettings | null;
+}) {
+  const last24hTotal =
+    (props.metrics?.security_events_last_24h ?? 0) +
+    (props.metrics?.tool_executions_last_24h ?? 0);
 
   return (
     <div className="admin-layout">
       <section className="metrics-grid">
-        <AdminMetricCard label="Active conversations" value={formatCount(props.conversations.length)} help="Recent workspace activity visible in this browser session." badge="Session" />
-        <AdminMetricCard label="Granted scopes" value={formatCount(props.currentUser.scopes.length)} help="Current signed-in scope set for the protected account." badge="Token" tone="success" />
-        <AdminMetricCard label="Admin scopes" value={formatCount(adminScopeCount)} help="Administrative capabilities currently available to this user." badge="Token" tone={adminScopeCount > 0 ? "warning" : "neutral"} />
-        <AdminMetricCard label="Trusted supervisor" value={props.adminSettings?.trustedSupervisorEnabled ? "On" : "Off"} help="Python guardrail orchestration status returned by the backend." badge={props.adminSettings ? "Backend" : "Unavailable"} tone={props.adminSettings?.trustedSupervisorEnabled ? "success" : "warning"} />
-        <AdminMetricCard label="Evidence references" value="Correlation-aware" help="Operational surfaces preserve correlation references for support and audit review." badge="Derived" />
-        <AdminMetricCard label="Gateway evidence" value="Not connected" help="Gateway evidence is hidden from navigation until backend data is available." badge="Unavailable" />
+        <AdminMetricCard
+          label="Active users"
+          value={formatCount(props.metrics?.users_active ?? 0)}
+          help={`Out of ${formatCount(props.metrics?.users_total ?? 0)} total accounts.`}
+          badge="Backend"
+          tone="success"
+        />
+        <AdminMetricCard
+          label="Security events"
+          value={formatCount(props.metrics?.security_events_total ?? 0)}
+          help={`${formatCount(props.metrics?.security_events_last_24h ?? 0)} events in the last 24 hours.`}
+          badge="Aggregate"
+          tone="warning"
+        />
+        <AdminMetricCard
+          label="Tool executions"
+          value={formatCount(props.metrics?.tool_executions_total ?? 0)}
+          help={`${formatCount(props.metrics?.tool_executions_last_24h ?? 0)} tool runs in the last 24 hours.`}
+          badge="Aggregate"
+        />
+        <AdminMetricCard
+          label="Last 24 hours"
+          value={formatCount(last24hTotal)}
+          help="Combined security-event and tool-execution activity in the current window."
+          badge="24h"
+        />
+        <AdminMetricCard
+          label="Valid correlation references"
+          value={formatCount(props.metrics?.correlation_references_total ?? 0)}
+          help="Evidence rows that can be traced by reference code without exposing raw content."
+          badge="Audit"
+          tone="success"
+        />
+        <AdminMetricCard
+          label="429 / rate limit"
+          value={formatCount(props.metrics?.rate_limit_events_total ?? 0)}
+          help="Gateway or backend rate-limit evidence represented as aggregate counts."
+          badge="Bounded"
+          tone={props.metrics?.rate_limit_events_total ? "warning" : "neutral"}
+        />
       </section>
       <Card className="admin-card">
         <div className="admin-card-copy">
           <p className="small-label">Admin overview</p>
-          <h2 className="card-title">Security and operations at a glance</h2>
+          <h2 className="card-title">Security overview</h2>
         </div>
         <p className="body-copy">
-          Use this area to inspect the current session, authorization boundaries, security evidence, and administrative settings without mixing them into chat.
+          Metrics are loaded from the backend admin evidence contract and stay limited to bounded aggregate counts.
+          Guardrail safety is {props.adminSettings?.guardrailSafetyEnabled ? "enabled" : "disabled"} and trusted supervisor is {props.adminSettings?.trustedSupervisorEnabled ? "enabled" : "disabled"}.
         </p>
       </Card>
     </div>
@@ -289,15 +335,27 @@ function OrchestrationView(props: {
         <div className="topbar-row">
           <div className="admin-card-copy">
             <p className="small-label">Orchestration</p>
-            <h2 className="card-title">Trusted supervisor boundary</h2>
+            <h2 className="card-title">Agent orchestration controls</h2>
           </div>
-          <StatusBadge tone={props.adminSettings?.trustedSupervisorEnabled ? "success" : "warning"}>
-            {props.adminSettings?.trustedSupervisorEnabled ? "Enabled" : "Disabled"}
+          <StatusBadge tone={props.adminSettings ? "success" : "warning"}>
+            {props.adminSettings ? "Backend state" : "Loading"}
           </StatusBadge>
         </div>
         <p className="body-copy">
-          Trusted supervisor changes now live in Settings so chat, navigation, and administration keep separate responsibilities.
+          Review the safety controls that decide whether guarded tool orchestration can proceed. Changes require administrator write scope and destructive disables are confirmed in Settings.
         </p>
+        <div className="scope-list">
+          <div className="scope-list-item">
+            <span className="scope-label">Guardrail safety</span>
+            <BadgeLikeStatus enabled={props.adminSettings?.guardrailSafetyEnabled ?? false} />
+            <span className="scope-code">One layer of safety checks before tool orchestration.</span>
+          </div>
+          <div className="scope-list-item">
+            <span className="scope-label">Trusted supervisor Agent</span>
+            <BadgeLikeStatus enabled={props.adminSettings?.trustedSupervisorEnabled ?? false} />
+            <span className="scope-code">Supervision layer for Python turns that depend on policy review.</span>
+          </div>
+        </div>
         <div className="admin-card-actions">
           <ActionButton type="button" variant="secondary" fullWidth={false} onClick={props.onOpenSettings}>
             Open Settings
@@ -308,10 +366,20 @@ function OrchestrationView(props: {
   );
 }
 
+function BadgeLikeStatus(props: { enabled: boolean }) {
+  return (
+    <StatusBadge tone={props.enabled ? "success" : "warning"}>
+      {props.enabled ? "Enabled" : "Disabled"}
+    </StatusBadge>
+  );
+}
+
 export function ChatWorkspace({
   controller,
   currentUser,
   initialConversation,
+  initialView = "chat",
+  initialAdminMetrics = null,
   onSessionExpired,
   onLogout,
 }: ChatWorkspaceProps) {
@@ -333,12 +401,13 @@ export function ChatWorkspace({
   const [undoingDelete, setUndoingDelete] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [workspaceCorrelationId, setWorkspaceCorrelationId] = useState<string | null>(null);
+  const [adminMetrics, setAdminMetrics] = useState<AdminMetricsResponse | null>(initialAdminMetrics);
   const [adminSettings, setAdminSettings] = useState<AdminOrchestrationSettings | null>(null);
   const [adminBusy, setAdminBusy] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [workspaceView, setWorkspaceView] = useState<AppWorkspaceView>("chat");
+  const [workspaceView, setWorkspaceView] = useState<AppWorkspaceView>(initialView);
   const [toolMode, setToolMode] = useState<"auto" | "google_search" | "python">("auto");
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -434,33 +503,40 @@ export function ChatWorkspace({
   useEffect(() => {
     let cancelled = false;
 
-    async function loadAdminSettings() {
+    async function loadAdminState() {
       if (!adminCanRead) {
+        setAdminMetrics(null);
         setAdminSettings(null);
         setAdminError(null);
         return;
       }
       try {
-        const response = await getOrchestrationSettings(controller);
+        const [metricsResponse, orchestrationResponse] = await Promise.all([
+          getAdminMetrics(controller),
+          getOrchestrationSettings(controller),
+        ]);
         if (!cancelled) {
+          setAdminMetrics(metricsResponse);
           setAdminSettings({
-            trustedSupervisorEnabled: response.trusted_supervisor_enabled,
+            guardrailSafetyEnabled: orchestrationResponse.guardrail_safety_enabled,
+            trustedSupervisorEnabled: orchestrationResponse.trusted_supervisor_enabled,
           });
           setAdminError(null);
         }
       } catch (error) {
         if (!cancelled) {
+          setAdminMetrics(null);
           setAdminSettings(null);
           setAdminError(
             error instanceof ApiError
               ? error.message
-              : "Can't load admin orchestration settings right now.",
+              : "Can't load admin overview and orchestration settings right now.",
           );
         }
       }
     }
 
-    void loadAdminSettings();
+    void loadAdminState();
     return () => {
       cancelled = true;
     };
@@ -699,6 +775,7 @@ export function ChatWorkspace({
     try {
       const response = await setTrustedSupervisorEnabled(controller, enabled);
       setAdminSettings({
+        guardrailSafetyEnabled: response.guardrail_safety_enabled,
         trustedSupervisorEnabled: response.trusted_supervisor_enabled,
       });
     } catch (error) {
@@ -706,6 +783,29 @@ export function ChatWorkspace({
         error instanceof ApiError
           ? error.message
           : "Can't update trusted supervisor setting right now.",
+      );
+    } finally {
+      setAdminBusy(false);
+    }
+  }
+
+  async function updateGuardrailSafety(enabled: boolean) {
+    if (!adminCanWrite) {
+      return;
+    }
+    setAdminBusy(true);
+    setAdminError(null);
+    try {
+      const response = await setGuardrailSafetyEnabled(controller, enabled);
+      setAdminSettings({
+        guardrailSafetyEnabled: response.guardrail_safety_enabled,
+        trustedSupervisorEnabled: response.trusted_supervisor_enabled,
+      });
+    } catch (error) {
+      setAdminError(
+        error instanceof ApiError
+          ? error.message
+          : "Can't update guardrail safety setting right now.",
       );
     } finally {
       setAdminBusy(false);
@@ -744,7 +844,7 @@ export function ChatWorkspace({
 
     switch (workspaceView) {
       case "overview":
-        return <OverviewView adminSettings={adminSettings} conversations={conversations} currentUser={currentUser} />;
+        return <OverviewView adminSettings={adminSettings} metrics={adminMetrics} />;
       case "users":
         return <UsersView currentUser={currentUser} />;
       case "security-events":
@@ -769,6 +869,7 @@ export function ChatWorkspace({
             adminBusy={adminBusy}
             adminError={adminError}
             searchEnabled={searchEnabled}
+            onGuardrailSafetyToggle={(enabled) => void updateGuardrailSafety(enabled)}
             onTrustedSupervisorToggle={(enabled) => void updateTrustedSupervisor(enabled)}
           />
         );

@@ -113,7 +113,7 @@ void test("admin navigation exposes Overview and Orchestration as first-class sh
   assert.match(html, /ADMIN/);
   assert.match(html, /Overview/);
   assert.match(html, /Orchestration/);
-  assert.doesNotMatch(html, /data is unavailable|Not connected|placeholder/i);
+  assert.doesNotMatch(html, /data is unavailable|Not connected/i);
 });
 
 void test("workspace overview renders backend-backed aggregate metrics without raw content placeholders", async () => {
@@ -124,17 +124,19 @@ void test("workspace overview renders backend-backed aggregate metrics without r
     }
     if (url === "/api/admin/metrics") {
       return jsonResponse({
-        status: 200,
-        body: {
-          generated_at: "2026-06-15T17:00:00Z",
-          users_total: 3,
-          users_active: 2,
-          security_events_total: 5,
-          security_events_last_24h: 2,
-          tool_executions_total: 7,
-          tool_executions_last_24h: 1,
-        },
-      });
+      status: 200,
+      body: {
+        generated_at: "2026-06-15T17:00:00Z",
+        users_total: 3,
+        users_active: 2,
+        security_events_total: 5,
+        security_events_last_24h: 2,
+        tool_executions_total: 7,
+        tool_executions_last_24h: 1,
+        correlation_references_total: 4,
+        rate_limit_events_total: 0,
+      },
+    });
     }
     if (url === "/api/admin/orchestration") {
       return jsonResponse({
@@ -166,7 +168,7 @@ void test("workspace overview renders backend-backed aggregate metrics without r
 });
 
 void test("orchestration settings show guardrail and trusted-supervisor confirmation copy before destructive disables", () => {
-  const html = renderToStaticMarkup(
+  const guardrailHtml = renderToStaticMarkup(
     React.createElement(SettingsPage, {
       currentUser: adminUser,
       adminSettings: {
@@ -176,16 +178,36 @@ void test("orchestration settings show guardrail and trusted-supervisor confirma
       adminCanWrite: true,
       adminBusy: false,
       adminError: null,
+      initialSection: "tools",
+      initialConfirmingSetting: "guardrail",
       searchEnabled: true,
       onGuardrailSafetyToggle: () => undefined,
       onTrustedSupervisorToggle: () => undefined,
     }),
   );
 
-  assert.match(html, /Guardrail safety/);
-  assert.match(html, /Trusted supervisor Agent/);
-  assert.match(html, /Disable guardrail safety\?/);
-  assert.match(html, /You are removing one layer of safety checks before tool orchestration\./);
-  assert.match(html, /Disable trusted supervisor Agent\?/);
-  assert.match(html, /Python turns that depend on this supervision layer will be denied until it is enabled again\./);
+  const supervisorHtml = renderToStaticMarkup(
+    React.createElement(SettingsPage, {
+      currentUser: adminUser,
+      adminSettings: {
+        guardrailSafetyEnabled: true,
+        trustedSupervisorEnabled: true,
+      },
+      adminCanWrite: true,
+      adminBusy: false,
+      adminError: null,
+      initialSection: "tools",
+      initialConfirmingSetting: "trusted-supervisor",
+      searchEnabled: true,
+      onGuardrailSafetyToggle: () => undefined,
+      onTrustedSupervisorToggle: () => undefined,
+    }),
+  );
+
+  assert.match(guardrailHtml, /Guardrail safety/);
+  assert.match(guardrailHtml, /Trusted supervisor Agent/);
+  assert.match(guardrailHtml, /Disable guardrail safety\?/);
+  assert.match(guardrailHtml, /You are removing one layer of safety checks before tool orchestration\./);
+  assert.match(supervisorHtml, /Disable trusted supervisor Agent\?/);
+  assert.match(supervisorHtml, /Python turns that depend on this supervision layer will be denied until it is enabled again\./);
 });

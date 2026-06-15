@@ -10,6 +10,7 @@ import {
   Settings2,
   Shield,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
 } from "lucide-react";
 
@@ -101,6 +102,9 @@ const ADMIN_ITEMS: Array<{ id: AppWorkspaceView; label: string; icon: React.Reac
   { id: "overview", label: "Overview", icon: <Sparkles size={14} strokeWidth={1.75} /> },
   { id: "users", label: "Users", icon: <Shield size={14} strokeWidth={1.75} /> },
   { id: "security-events", label: "Security events", icon: <ShieldCheck size={14} strokeWidth={1.75} /> },
+  { id: "tool-executions", label: "Tool executions", icon: <Search size={14} strokeWidth={1.75} /> },
+  { id: "gateway-evidence", label: "Gateway evidence", icon: <Shield size={14} strokeWidth={1.75} /> },
+  { id: "orchestration", label: "Orchestration", icon: <SlidersHorizontal size={14} strokeWidth={1.75} /> },
 ];
 
 function SectionHeader(props: {
