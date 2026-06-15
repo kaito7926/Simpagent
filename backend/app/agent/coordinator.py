@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from time import perf_counter
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,11 +21,12 @@ from app.agent.policy import (
     tool_execution_output_summary,
     tool_execution_terminal_status,
 )
+from app.ai.chat_adapter import ChatProviderError
 from app.ai.schemas import ChatCompletionResult, ChatTurn
 from app.authorization.policy import PolicyResult, Scope, evaluate_required_scopes
 from app.db.repositories.agent_settings import AgentRuntimeSettingsRepository
 from app.models.domain import ToolExecution
-from app.python_contract import PythonDeniedReason, PythonExecutionProfile
+from app.python_contract import PythonDeniedReason, PythonExecutionProfile, PythonExecutionStatus
 from app.schemas.python import PythonExecutionResult
 from app.schemas.search import (
     SEARCH_DENIED_COPY,
@@ -50,6 +51,13 @@ TOOL_STATUS_BY_SEARCH_STATE = {
     "timeout": "timed_out",
 }
 SEARCH_READY_STATES = {"ready"}
+SUMMARIZABLE_SEARCH_STATES = {"grounded", "missing_grounding"}
+SUMMARIZABLE_PYTHON_STATUSES = {
+    PythonExecutionStatus.succeeded,
+    PythonExecutionStatus.failed,
+    PythonExecutionStatus.limit_reached,
+}
+RequestedTool = Literal["google_search", "python"]
 
 
 class ChatAdapterLike(Protocol):
@@ -124,6 +132,7 @@ class ChatCoordinator:
         conversation_id: UUID,
         messages: list[ChatTurn],
         correlation_id: str | None,
+        requested_tool: RequestedTool | None = None,
     ) -> CoordinatedAssistantTurn:
         prompt = messages[-1].content if messages else ""
         orchestration = CoordinatorAgent(
@@ -151,8 +160,20 @@ class ChatCoordinator:
             "disabled" if not decision.enabled else "allowed",
         )
 
-        if prompt_requests_python(prompt):
-            trace.add("CoordinatorAgent", "route", "python")
+        if requested_tool == "google_search":
+            trace.add("CoordinatorAgent", "route", "google_search", "explicit")
+            trace.add("WebSearchAgent", "selected", "ready")
+            trace.add("LoopAgent", "iterate", "started", f"max={orchestration.loop.max_iterations}")
+            return await self._complete_search(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                prompt=prompt,
+                correlation_id=correlation_id,
+                trace=trace,
+            )
+
+        if requested_tool == "python":
+            trace.add("CoordinatorAgent", "route", "python", "explicit")
             trace.add("CodeSandboxAgent", "selected", "ready")
             trace.add("LoopAgent", "iterate", "started", f"max={orchestration.loop.max_iterations}")
             return await self._complete_python(
@@ -171,6 +192,19 @@ class ChatCoordinator:
             return await self._complete_search(
                 user_id=user_id,
                 conversation_id=conversation_id,
+                prompt=prompt,
+                correlation_id=correlation_id,
+                trace=trace,
+            )
+
+        if prompt_requests_python(prompt):
+            trace.add("CoordinatorAgent", "route", "python")
+            trace.add("CodeSandboxAgent", "selected", "ready")
+            trace.add("LoopAgent", "iterate", "started", f"max={orchestration.loop.max_iterations}")
+            return await self._complete_python(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                messages=messages,
                 prompt=prompt,
                 correlation_id=correlation_id,
                 trace=trace,
@@ -204,7 +238,11 @@ class ChatCoordinator:
         trace: OrchestrationTrace,
     ) -> CoordinatedAssistantTurn:
         trace.add("CoordinatorAgent", "route", "direct_chat")
-        adapter = self.chat_adapter_factory() if callable(self.chat_adapter_factory) else self.chat_adapter_factory
+        adapter = (
+            self.chat_adapter_factory()
+            if callable(self.chat_adapter_factory)
+            else self.chat_adapter_factory
+        )
         result = await adapter.complete(messages=messages)
         trace.add("ReportWriterAgent", "write", "completed")
         metadata = {
@@ -312,12 +350,23 @@ class ChatCoordinator:
             duration_ms=duration_ms,
             correlation_id=correlation_id,
         )
+        content = normalized.answer_markdown
+        report_writer_metadata: dict[str, Any] | None = None
+        if normalized.state in SUMMARIZABLE_SEARCH_STATES:
+            content, report_writer_metadata = await self._summarize_agent_result(
+                agent_name="WebSearchAgent",
+                user_prompt=prompt,
+                reviewed_output=normalized.answer_markdown,
+                trace=trace,
+                extra_context=_search_summary_context(normalized),
+            )
         trace.add("ReportWriterAgent", "write", "completed", normalized.state)
         return _search_assistant_turn(
-            content=normalized.answer_markdown,
+            content=content,
             search=search,
             worker_result=normalized,
             trace=trace,
+            report_writer=report_writer_metadata,
         )
 
     async def _complete_python(
@@ -445,8 +494,23 @@ class ChatCoordinator:
         await self.session.flush()
         await self.session.commit()
         trace.add("CodeSandboxAgent", "execute", execution.status)
+        content = _python_assistant_content(result)
+        report_writer_metadata: dict[str, Any] | None = None
+        if result.status in SUMMARIZABLE_PYTHON_STATUSES:
+            content, report_writer_metadata = await self._summarize_agent_result(
+                agent_name="CodeSandboxAgent",
+                user_prompt=prompt,
+                reviewed_output=content,
+                trace=trace,
+                extra_context=_python_summary_context(result),
+            )
         trace.add("ReportWriterAgent", "write", "completed", execution.status)
-        return _python_assistant_turn(result, trace=trace)
+        return _python_assistant_turn(
+            result,
+            content=content,
+            trace=trace,
+            report_writer=report_writer_metadata,
+        )
 
     async def _record_denied_python_turn(
         self,
@@ -517,9 +581,51 @@ class ChatCoordinator:
         now = self.clock()
         return now if isinstance(now, datetime) else self.settings.now_utc()
 
+    async def _summarize_agent_result(
+        self,
+        *,
+        agent_name: str,
+        user_prompt: str,
+        reviewed_output: str,
+        trace: OrchestrationTrace,
+        extra_context: str | None = None,
+    ) -> tuple[str, dict[str, Any]]:
+        prompt = _agent_summary_prompt(
+            agent_name=agent_name,
+            user_prompt=user_prompt,
+            reviewed_output=reviewed_output,
+            extra_context=extra_context,
+        )
+        try:
+            adapter = (
+                self.chat_adapter_factory()
+                if callable(self.chat_adapter_factory)
+                else self.chat_adapter_factory
+            )
+            result = await adapter.complete(messages=[ChatTurn(role="user", content=prompt)])
+        except ChatProviderError as exc:
+            trace.add("ReportWriterAgent", "summarize", "failed", exc.code)
+            return reviewed_output, {
+                "summarized": False,
+                "fallback": "raw_agent_output",
+                "error": exc.to_safe_metadata(),
+            }
+
+        trace.add("ReportWriterAgent", "summarize", "completed", agent_name)
+        return result.content, {
+            "summarized": True,
+            "agent": agent_name,
+            "provider_request_id": result.provider_request_id,
+            "prompt_tokens": result.prompt_tokens,
+            "completion_tokens": result.completion_tokens,
+            "finish_reason": result.finish_reason,
+        }
+
 
 def _normalize_search_result(result: SearchWorkerResult) -> SearchWorkerResult:
-    if result.state == "grounded" and (not result.google_grounded or not result.sources or not result.citations):
+    if result.state == "grounded" and (
+        not result.google_grounded or not result.sources or not result.citations
+    ):
         return SearchWorkerResult(
             state="missing_grounding",
             answer_markdown=result.answer_markdown,
@@ -558,17 +664,55 @@ def _normalize_search_result(result: SearchWorkerResult) -> SearchWorkerResult:
     return result
 
 
-def _python_assistant_turn(result: PythonExecutionResult, *, trace: OrchestrationTrace) -> CoordinatedAssistantTurn:
+def _python_assistant_turn(
+    result: PythonExecutionResult,
+    *,
+    trace: OrchestrationTrace,
+    content: str | None = None,
+    report_writer: dict[str, Any] | None = None,
+) -> CoordinatedAssistantTurn:
+    metadata: dict[str, Any] = {
+        "tool_name": "python",
+        "tool_status": result.status.value,
+        "correlation_id": result.correlation_id,
+        "python_result": result.model_dump(mode="json"),
+        "orchestration": trace.as_metadata(),
+    }
+    if report_writer is not None:
+        metadata["report_writer"] = report_writer
     return CoordinatedAssistantTurn(
-        content=result.summary,
-        metadata={
-            "tool_name": "python",
-            "tool_status": result.status.value,
-            "correlation_id": result.correlation_id,
-            "python_result": result.model_dump(mode="json"),
-            "orchestration": trace.as_metadata(),
-        },
+        content=content if content is not None else _python_assistant_content(result),
+        metadata=metadata,
     )
+
+
+def _python_assistant_content(result: PythonExecutionResult) -> str:
+    stdout = (result.stdout_excerpt or "").strip()
+    stderr = (result.stderr_excerpt or "").strip()
+    artifact_count = len(result.artifacts)
+
+    if result.status is PythonExecutionStatus.succeeded:
+        parts: list[str] = []
+        if stdout:
+            parts.append(f"Kết quả Python:\n\n```text\n{stdout}\n```")
+        else:
+            parts.append(result.summary)
+        if artifact_count:
+            parts.append(f"Đã tạo {artifact_count} tệp kết quả có thể tải xuống.")
+        return "\n\n".join(parts)
+
+    if result.status is PythonExecutionStatus.failed and stderr:
+        return f"{result.summary}\n\n```text\n{stderr}\n```"
+
+    if result.status is PythonExecutionStatus.limit_reached:
+        parts = [result.summary]
+        if stdout:
+            parts.append(f"Stdout trước khi dừng:\n\n```text\n{stdout}\n```")
+        if stderr:
+            parts.append(f"Stderr:\n\n```text\n{stderr}\n```")
+        return "\n\n".join(parts)
+
+    return result.summary
 
 
 def _search_assistant_turn(
@@ -577,6 +721,7 @@ def _search_assistant_turn(
     search: SearchTurnResult,
     worker_result: SearchWorkerResult | None,
     trace: OrchestrationTrace,
+    report_writer: dict[str, Any] | None = None,
 ) -> CoordinatedAssistantTurn:
     metadata: dict[str, Any] = {
         "tool_name": "google_search",
@@ -587,4 +732,78 @@ def _search_assistant_turn(
     }
     if worker_result is not None:
         metadata["search_result"] = worker_result.model_dump(mode="json", exclude_none=True)
+    if report_writer is not None:
+        metadata["report_writer"] = report_writer
     return CoordinatedAssistantTurn(content=content, metadata=metadata)
+
+
+def _agent_summary_prompt(
+    *,
+    agent_name: str,
+    user_prompt: str,
+    reviewed_output: str,
+    extra_context: str | None,
+) -> str:
+    parts = [
+        "Summarize the reviewed agent result for the signed-in user.",
+        f"Agent: {agent_name}",
+        "Rules:",
+        "- Use Vietnamese unless the user clearly asked for another language.",
+        "- Use only the bounded reviewed output and context below.",
+        "- Preserve exact numbers, code output, errors, citations, and download mentions.",
+        (
+            "- Do not invent sources, tool calls, hidden metadata, credentials, "
+            "or internal policy details."
+        ),
+        "- Keep the answer concise and directly useful.",
+        "",
+        "USER_PROMPT_START",
+        user_prompt,
+        "USER_PROMPT_END",
+    ]
+    if extra_context:
+        parts.extend(
+            [
+                "",
+                "REVIEWED_CONTEXT_START",
+                extra_context,
+                "REVIEWED_CONTEXT_END",
+            ]
+        )
+    parts.extend(
+        [
+            "",
+            "REVIEWED_OUTPUT_START",
+            reviewed_output,
+            "REVIEWED_OUTPUT_END",
+        ]
+    )
+    return "\n".join(parts)
+
+
+def _python_summary_context(result: PythonExecutionResult) -> str:
+    return "\n".join(
+        part
+        for part in (
+            f"status: {result.status.value}",
+            f"profile: {result.profile_name.value if result.profile_name else 'none'}",
+            f"duration_ms: {result.duration_ms}" if result.duration_ms is not None else None,
+            f"artifacts: {len(result.artifacts)}",
+        )
+        if part is not None
+    )
+
+
+def _search_summary_context(result: SearchWorkerResult) -> str:
+    sources = [
+        f"[{source.index}] {source.title} ({source.domain})"
+        for source in result.sources[:5]
+    ]
+    return "\n".join(
+        [
+            f"state: {result.state}",
+            f"google_grounded: {result.google_grounded}",
+            "sources:",
+            *(sources or ["none"]),
+        ]
+    )

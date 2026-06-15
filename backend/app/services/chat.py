@@ -47,6 +47,7 @@ class PreparedProviderTurn:
     conversation_id: UUID
     assistant_message_id: UUID
     messages: list[ChatTurn]
+    requested_tool: str | None = None
 
 
 @dataclass(slots=True)
@@ -73,6 +74,7 @@ class ChatService:
         user_id: UUID,
         content: str,
         client_message_id: str,
+        requested_tool: str | None,
         executor,
         correlation_id: str | None,
     ) -> ConversationDetailRow:
@@ -94,6 +96,7 @@ class ChatService:
                 conversation_id=conversation.id,
                 assistant_message_id=assistant_message.id,
                 messages=[_chat_turn(user_message)],
+                requested_tool=requested_tool,
             )
         except Exception:
             await self.session.rollback()
@@ -146,6 +149,7 @@ class ChatService:
         conversation_id: UUID,
         content: str,
         client_message_id: str,
+        requested_tool: str | None,
         executor,
         correlation_id: str | None,
     ) -> ConversationDetailRow:
@@ -187,6 +191,7 @@ class ChatService:
                 conversation_id=conversation_id,
                 assistant_message_id=assistant_message.id,
                 messages=[_chat_turn(message) for message in provider_messages],
+                requested_tool=requested_tool,
             )
         except Exception:
             await self.session.rollback()
@@ -273,6 +278,7 @@ class ChatService:
                 conversation_id=prepared.conversation_id,
                 messages=prepared.messages,
                 correlation_id=correlation_id,
+                requested_tool=prepared.requested_tool,
             )
         except ChatProviderError as exc:
             metadata = {

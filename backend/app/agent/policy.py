@@ -9,13 +9,8 @@ from app.python_contract import PythonArtifactType, PythonDeniedReason, PythonEx
 from app.schemas.python import PythonExecutionResult
 
 
-PYTHON_INTENT_PATTERNS = (
+EXPLICIT_PYTHON_INTENT_PATTERNS = (
     r"\bpython\b",
-    r"\bcalculate\b",
-    r"\bcompute\b",
-    r"\bsum\b",
-    r"\baverage\b",
-    r"\bmedian\b",
     r"\bmatrix\b",
     r"\bdataframe\b",
     r"\bdataset\b",
@@ -29,32 +24,88 @@ PYTHON_INTENT_PATTERNS = (
     r"\bclean\b",
     r"\bparse\b",
     r"\bexport\b",
-    r"\btính\b",
     r"\bdữ liệu\b",
     r"\bbiểu đồ\b",
     r"\blàm sạch\b",
     r"\bnhóm\b",
+)
+WEAK_PYTHON_INTENT_PATTERNS = (
+    r"\bcalculate\b",
+    r"\bcompute\b",
+    r"\bsum\b",
+    r"\baverage\b",
+    r"\bmedian\b",
+    r"\bsolve\b",
+    r"\bevaluate\b",
+    r"\btính toán\b",
+    r"\btổng\b",
+    r"\bcộng\b",
+    r"\btrung bình\b",
+    r"\bgiải\b",
+)
+SHELL_COMMAND_PATTERNS = (
+    r"\bcmd\b",
+    r"\bcommand\b",
+    r"\blệnh\b",
+    r"\bpowershell\b",
+    r"\bbash\b",
+    r"\bshell\b",
+    r"\bterminal\b",
+    r"\bcli\b",
+    r"\bconsole\b",
 )
 EXTERNAL_DATA_PATTERNS = (
     r"\bsearch\b",
     r"\bweb\b",
     r"\binternet\b",
     r"\blook up\b",
+    r"\blookup\b",
+    r"\bfind\b",
+    r"\bgoogle\b",
     r"\blatest\b",
+    r"\bmost recent\b",
     r"\bcurrent\b",
+    r"\bup to date\b",
+    r"\bupdated\b",
     r"\btoday\b",
+    r"\byesterday\b",
+    r"\btomorrow\b",
+    r"\bthis week\b",
+    r"\bthis month\b",
+    r"\bthis year\b",
     r"\bnews\b",
     r"\bweather\b",
     r"\bprice\b",
+    r"\bstock\b",
+    r"\bexchange rate\b",
+    r"\brelease\b",
+    r"\bversion\b",
+    r"\bceo\b",
+    r"\bpresident\b",
     r"\bapi\b",
     r"\bmới nhất\b",
+    r"\bgần đây\b",
+    r"\bhiện tại\b",
+    r"\bbây giờ\b",
     r"\bhôm nay\b",
+    r"\bhôm qua\b",
+    r"\bngày mai\b",
+    r"\btuần này\b",
+    r"\btháng này\b",
+    r"\bnăm nay\b",
     r"\btìm\b",
+    r"\btìm kiếm\b",
     r"\btra cứu\b",
+    r"\bcập nhật\b",
+    r"\btin tức\b",
+    r"\bthời tiết\b",
+    r"\bgiá\b",
+    r"\btỷ giá\b",
     r"\bweb\b",
     r"\binternet\b",
     r"\bapi ngoài\b",
 )
+POST_CUTOFF_DATE_PATTERN = re.compile(r"\b(?:202[6-9]|20[3-9]\d)\b")
 DATA_PROFILE_PATTERNS = (
     r"\bcsv\b",
     r"\bjson\b",
@@ -87,17 +138,24 @@ def collapse_text(value: str, *, max_chars: int = 240) -> str:
 
 def prompt_requests_python(prompt: str) -> bool:
     lowered = prompt.lower()
-    return any(re.search(pattern, lowered) for pattern in PYTHON_INTENT_PATTERNS) or "```" in prompt
+    if "```" in prompt:
+        return True
+    if any(re.search(pattern, lowered) for pattern in EXPLICIT_PYTHON_INTENT_PATTERNS):
+        return True
+    if any(re.search(pattern, lowered) for pattern in SHELL_COMMAND_PATTERNS):
+        return False
+    return any(re.search(pattern, lowered) for pattern in WEAK_PYTHON_INTENT_PATTERNS)
 
 
 def prompt_requires_external_search(prompt: str) -> bool:
-    lowered = prompt.lower()
-    return prompt_requests_python(prompt) and any(re.search(pattern, lowered) for pattern in EXTERNAL_DATA_PATTERNS)
+    return prompt_requests_python(prompt) and prompt_requests_search(prompt)
 
 
 def prompt_requests_search(prompt: str) -> bool:
     lowered = prompt.lower()
-    return any(re.search(pattern, lowered) for pattern in EXTERNAL_DATA_PATTERNS)
+    return any(re.search(pattern, lowered) for pattern in EXTERNAL_DATA_PATTERNS) or bool(
+        POST_CUTOFF_DATE_PATTERN.search(prompt)
+    )
 
 
 def python_scope_allowed(principal_scopes: set[str]) -> bool:

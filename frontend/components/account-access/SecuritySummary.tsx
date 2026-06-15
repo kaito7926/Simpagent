@@ -1,45 +1,48 @@
 import React from "react";
-import { ShieldCheck, SquareDashedMousePointer, UserRoundCog } from "lucide-react";
+import { ShieldCheck, Sparkles, UserRoundCog } from "lucide-react";
 
 const ITEMS = [
   {
-    heading: "Short-lived access",
-    body: "The access token stays only in browser memory.",
-    icon: SquareDashedMousePointer,
+    heading: "Memory-only access",
+    body: "The active access token stays in browser memory instead of durable local storage.",
+    icon: Sparkles,
   },
   {
     heading: "Protected refresh cookie",
-    body: "The refresh session is unavailable to JavaScript.",
+    body: "Refresh state remains outside normal JavaScript access and is revalidated by the server.",
     icon: ShieldCheck,
   },
   {
     heading: "Server-side authority",
-    body: "The server rechecks roles, scopes, and account status.",
+    body: "Roles, scopes, and account status are checked again before protected actions run.",
     icon: UserRoundCog,
   },
 ] as const;
 
 export function SecuritySummary() {
   return (
-    <section className="security-summary" aria-labelledby="security-summary-heading">
-      <h2 className="visually-hidden" id="security-summary-heading">
-        Session protection summary
-      </h2>
-      {ITEMS.map((item) => {
-        const Icon = item.icon;
-        return (
-          <article className="security-summary-item" key={item.heading}>
-            <span className="security-node" aria-hidden="true" />
-            <div className="security-summary-copy">
-              <div className="security-summary-title-row">
-                <Icon aria-hidden="true" size={18} strokeWidth={1.75} />
-                <h3 className="label-heading">{item.heading}</h3>
+    <section className="space-y-4 rounded-3xl border border-zinc-200 bg-white/90 p-6 shadow-sm">
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Trust signals</p>
+        <h2 className="text-xl font-semibold tracking-tight text-zinc-900">Security is part of the product experience.</h2>
+      </div>
+      <div className="space-y-4">
+        {ITEMS.map((item) => {
+          const Icon = item.icon;
+          return (
+            <article className="grid grid-cols-[12px_minmax(0,1fr)] gap-3" key={item.heading}>
+              <span className="mt-2 h-3 w-3 rounded-sm bg-zinc-200" aria-hidden="true" />
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Icon aria-hidden="true" size={16} strokeWidth={1.75} className="text-zinc-500" />
+                  <h3 className="text-sm font-semibold text-zinc-900">{item.heading}</h3>
+                </div>
+                <p className="text-sm leading-6 text-zinc-600">{item.body}</p>
               </div>
-              <p className="body-copy max-copy">{item.body}</p>
-            </div>
-          </article>
-        );
-      })}
+            </article>
+          );
+        })}
+      </div>
     </section>
   );
 }

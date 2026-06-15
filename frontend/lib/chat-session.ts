@@ -178,10 +178,10 @@ function fromTransportMode(mode: TransportMode): ChatMode {
 
 function defaultSubmitLabel(mode: ChatMode, pending: boolean): string {
   if (pending) {
-    return mode === "search" ? "Đang tìm bằng Google..." : "Đang gửi...";
+    return mode === "search" ? "Searching..." : "Sending...";
   }
 
-  return mode === "search" ? "Tìm bằng Google" : "Gửi câu hỏi";
+  return mode === "search" ? "Search with Google" : "Send message";
 }
 
 function normalizeSearchPayload(
@@ -213,7 +213,7 @@ function normalizeSearchPayload(
     id: `${messageId}-citation-${citation.index}`,
     source_id: `${messageId}-source-${citation.source_index}`,
     marker: citation.index,
-    label: `Nguồn ${citation.index}`,
+    label: `Source ${citation.index}`,
     start: citation.start ?? undefined,
     end: citation.end ?? undefined,
   }));
@@ -281,7 +281,7 @@ function messageForError(error: unknown): string {
     return error.message;
   }
 
-  return "Không thể hoàn tất lượt trò chuyện này. Hãy thử lại.";
+  return "This chat turn couldn't be completed. Please try again.";
 }
 
 export async function submitChatTurn(
@@ -387,7 +387,7 @@ export class ChatSessionController {
       ...this.model,
       mode: "search",
       draft: query,
-      announcement: 'Đã điền gợi ý tìm kiếm vào ô soạn. Nhấn "Tìm bằng Google" để tiếp tục.',
+      announcement: 'The suggested search has been added to the composer. Click "Search with Google" to continue.',
       errorMessage: null,
     };
     return this.snapshot;

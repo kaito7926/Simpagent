@@ -113,6 +113,24 @@ async def test_public_stack_admin_flow_covers_search_evidence_and_role_changes()
         assert metrics_payload["security_events_total"] >= 1
         assert metrics_payload["tool_executions_total"] >= 1
 
+        orchestration_response = await client.get(
+            "/api/admin/orchestration",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert orchestration_response.status_code == 200
+        assert orchestration_response.json()["trusted_supervisor_enabled"] is False
+
+        trusted_supervisor_response = await client.patch(
+            "/api/admin/orchestration/trusted-supervisor",
+            headers={
+                "Authorization": f"Bearer {admin_token}",
+                "X-Correlation-Id": unique_correlation_id("corr-smk-supervisor"),
+            },
+            json={"enabled": True},
+        )
+        assert trusted_supervisor_response.status_code == 200
+        assert trusted_supervisor_response.json()["trusted_supervisor_enabled"] is True
+
         promote_response = await client.patch(
             f"/api/admin/users/{user_record['id']}",
             headers={

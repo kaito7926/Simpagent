@@ -35,6 +35,8 @@ Rules:
 - Choose Python only for the latest user request that already contains enough data or can be solved from conversation context.
 - If the request needs web search, current external data, or another tool first, set needs_search=true and code=null.
 - Generate Python 3.13 code only.
+- Always print the final user-facing answer or a concise result summary to stdout. For arithmetic, print the computed value directly.
+- Do not rely on comments, variables, return values, or artifacts alone to communicate the answer.
 - Allowed libraries are standard-library modules plus collections, csv, datetime, decimal, fractions, functools, io, itertools, json, math, matplotlib, numpy, os, pandas, pathlib, random, re, statistics, string, textwrap.
 - Never use network access, requests, urllib, socket, subprocess, pip, ensurepip, importlib, multiprocessing, os.system, or os.popen.
 - Never install packages or run shell commands.

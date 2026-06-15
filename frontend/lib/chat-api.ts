@@ -46,6 +46,7 @@ export function createConversationWithMessage(
       initial_message: {
         client_message_id: input.clientMessageId,
         content: input.content,
+        tool_mode: input.toolMode ?? "auto",
       },
     }),
   });
@@ -64,6 +65,7 @@ export function sendMessage(
       body: JSON.stringify({
         client_message_id: input.clientMessageId,
         content: input.content,
+        tool_mode: input.toolMode ?? "auto",
       }),
     },
   );

@@ -12,8 +12,8 @@ export function SearchSourceList({ sources }: SearchSourceListProps) {
   }
 
   return (
-    <section className="search-evidence-section" aria-label="Nguồn tham khảo">
-      <h3 className="label-heading">Nguồn tham khảo</h3>
+    <section className="search-evidence-section" aria-label="Sources">
+      <h3 className="small-label">Sources</h3>
       <ol className="search-source-list">
         {sources.map((source) => (
           <li key={source.id}>

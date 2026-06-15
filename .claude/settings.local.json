@@ -6,7 +6,9 @@
       "Write(.planning/*)",
       "Read(STATE.md)",
       "Write(STATE.md)",
-      "PowerShell(docker compose *)"
+      "PowerShell(docker compose *)",
+      "Bash(python *)",
+      "Bash(docker compose *)"
     ],
     "deny": [
       "Read(.env)",

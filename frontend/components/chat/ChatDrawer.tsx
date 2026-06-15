@@ -1,5 +1,4 @@
 import React from "react";
-import { X } from "lucide-react";
 
 import { ChatSidebar, type ChatNavigationProps } from "./ChatSidebar";
 
@@ -15,17 +14,14 @@ export function ChatDrawer({ open, onClose, navigationProps }: ChatDrawerProps) 
   }
 
   return (
-    <div className="mobile-nav-overlay" role="presentation" onClick={onClose}>
+    <div className="mobile-drawer-overlay" role="presentation" onClick={onClose}>
       <aside
-        className="mobile-conversation-navigation"
+        className="mobile-drawer"
         role="dialog"
         aria-modal="true"
         aria-label="Conversation navigation"
         onClick={(event) => event.stopPropagation()}
       >
-        <button className="drawer-close-button" type="button" aria-label="Close navigation" onClick={onClose}>
-          <X aria-hidden="true" size={18} strokeWidth={1.75} />
-        </button>
         <ChatSidebar {...navigationProps} />
       </aside>
     </div>

@@ -29,6 +29,13 @@
 - [x] **AUTH-09**: Browser session handling keeps refresh tokens unavailable to JavaScript and applies CSRF and Origin protections appropriate to the deployment topology.
 - [x] **AUTH-10**: Identity code exposes an OIDC-ready provider boundary without claiming that local password authentication is itself an OpenID Provider.
 
+### External OAuth Identity
+
+- [ ] **IDEN-03**: User can authenticate through real external OAuth2/OIDC providers using authorization-code redirect flows with CSRF state protection and provider-specific configuration.
+- [ ] **IDEN-06**: User can sign in with Google when `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and the configured redirect URI are present, while missing configuration hides or disables the provider without breaking local login.
+- [ ] **IDEN-07**: User can sign in with GitHub when `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and the configured redirect URI are present, while missing configuration hides or disables the provider without breaking local login.
+- [ ] **IDEN-08**: OAuth provisioning and account linking fail closed for missing, unverified, or conflicting email identity and never allow a provider login to take over an existing local account without an explicit safe match.
+
 ### Authorization
 
 - [x] **AUTHZ-01**: Every protected endpoint rejects inactive users and tokens missing the required authenticated principal.
@@ -108,6 +115,14 @@
 - [ ] **OBS-06**: Ordinary users and under-scoped admins cannot access administrative evidence endpoints.
 - [ ] **OBS-07**: Admin metrics expose bounded aggregate operational/security counts without leaking user content or credentials.
 
+### Small Production Readiness
+
+- [ ] **PRODREADY-01**: Operator can configure a small production deployment profile for about 100 users/month through environment variables without hardcoded origins, cookie settings, OAuth secrets, JWT keys, database credentials, or provider credentials.
+- [ ] **PRODREADY-02**: Production-mode cookies, CORS, trusted proxy handling, HTTPS assumptions, and frontend/backend public URLs are documented and enforced consistently for the selected deployment profile.
+- [ ] **PRODREADY-03**: Database migrations, seed/admin bootstrap, backup, restore, and rollback guidance are documented and testable against the Compose-based deployment target.
+- [ ] **PRODREADY-04**: Startup, readiness, smoke-test, and basic operational checks cover local credentials, Google login, GitHub login, gateway routing, admin evidence, chat, Search, and Python paths.
+- [ ] **PRODREADY-05**: Documentation states realistic capacity, reliability, security, rate-limit, observability, and external-provider limitations for a 100 users/month prototype and does not claim high availability or enterprise production guarantees.
+
 ### Verification and Documentation
 
 - [ ] **TEST-01**: Automated tests cover registration, login, refresh rotation, invalid and expired tokens, logout, and refresh-token replay.
@@ -130,6 +145,7 @@
 ## User Stories
 
 - As a user, I can authenticate and continue a protected session without exposing a long-lived token to browser JavaScript.
+- As a user, I can sign in with Google or GitHub without weakening the existing protected session model.
 - As a user, I can create and revisit private conversations that no other user can access.
 - As an authorized user, I can ask for current web information and see verifiable Google-grounded citations.
 - As an authorized user, I can run bounded Python code without granting it access to the host, application network, or secrets.
@@ -140,10 +156,10 @@
 
 - All v1 requirements map to exactly one roadmap phase and have executable or inspectable verification.
 - `docker compose up --build` starts the documented local topology.
-- Real OpenAI-compatible chat and Google ADK Search work when valid external credentials and a compatible Gemini 2 model are configured.
+- Real OpenAI-compatible chat, Google ADK Search, Google OAuth, and GitHub OAuth work when valid external credentials and compatible provider settings are configured.
 - Negative authorization and sandbox tests prove denied actions create no forbidden data disclosure, provider call, network access, host access, or privileged side effect.
 - Logs and evidence correlate sensitive operations without retaining secrets.
-- Documentation describes actual implemented behavior and does not overclaim OIDC, distributed rate limiting, Cloudflare protection, or production-grade sandbox isolation.
+- Documentation describes actual implemented behavior and does not overclaim hosted OIDC provider capability, high availability, distributed rate limiting, Cloudflare protection, or production-grade sandbox isolation.
 
 ## Definition of Done
 
@@ -159,7 +175,6 @@
 
 - **IDEN-01**: User can verify an email address through a bounded single-use token.
 - **IDEN-02**: User can reset a forgotten password through a bounded single-use token without account enumeration.
-- **IDEN-03**: User can authenticate through a real external OAuth2/OIDC provider using Authorization Code with PKCE.
 - **IDEN-04**: User can view and revoke individual device/session families.
 - **IDEN-05**: Admin can use MFA or WebAuthn step-up authentication for sensitive actions.
 
@@ -260,6 +275,10 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | SBOX-07 | Phase 4 | Complete |
 | SBOX-08 | Phase 4 | Complete |
 | AUTHZ-02 | Phase 5 | Pending |
+| IDEN-03 | Phase 5 | Pending |
+| IDEN-06 | Phase 5 | Pending |
+| IDEN-07 | Phase 5 | Pending |
+| IDEN-08 | Phase 5 | Pending |
 | GATE-01 | Phase 5 | Pending |
 | GATE-02 | Phase 5 | Pending |
 | GATE-03 | Phase 5 | Pending |
@@ -275,6 +294,11 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | OBS-05 | Phase 5 | Pending |
 | OBS-06 | Phase 5 | Pending |
 | OBS-07 | Phase 5 | Pending |
+| PRODREADY-01 | Phase 5 | Pending |
+| PRODREADY-02 | Phase 5 | Pending |
+| PRODREADY-03 | Phase 5 | Pending |
+| PRODREADY-04 | Phase 5 | Pending |
+| PRODREADY-05 | Phase 5 | Pending |
 | TEST-01 | Phase 6 | Pending |
 | TEST-02 | Phase 6 | Pending |
 | TEST-03 | Phase 6 | Pending |
@@ -294,8 +318,8 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 
 **Coverage:**
 
-- v1 requirements: 90 total
-- Mapped to phases: 90
+- v1 requirements: 99 total
+- Mapped to phases: 99
 - Unmapped: 0
 
 **Phase allocation:**
@@ -304,7 +328,7 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 - Phase 2: 14 requirements
 - Phase 3: 17 requirements
 - Phase 4: 9 requirements
-- Phase 5: 16 requirements
+- Phase 5: 25 requirements
 - Phase 6: 16 requirements
 
 ---

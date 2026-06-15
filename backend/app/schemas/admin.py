@@ -59,6 +59,7 @@ class OrchestrationSettingsResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     guardrail_safety_enabled: bool
+    trusted_supervisor_enabled: bool
 
 
 class AdminUsersPage(BaseModel):

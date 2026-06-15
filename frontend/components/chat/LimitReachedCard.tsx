@@ -25,7 +25,7 @@ export function LimitReachedCard({ result }: LimitReachedCardProps) {
               <span className="python-card-icon" aria-hidden="true">
                 <Gauge size={18} strokeWidth={1.75} />
               </span>
-              <p className="eyebrow">{result.eyebrow}</p>
+              <p className="auth-eyebrow">{result.eyebrow}</p>
             </div>
             <h2 className="python-card-title">{result.title}</h2>
           </div>
@@ -33,8 +33,8 @@ export function LimitReachedCard({ result }: LimitReachedCardProps) {
         </header>
 
         <div className="python-card-meta">
-          <span>Giới hạn dừng: {result.limitLabel}</span>
-          {result.durationLabel ? <span>Thời lượng {result.durationLabel}</span> : null}
+          <span>Limit reached: {result.limitLabel}</span>
+          {result.durationLabel ? <span>Duration {result.durationLabel}</span> : null}
         </div>
 
         <p className="python-card-summary">{result.summary}</p>

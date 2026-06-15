@@ -2,6 +2,7 @@
 
 import React, { useId, useState } from "react";
 
+import { Input } from "@/components/ui/input";
 import { FormField } from "./FormField";
 
 type PasswordFieldProps = {
@@ -33,7 +34,7 @@ export function PasswordField({
   return (
     <FormField id={fieldId} label={label} hint={hint} error={error}>
       <div className="password-field-wrap">
-        <input
+        <Input
           id={fieldId}
           className="text-input password-input"
           type={visible ? "text" : "password"}

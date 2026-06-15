@@ -101,6 +101,7 @@ services:
       SIMPAGENT_DEMO_ADMIN_PASSWORD: ThayDoiMatKhauDemoAdmin123
       SIMPAGENT_PROVIDER_CHECK_TIMEOUT_SECONDS: ${PROVIDER_CHECK_TIMEOUT_SECONDS:-2}
       SIMPAGENT_LLM_API_BASE: ${LLM_API_BASE:-https://api.example.test/v1}
+      SIMPAGENT_LLM_API_KEY: ${LLM_API_KEY:-}
       SIMPAGENT_LLM_API_KEY_FILE: ${LLM_API_KEY_FILE:-/run/secrets/llm_api_key}
       SIMPAGENT_LLM_MODEL: ${LLM_MODEL:-fake-model}
       SIMPAGENT_LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
@@ -127,6 +128,7 @@ services:
       retries: 20
     networks:
       - private
+      - egress
 
   frontend:
     build:
@@ -262,3 +264,4 @@ networks:
   private:
     internal: true
   public:
+  egress:

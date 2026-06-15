@@ -26,7 +26,18 @@ COMMON_PASSWORD_BLOCKLIST = {
 def _read_secret_file(path: str | None) -> str | None:
     if not path:
         return None
-    return Path(path).read_text(encoding="utf-8").strip()
+    candidate = Path(path)
+    if not candidate.exists():
+        return None
+    return candidate.read_text(encoding="utf-8").strip()
+
+
+def _resolve_secret_value(secret: SecretStr | None, file_path: str | None) -> str | None:
+    if secret is not None:
+        value = secret.get_secret_value()
+        if value:
+            return value
+    return _read_secret_file(file_path)
 
 
 def _looks_like_utc_offset(value: str) -> bool:
@@ -141,8 +152,14 @@ class Settings(BaseSettings):
         default=1,
         validation_alias=AliasChoices("SIMPAGENT_LLM_MAX_RETRIES", "LLM_MAX_RETRIES"),
     )
-    google_api_key: SecretStr | None = None
-    google_api_key_file: str | None = None
+    google_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_GOOGLE_API_KEY", "GOOGLE_API_KEY"),
+    )
+    google_api_key_file: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_GOOGLE_API_KEY_FILE", "GOOGLE_API_KEY_FILE"),
+    )
     search_model: str | None = None
     search_worker_timeout_seconds: float = Field(default=8.0, gt=0)
     search_max_prompt_chars: int = Field(default=2000, ge=128, le=4000)
@@ -219,50 +236,46 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[misc]
     @property
     def resolved_database_url(self) -> str:
-        value = self.database_url.get_secret_value() if self.database_url else _read_secret_file(self.database_url_file)
+        value = _resolve_secret_value(self.database_url, self.database_url_file)
         if not value:
             raise ValueError("Database URL is required.")
         return value
 
     @property
     def jwt_private_key_value(self) -> str:
-        value = self.jwt_private_key.get_secret_value() if self.jwt_private_key else _read_secret_file(self.jwt_private_key_file)
+        value = _resolve_secret_value(self.jwt_private_key, self.jwt_private_key_file)
         if not value:
             raise ValueError("JWT private key is required.")
         return value
 
     @property
     def jwt_public_key_value(self) -> str:
-        value = self.jwt_public_key.get_secret_value() if self.jwt_public_key else _read_secret_file(self.jwt_public_key_file)
+        value = _resolve_secret_value(self.jwt_public_key, self.jwt_public_key_file)
         if not value:
             raise ValueError("JWT public key is required.")
         return value
 
     @property
     def refresh_hmac_key_value(self) -> bytes:
-        value = self.refresh_hmac_key.get_secret_value() if self.refresh_hmac_key else _read_secret_file(self.refresh_hmac_key_file)
+        value = _resolve_secret_value(self.refresh_hmac_key, self.refresh_hmac_key_file)
         if not value:
             raise ValueError("Refresh HMAC key is required.")
         return value.encode("utf-8")
 
     @property
     def csrf_hmac_key_value(self) -> bytes:
-        value = self.csrf_hmac_key.get_secret_value() if self.csrf_hmac_key else _read_secret_file(self.csrf_hmac_key_file)
+        value = _resolve_secret_value(self.csrf_hmac_key, self.csrf_hmac_key_file)
         if not value:
             raise ValueError("CSRF HMAC key is required.")
         return value.encode("utf-8")
 
     @property
     def llm_api_key_value(self) -> str | None:
-        if self.llm_api_key:
-            return self.llm_api_key.get_secret_value()
-        return _read_secret_file(self.llm_api_key_file)
+        return _resolve_secret_value(self.llm_api_key, self.llm_api_key_file)
 
     @property
     def google_api_key_value(self) -> str | None:
-        if self.google_api_key:
-            return self.google_api_key.get_secret_value()
-        return _read_secret_file(self.google_api_key_file)
+        return _resolve_secret_value(self.google_api_key, self.google_api_key_file)
 
     @property
     def python_capability_secret_value(self) -> str:

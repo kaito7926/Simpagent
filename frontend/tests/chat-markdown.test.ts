@@ -97,3 +97,13 @@ void test("markdown renderer source does not bypass React escaping", () => {
   assert.doesNotMatch(source, /dangerouslySetInnerHTML/);
   assert.doesNotMatch(source, /rehype-raw/);
 });
+
+void test("code block styling preserves preformatted source", () => {
+  const componentSource = readFileSync("components/chat/CodeBlock.tsx", "utf-8");
+  const globalCss = readFileSync("app/globals.css", "utf-8");
+
+  assert.match(componentSource, /wrapLongLines=\{false\}/);
+  assert.match(globalCss, /\.code-block \*/);
+  assert.match(globalCss, /word-break:\s*normal/);
+  assert.match(globalCss, /white-space:\s*pre/);
+});

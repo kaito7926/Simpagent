@@ -48,6 +48,8 @@ Lưu ý:
 
 - File mẫu chứa giá trị demo chỉ dành cho môi trường phát triển.
 - Secret production thật phải đi qua file secret hoặc biến môi trường riêng, không commit vào repo.
+- Với LLM provider cho local development, backend hỗ trợ cả `LLM_API_KEY` trực tiếp từ `.env`/environment và `LLM_API_KEY_FILE`; nếu cả hai cùng được set thì giá trị biến môi trường được ưu tiên.
+- Tương tự, Google Gemini / Search worker hỗ trợ cả `GOOGLE_API_KEY` trực tiếp từ `.env`/environment và `GOOGLE_API_KEY_FILE`; nếu cả hai cùng được set thì giá trị biến môi trường được ưu tiên.
 
 ### 3. Khởi động toàn hệ thống
 
@@ -59,6 +61,12 @@ Public entrypoint mặc định:
 
 - App/Kong: `http://localhost:8000`
 - Grafana: `http://localhost:3001` (`admin` / `admin`)
+
+Ghi chú topology Compose hiện tại:
+
+- `backend` vẫn nằm trên mạng `private` để nói chuyện với `postgres`, `kong` và các service nội bộ.
+- `backend` đồng thời được nối thêm vào mạng `egress` không-internal để có thể gọi LLM provider bên ngoài internet.
+- `frontend` và `kong` tiếp tục dùng mạng `public` để phục vụ truy cập từ máy host.
 
 ### 4. Tài khoản demo phát triển
 
@@ -143,6 +151,50 @@ docker compose run --rm backend alembic check
   - unit test cho logging và attack detection
   - smoke test cho topology, search, admin, và logging flow
   - rerun đầy đủ ngày 2026-06-13: backend `79 passed, 5 skipped`, frontend search `9 passed`, `typecheck` pass, smoke `5 passed`
+
+## Ghi chú cho AI Agent viết UI chọn công cụ
+
+UI chat nên dùng chính các endpoint chat hiện có và truyền thêm trường tùy chọn `tool_mode` trong message request. Không cần tạo endpoint riêng cho hai nút chọn.
+
+Giá trị hợp lệ:
+
+- `auto` hoặc bỏ trống: backend tự route như hiện tại.
+- `google_search`: ép lượt này gọi Web Search Agent nếu tài khoản có `tool:websearch`.
+- `python`: ép lượt này gọi Python Sandbox Agent nếu tài khoản có `tool:python`.
+
+Tạo hội thoại kèm message đầu tiên:
+
+```http
+POST /api/conversations
+{
+  "initial_message": {
+    "client_message_id": "client-generated-id",
+    "content": "Tra cứu thông tin mới nhất cho tôi.",
+    "tool_mode": "google_search"
+  }
+}
+```
+
+Gửi message vào hội thoại đã có:
+
+```http
+POST /api/conversations/{conversation_id}/messages
+{
+  "client_message_id": "client-generated-id",
+  "content": "Dùng sandbox tính kết quả này.",
+  "tool_mode": "python"
+}
+```
+
+Gợi ý UI:
+
+- Hiển thị hai checkbox/toggle: `Web Search` và `Python Sandbox`, nhưng xử lý như lựa chọn loại trừ nhau vì mỗi lượt chỉ được gọi một tool.
+- Nếu không chọn nút nào, gửi `tool_mode: "auto"` hoặc bỏ trường này.
+- Nếu chọn `Web Search`, gửi `tool_mode: "google_search"` và tự bỏ chọn `Python Sandbox`.
+- Nếu chọn `Python Sandbox`, gửi `tool_mode: "python"` và tự bỏ chọn `Web Search`.
+- Có thể đọc `/api/auth/me.scopes` để disable nút thiếu quyền, nhưng backend vẫn là nguồn kiểm tra quyền cuối cùng.
+- Response vẫn là `ConversationDetail`; message assistant mới nhất có `metadata.tool_name`, `metadata.tool_status`, và chi tiết trong `metadata.search` hoặc `metadata.python_result`.
+- Khi backend trả `metadata.tool_status: "denied"`, UI nên hiển thị trạng thái bị từ chối thay vì retry tự động.
 
 ### Đang còn mở
 

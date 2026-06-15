@@ -15,7 +15,7 @@ export function ToolModeSwitch({
   onChange,
 }: ToolModeSwitchProps) {
   return (
-    <div className="chat-mode-switch" role="group" aria-label="Chế độ trả lời">
+    <div className="chat-mode-switch" role="group" aria-label="Response mode">
       <ActionButton
         type="button"
         variant={mode === "direct" ? "secondary" : "quiet"}
@@ -24,7 +24,7 @@ export function ToolModeSwitch({
         disabled={disabled}
         onClick={() => onChange("direct")}
       >
-        Hỏi bình thường
+        Direct chat
       </ActionButton>
       {searchEnabled ? (
         <ActionButton
@@ -35,7 +35,7 @@ export function ToolModeSwitch({
           disabled={disabled}
           onClick={() => onChange("search")}
         >
-          Tìm bằng Google
+          Google Search
         </ActionButton>
       ) : null}
     </div>

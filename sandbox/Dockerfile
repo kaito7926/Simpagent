@@ -19,6 +19,11 @@ COPY docker_shim.py /usr/local/bin/docker
 COPY runtime /sandbox/runtime
 COPY seccomp /opt/simpagent/seccomp
 
+RUN python - <<'PY'
+from pathlib import Path
+path = Path('/usr/local/bin/docker')
+path.write_bytes(path.read_bytes().replace(b'\r\n', b'\n'))
+PY
 RUN chmod +x /usr/local/bin/docker
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=5 CMD ["python", "/sandbox/healthcheck.py"]

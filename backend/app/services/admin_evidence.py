@@ -216,14 +216,21 @@ class AdminEvidenceService:
         *,
         principal: AuthenticatedPrincipal,
         default_guardrail_enabled: bool = True,
+        default_trusted_supervisor_enabled: bool = False,
     ) -> OrchestrationSettingsResponse:
         await self._require_admin_scope(
             principal=principal,
             required_scope="admin:read",
             resource="orchestration",
         )
-        enabled = await self.agent_settings.is_guardrail_enabled(default=default_guardrail_enabled)
-        return OrchestrationSettingsResponse(guardrail_safety_enabled=enabled)
+        guardrail_enabled = await self.agent_settings.is_guardrail_enabled(default=default_guardrail_enabled)
+        trusted_supervisor_enabled = await self.agent_settings.is_trusted_supervisor_enabled(
+            default=default_trusted_supervisor_enabled,
+        )
+        return OrchestrationSettingsResponse(
+            guardrail_safety_enabled=guardrail_enabled,
+            trusted_supervisor_enabled=trusted_supervisor_enabled,
+        )
 
     async def set_guardrail_safety_enabled(
         self,
@@ -244,6 +251,9 @@ class AdminEvidenceService:
                 enabled=enabled,
                 updated_by_user_id=principal.user_id,
             )
+            trusted_supervisor_enabled = await self.agent_settings.is_trusted_supervisor_enabled(
+                default=False,
+            )
             await self.security_events.add_security_event(
                 event_type="guardrail_safety_toggled",
                 severity="info",
@@ -260,7 +270,54 @@ class AdminEvidenceService:
             if self.session.in_transaction():
                 await self.session.rollback()
             raise
-        return OrchestrationSettingsResponse(guardrail_safety_enabled=enabled)
+        return OrchestrationSettingsResponse(
+            guardrail_safety_enabled=enabled,
+            trusted_supervisor_enabled=trusted_supervisor_enabled,
+        )
+
+    async def set_trusted_supervisor_enabled(
+        self,
+        *,
+        principal: AuthenticatedPrincipal,
+        enabled: bool,
+        default_guardrail_enabled: bool = True,
+    ) -> OrchestrationSettingsResponse:
+        await self._require_admin_scope(
+            principal=principal,
+            required_scope="admin:write",
+            resource="orchestration",
+        )
+        if self.session is None:
+            raise RuntimeError("An active database session is required for orchestration writes.")
+
+        try:
+            setting = await self.agent_settings.set_trusted_supervisor_enabled(
+                enabled=enabled,
+                updated_by_user_id=principal.user_id,
+            )
+            guardrail_enabled = await self.agent_settings.is_guardrail_enabled(
+                default=default_guardrail_enabled,
+            )
+            await self.security_events.add_security_event(
+                event_type="trusted_supervisor_toggled",
+                severity="info",
+                user_id=principal.user_id,
+                description="Admin updated trusted supervisor agent state.",
+                correlation_id=self.correlation_id,
+                metadata={
+                    "resource": "orchestration",
+                    "trusted_supervisor_enabled": setting.enabled,
+                },
+            )
+            await self.session.commit()
+        except Exception:
+            if self.session.in_transaction():
+                await self.session.rollback()
+            raise
+        return OrchestrationSettingsResponse(
+            guardrail_safety_enabled=guardrail_enabled,
+            trusted_supervisor_enabled=enabled,
+        )
 
     async def update_user_access(
         self,

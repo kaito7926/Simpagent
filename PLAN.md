@@ -112,3 +112,64 @@ Add a simplified icon based on `Brand_identity.png`:
 - keep all user-facing copy compatible with `01-UI-SPEC.md`
 - keep demo credentials server-gated and absent from production artifacts
 - prioritize accessibility and focus behavior while restyling
+
+---
+
+# Debug plan — docker websearch + python orchestration (2026-06-13)
+
+## Goal
+Make `docker compose up --build --wait` produce a working local deployment at `http://localhost:8000` where the web UI can successfully invoke:
+- agent web search
+- agent Python execution
+
+## Confirmed reproduction
+- The web UI at `localhost:8000` is reachable and login works.
+- A search-style prompt sent through the web UI currently returns the degraded copy for provider failure.
+- A Python-style prompt sent through the web UI currently returns `Trusted supervisor could not complete the reviewed Python execution.`
+
+## Root causes found so far
+1. **Google Search worker is built in a way the provider rejects**
+   - `backend/app/ai/search_worker/agent.py` constructs a Google ADK agent with both:
+     - built-in tool `GoogleSearchTool()`
+     - `output_schema=SearchWorkerReply`
+   - In the running container this produces provider error:
+     - `Built-in tools ({google_search}) and Function Calling cannot be combined in the same request.`
+   - This explains why search fails as `provider_failed` even when the configured Google key is present.
+
+2. **Sandbox docker shim still has a CRLF shebang problem in the current branch**
+   - Inside the running `sandbox` container, `/usr/local/bin/docker --version` fails with:
+     - `env: 'python3\r': No such file or directory`
+   - The trusted supervisor launches Docker via subprocess using `docker`, so every Python execution fails before runtime startup.
+
+## Implementation approach
+1. **Fix search worker compatibility**
+   - Update `backend/app/ai/search_worker/agent.py` so the ADK request no longer combines built-in Google Search with JSON-schema/function-calling output mode.
+   - Keep the service contract in `backend/app/ai/search_worker/service.py` intact by preserving normalized `SearchWorkerResult` output.
+   - Add or adjust regression tests covering the supported search worker construction and failure/success path.
+
+2. **Fix Linux line endings for the sandbox docker shim at image build time**
+   - Update `sandbox/Dockerfile` so `/usr/local/bin/docker` is normalized to LF during image build before chmod/use.
+   - Keep `sandbox/docker_shim.py` behavior unchanged unless a second bug appears.
+   - Add a focused regression test if there is a practical place for it; otherwise verify through compose rebuild + execution.
+
+3. **Verify end-to-end from the deployed web interface**
+   - Rebuild with `docker compose up --build --wait`.
+   - Use the browser at `http://localhost:8000` to log in and validate:
+     - search prompt returns grounded or otherwise successful search output, not provider failure
+     - Python prompt returns successful execution output, not supervisor infra failure
+   - Run targeted backend tests for touched areas.
+
+## Files most likely to change
+- `backend/app/ai/search_worker/agent.py`
+- `backend/app/ai/search_worker/service.py` (only if needed to support the search fix cleanly)
+- `backend/tests/integration/search/test_search_worker_contract.py`
+- `sandbox/Dockerfile`
+- possibly one or more Python/search smoke or regression tests
+
+## Verification target
+Success means all of the following hold:
+- `docker compose up --build --wait` completes successfully
+- web login at `localhost:8000` works
+- websearch succeeds from the web interface
+- python execution succeeds from the web interface
+- targeted tests for the changed areas pass

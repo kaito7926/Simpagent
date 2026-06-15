@@ -140,6 +140,7 @@ async def get_orchestration_settings(
         return await service.get_orchestration_settings(
             principal=principal,
             default_guardrail_enabled=request.app.state.settings.guardrail_safety_enabled_default,
+            default_trusted_supervisor_enabled=False,
         )
     except AdminAccessDenied as exc:
         raise _admin_access_error(exc) from exc
@@ -157,6 +158,24 @@ async def update_guardrail_safety(
         return await service.set_guardrail_safety_enabled(
             principal=principal,
             enabled=payload.enabled,
+        )
+    except AdminAccessDenied as exc:
+        raise _admin_access_error(exc) from exc
+
+
+@router.patch("/orchestration/trusted-supervisor", response_model=OrchestrationSettingsResponse)
+async def update_trusted_supervisor(
+    payload: GuardrailToggleRequest,
+    request: Request,
+    principal: Annotated[AuthenticatedPrincipal, Depends(resolve_principal)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> OrchestrationSettingsResponse:
+    service = _service(request, session)
+    try:
+        return await service.set_trusted_supervisor_enabled(
+            principal=principal,
+            enabled=payload.enabled,
+            default_guardrail_enabled=request.app.state.settings.guardrail_safety_enabled_default,
         )
     except AdminAccessDenied as exc:
         raise _admin_access_error(exc) from exc

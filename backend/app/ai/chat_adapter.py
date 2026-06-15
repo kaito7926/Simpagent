@@ -12,7 +12,7 @@ from openai import (
     RateLimitError,
 )
 
-from app.ai.prompts import DIRECT_CHAT_SYSTEM_PROMPT
+from app.ai.prompts import build_direct_chat_system_prompt
 from app.ai.schemas import ChatCompletionResult, ChatTurn
 from app.core.config import Settings
 
@@ -58,7 +58,10 @@ class OpenAIChatAdapter:
         payload = {
             "model": self._settings.llm_model,
             "messages": [
-                {"role": "system", "content": DIRECT_CHAT_SYSTEM_PROMPT},
+                {
+                    "role": "system",
+                    "content": build_direct_chat_system_prompt(self._settings.now_utc()),
+                },
                 *[{"role": turn.role, "content": turn.content} for turn in messages],
             ],
             "temperature": 0.3,

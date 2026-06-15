@@ -13,7 +13,6 @@ import { formsEnabled, toAggregateUiState } from "@/lib/readiness";
 import { ChatWorkspace } from "@/components/chat/ChatWorkspace";
 import { ActionButton } from "./ActionButton";
 import { AuthCard } from "./AuthCard";
-import { BrandLockup } from "./BrandLockup";
 import { FormField } from "./FormField";
 import { PasswordField } from "./PasswordField";
 import { PlatformStatus } from "./PlatformStatus";
@@ -39,7 +38,7 @@ type FormErrors = {
 const SCOPE_LABELS: Record<string, string> = {
   "chat:read": "Read conversations",
   "chat:write": "Create and update conversations",
-  "tool:websearch": "Use web search",
+  "tool:websearch": "Use Google Search",
   "tool:python": "Use limited Python",
   "admin:read": "View administration data",
   "admin:write": "Change administration data",
@@ -84,7 +83,7 @@ function labelForState(state: SessionState): string {
     case "core_not_ready":
       return "System not ready";
     case "anonymous_register":
-      return "Create account";
+      return "Create your account";
     case "anonymous_login":
     default:
       return "Sign in to SimpAgent";
@@ -94,9 +93,9 @@ function labelForState(state: SessionState): string {
 function bodyForState(state: SessionState): string {
   switch (state) {
     case "checking_session":
-      return "SimpAgent is checking for a protected session on this device.";
+      return "SimpAgent is restoring a protected session on this device.";
     case "registration_accepted":
-      return "If this address can be registered, you can continue to sign in.";
+      return "If this address is accepted, you can continue directly to sign in.";
     case "authenticated":
       return "Your protected workspace is ready.";
     case "session_expired":
@@ -104,16 +103,16 @@ function bodyForState(state: SessionState): string {
     case "core_not_ready":
       return "Sign in is temporarily unavailable. Wait for the local stack to finish starting, then try again.";
     case "anonymous_register":
-      return "New accounts start with the Standard User role. Roles and scopes are not selectable here.";
+      return "New accounts start with the Standard User role. Roles and scopes are assigned by the server, not chosen here.";
     case "anonymous_login":
     default:
-      return "Use your local account to open a protected session.";
+      return "Use your local account to enter the protected SimpAgent workspace.";
   }
 }
 
 function titleForViewModel(viewModel: ShellViewModel): string {
   if (viewModel.sessionState === "authenticated") {
-    return "Private chat | SimpAgent";
+    return "Workspace | SimpAgent";
   }
 
   if (
@@ -393,7 +392,7 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
         password: demoConfig.userPassword,
         confirmPassword: "",
       });
-      setAnnouncement("Standard User demo account filled.");
+      setAnnouncement("Standard user demo account filled.");
     } else {
       setFormFields({
         email: demoConfig.adminEmail,
@@ -423,126 +422,194 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
   }
 
   const loginForm = (
-    <>
-      <FormField
-        id="login-email"
-        label="Email"
-        type="email"
-        inputMode="email"
-        autoComplete="email"
-        value={formFields.email}
+    <div className="space-y-6">
+      <div className="space-y-2.5">
+        <label htmlFor="login-email" className="text-sm font-medium text-foreground">
+          Email Address
+        </label>
+        <input
+          id="login-email"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={formFields.email}
+          disabled={disabled}
+          onChange={(event) => setFormFields((current) => ({ ...current, email: event.target.value }))}
+          className="flex h-11 w-full rounded-md bg-white border border-gray-300 px-3 py-2 text-foreground placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
+        />
+        {formErrors.email && <p className="text-sm text-destructive">{formErrors.email}</p>}
+      </div>
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <label htmlFor="login-password" className="text-sm font-medium text-foreground">
+            Password
+          </label>
+        </div>
+        <input
+          id="login-password"
+          type="password"
+          autoComplete="current-password"
+          placeholder="••••••••"
+          value={formFields.password}
+          disabled={disabled}
+          onChange={(event) => setFormFields((current) => ({ ...current, password: event.target.value }))}
+          className="flex h-11 w-full rounded-md bg-white border border-gray-300 px-3 py-2 text-foreground placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
+        />
+        {formErrors.password && <p className="text-sm text-destructive">{formErrors.password}</p>}
+      </div>
+      <button
+        ref={submitButtonRef}
+        type="submit"
         disabled={disabled}
-        error={formErrors.email}
-        onChange={(event) => setFormFields((current) => ({ ...current, email: event.target.value }))}
-      />
-      <PasswordField
-        id="login-password"
-        label="Password"
-        autoComplete="current-password"
-        value={formFields.password}
-        disabled={disabled}
-        error={formErrors.password}
-        onChange={(value) => setFormFields((current) => ({ ...current, password: value }))}
-      />
-      <ActionButton ref={submitButtonRef} type="submit" disabled={disabled}>
-        {isSubmitting ? "Signing in..." : "Sign in"}
-      </ActionButton>
-      <p className="mode-prompt">
-        <span>Need an account?</span>
-        <button className="text-link-button" type="button" onClick={() => switchMode("register")}>
+        className="w-full h-11 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-md font-semibold transition-all duration-200 mt-3 flex items-center justify-center gap-2"
+      >
+        {isSubmitting ? (
+          <>
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            Signing in...
+          </>
+        ) : (
+          <>
+            <span>Sign in</span>
+            <span className="text-lg">✦</span>
+          </>
+        )}
+      </button>
+      <p className="text-center text-sm text-muted-foreground mt-4">
+        Need an account?{" "}
+        <button type="button" onClick={() => switchMode("register")} className="text-blue-600 hover:text-blue-700 font-semibold transition-colors">
           Create account
         </button>
       </p>
-    </>
+    </div>
   );
 
   const registerForm = (
-    <>
-      <FormField
-        id="register-email"
-        label="Email"
-        type="email"
-        inputMode="email"
-        autoComplete="email"
-        value={formFields.email}
+    <div className="space-y-6">
+      <div className="space-y-2.5">
+        <label htmlFor="register-email" className="text-sm font-medium text-foreground">
+          Email Address
+        </label>
+        <input
+          id="register-email"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={formFields.email}
+          disabled={disabled}
+          onChange={(event) => setFormFields((current) => ({ ...current, email: event.target.value }))}
+          className="flex h-11 w-full rounded-md bg-white border border-gray-300 px-3 py-2 text-foreground placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
+        />
+        {formErrors.email && <p className="text-sm text-destructive">{formErrors.email}</p>}
+      </div>
+      <div className="space-y-2.5">
+        <label htmlFor="register-password" className="text-sm font-medium text-foreground">
+          Password
+        </label>
+        <input
+          id="register-password"
+          type="password"
+          autoComplete="new-password"
+          placeholder="••••••••"
+          value={formFields.password}
+          disabled={disabled}
+          onChange={(event) => setFormFields((current) => ({ ...current, password: event.target.value }))}
+          className="flex h-11 w-full rounded-md bg-white border border-gray-300 px-3 py-2 text-foreground placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
+        />
+        <p className="text-xs text-muted-foreground">Use 15 to 128 characters.</p>
+        {formErrors.password && <p className="text-sm text-destructive">{formErrors.password}</p>}
+      </div>
+      <div className="space-y-2.5">
+        <label htmlFor="register-confirm-password" className="text-sm font-medium text-foreground">
+          Confirm password
+        </label>
+        <input
+          id="register-confirm-password"
+          type="password"
+          autoComplete="new-password"
+          placeholder="••••••••"
+          value={formFields.confirmPassword}
+          disabled={disabled}
+          onChange={(event) => setFormFields((current) => ({ ...current, confirmPassword: event.target.value }))}
+          className="flex h-11 w-full rounded-md bg-white border border-gray-300 px-3 py-2 text-foreground placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
+        />
+        {formErrors.confirmPassword && <p className="text-sm text-destructive">{formErrors.confirmPassword}</p>}
+      </div>
+      <button
+        type="submit"
         disabled={disabled}
-        error={formErrors.email}
-        onChange={(event) => setFormFields((current) => ({ ...current, email: event.target.value }))}
-      />
-      <PasswordField
-        id="register-password"
-        label="Password"
-        autoComplete="new-password"
-        value={formFields.password}
-        disabled={disabled}
-        hint="Use 15 to 128 characters. Spaces are allowed; uppercase letters, numbers, and symbols are optional."
-        error={formErrors.password}
-        onChange={(value) => setFormFields((current) => ({ ...current, password: value }))}
-      />
-      <PasswordField
-        id="register-confirm-password"
-        label="Confirm password"
-        autoComplete="new-password"
-        value={formFields.confirmPassword}
-        disabled={disabled}
-        error={formErrors.confirmPassword}
-        onChange={(value) =>
-          setFormFields((current) => ({ ...current, confirmPassword: value }))
-        }
-      />
-      <ActionButton type="submit" disabled={disabled}>
-        {isSubmitting ? "Sending request..." : "Create account"}
-      </ActionButton>
-      <p className="mode-prompt">
-        <span>Already have an account?</span>
-        <button className="text-link-button" type="button" onClick={() => switchMode("login")}>
+        className="w-full h-11 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-md font-semibold transition-all duration-200 mt-3 flex items-center justify-center gap-2"
+      >
+        {isSubmitting ? (
+          <>
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            Sending request...
+          </>
+        ) : (
+          <>
+            <span>Create account</span>
+            <span className="text-lg">✦</span>
+          </>
+        )}
+      </button>
+      <p className="text-center text-sm text-muted-foreground mt-4">
+        Already have an account?{" "}
+        <button type="button" onClick={() => switchMode("login")} className="text-blue-600 hover:text-blue-700 font-semibold transition-colors">
           Sign in
         </button>
       </p>
-    </>
+    </div>
   );
 
   return (
-    <main className="page-shell">
-      <a className="skip-link" href="#account-content">
-        Skip to account access
-      </a>
-      <section className="layout-grid">
-        <div className="context-column">
-          <BrandLockup authenticated={viewModel.sessionState === "authenticated"} />
-          <SecuritySummary />
-          <PlatformStatus
-            readiness={viewModel.readiness}
-            isLoading={isReadinessLoading}
-            isRefreshing={isReadinessRefreshing}
-            onRefresh={() => void refreshReadiness(true)}
-          />
-        </div>
+    <main className="min-h-[100dvh] relative overflow-hidden bg-background px-4 py-8">
+      {/* Subtle gradient background accents */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-100/30 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-cyan-100/20 rounded-full blur-3xl"></div>
+      </div>
 
-        <AuthCard
-          sessionState={viewModel.sessionState}
-          authMode={viewModel.authMode}
-          heading={labelForState(viewModel.sessionState)}
-          body={bodyForState(viewModel.sessionState)}
-          disabled={!formsAreEnabled}
-          isSubmitting={isSubmitting}
-          currentUser={viewModel.currentUser}
-          logoutRetryVisible={logoutRetryVisible}
-          formContent={viewModel.authMode === "login" ? loginForm : registerForm}
-          globalMessage={combinedGlobalMessage}
-          errorMessage={errorMessage}
-          correlationId={combinedCorrelationId}
-          onModeChange={switchMode}
-          onLoginSubmit={handleLoginSubmit}
-          onRegisterSubmit={handleRegisterSubmit}
-          onLogout={handleLogout}
-          onGoToLogin={handleGoToLogin}
-          scopeLabels={SCOPE_LABELS}
-          demoEnabled={demoConfig.enabled}
-          onFillDemoUser={() => fillDemoAccount("user")}
-          onFillDemoAdmin={() => fillDemoAccount("admin")}
-        />
-      </section>
+      <div className="relative min-h-[100dvh] flex flex-col items-center justify-center">
+        <a className="sr-only focus:not-sr-only" href="#account-content">
+          Skip to account access
+        </a>
+        <div className="w-full max-w-md">
+          <AuthCard
+            sessionState={viewModel.sessionState}
+            authMode={viewModel.authMode}
+            heading={labelForState(viewModel.sessionState)}
+            body={bodyForState(viewModel.sessionState)}
+            disabled={!formsAreEnabled}
+            isSubmitting={isSubmitting}
+            currentUser={viewModel.currentUser}
+            logoutRetryVisible={logoutRetryVisible}
+            formContent={viewModel.authMode === "login" ? loginForm : registerForm}
+            globalMessage={combinedGlobalMessage}
+            errorMessage={errorMessage}
+            correlationId={combinedCorrelationId}
+            onModeChange={switchMode}
+            onLoginSubmit={handleLoginSubmit}
+            onRegisterSubmit={handleRegisterSubmit}
+            onLogout={handleLogout}
+            onGoToLogin={handleGoToLogin}
+            scopeLabels={SCOPE_LABELS}
+            demoEnabled={demoConfig.enabled}
+            onFillDemoUser={() => fillDemoAccount("user")}
+            onFillDemoAdmin={() => fillDemoAccount("admin")}
+          />
+          <div className="mt-8 flex flex-col gap-4">
+            <SecuritySummary />
+            <PlatformStatus
+              readiness={viewModel.readiness}
+              isLoading={isReadinessLoading}
+              isRefreshing={isReadinessRefreshing}
+              onRefresh={() => void refreshReadiness(true)}
+            />
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

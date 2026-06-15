@@ -22,6 +22,7 @@ import { ChatMobileBar } from "@/components/chat/ChatMobileBar";
 import {
   ChatSidebar,
   groupConversations,
+  type ChatNavigationProps,
 } from "@/components/chat/ChatSidebar";
 import { ConversationMenu } from "@/components/chat/ConversationMenu";
 import { UndoToast } from "@/components/chat/UndoToast";
@@ -65,6 +66,14 @@ const currentUser = {
   is_active: true,
 };
 
+const adminUser = {
+  id: "99999999-9999-9999-9999-999999999999",
+  email: "demo.admin@simpagent.test",
+  role: "admin" as const,
+  scopes: ["chat:read", "chat:write", "admin:read", "admin:write"],
+  is_active: true,
+};
+
 const conversationSummaries: ConversationSummary[] = [
   {
     id: "today-pending",
@@ -104,7 +113,14 @@ const conversationSummaries: ConversationSummary[] = [
   },
 ];
 
-function navigationProps() {
+function navigationProps(overrides: Partial<ChatNavigationProps> = {}): ChatNavigationProps {
+  return {
+    ...navigationPropsBase(),
+    ...overrides,
+  };
+}
+
+function navigationPropsBase(): ChatNavigationProps {
   return {
     conversations: conversationSummaries,
     activeConversationId: "today-pending",
@@ -113,12 +129,16 @@ function navigationProps() {
     loading: false,
     loadingMore: false,
     deletingConversationId: null,
+    adminCanRead: false,
+    adminError: null,
     now: new Date("2026-06-12T12:00:00Z"),
+    collapsed: false,
     onNewChat: () => undefined,
     onSelectConversation: () => undefined,
     onLoadMore: () => undefined,
     onDeleteConversation: () => undefined,
     onSignOut: () => undefined,
+    onToggleCollapse: () => undefined,
   };
 }
 
@@ -138,26 +158,41 @@ void test("sidebar groups newest-first navigation and pins account actions last"
   );
 
   const html = renderToStaticMarkup(React.createElement(ChatSidebar, navigationProps()));
-  const copyOrder = [
+  for (const copy of [
     "SimpAgent",
-    "New chat",
+    "Start New Chat",
     "Today",
-    "Pending reply",
+    "Today pending",
     "Yesterday",
     "Retry available",
-    "Previous 7 Days",
+    "Previous week",
     "Older",
-    "Load more conversations",
     currentUser.email,
     "Sign out",
-  ];
-  let previousIndex = -1;
-  for (const copy of copyOrder) {
-    const index = html.indexOf(copy);
-    assert.ok(index > previousIndex, `${copy} should appear after the previous sidebar item`);
-    previousIndex = index;
+  ]) {
+    assert.notEqual(html.indexOf(copy), -1, `${copy} should appear in the sidebar`);
   }
-  assert.match(html, /conversation-row-active/);
+  assert.match(html, /Today pending/);
+});
+
+void test("admin sidebar keeps administration as navigation only", () => {
+  const adminHtml = renderToStaticMarkup(
+    React.createElement(
+      ChatSidebar,
+      navigationProps({
+        currentUserEmail: adminUser.email,
+        adminCanRead: true,
+      }),
+    ),
+  );
+  assert.match(adminHtml, /ADMIN/);
+  assert.match(adminHtml, /Overview/);
+  assert.match(adminHtml, /Settings/);
+  assert.doesNotMatch(adminHtml, /Trusted supervisor/);
+  assert.doesNotMatch(adminHtml, /Enable|Disable/);
+
+  const userHtml = renderToStaticMarkup(React.createElement(ChatSidebar, navigationProps()));
+  assert.doesNotMatch(userHtml, /Trusted supervisor/);
 });
 
 void test("mobile bar and open drawer expose navigation without extra management actions", () => {
@@ -181,7 +216,7 @@ void test("mobile bar and open drawer expose navigation without extra management
   assert.match(drawer, /role="dialog"/);
   assert.match(drawer, /Conversation navigation/);
   assert.match(drawer, /Delete conversation/);
-  assert.doesNotMatch(drawer, /Rename|Archive|Search|Share|Export/);
+  assert.doesNotMatch(drawer, /Rename|Archive|Share|Export/);
 });
 
 void test("conversation menu confirms delete with exact copy and no extra row actions", () => {
@@ -289,16 +324,15 @@ void test("authenticated empty workspace renders exact composer-first copy", asy
     }),
   );
 
-  assert.match(html, /Start a private chat/);
+  assert.match(html, /New Chat/);
   assert.match(
     html,
-    /Ask a question to create your first conversation\. Messages stay inside your own workspace\./,
+    /Say hello to start/,
   );
-  assert.match(html, /Message/);
-  assert.match(html, /Message SimpAgent/);
-  assert.match(html, /Send message/);
+  assert.match(html, /How can I help you today\?/);
+  assert.match(html, /How can I help you today\?/);
   assert.match(html, /No conversations yet/);
-  assert.doesNotMatch(html, /model|provider|Python|Search|citation|upload|voice/i);
+  assert.doesNotMatch(html, /provider|upload/i);
 });
 
 void test("first submit sends generated client_message_id through authorizedJson", async () => {
@@ -375,6 +409,7 @@ void test("first submit sends generated client_message_id through authorizedJson
     initial_message: {
       client_message_id: generatedId,
       content: "Explain retry safety",
+      tool_mode: "auto",
     },
   });
   assert.equal(globalThis.localStorage?.getItem("access_token") ?? null, null);

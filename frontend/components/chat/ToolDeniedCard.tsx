@@ -23,7 +23,7 @@ export function ToolDeniedCard({ result }: ToolDeniedCardProps) {
               <span className="python-card-icon" aria-hidden="true">
                 <ShieldBan size={18} strokeWidth={1.75} />
               </span>
-              <p className="eyebrow">{result.eyebrow}</p>
+              <p className="auth-eyebrow">{result.eyebrow}</p>
             </div>
             <h2 className="python-card-title">{result.title}</h2>
           </div>
@@ -32,10 +32,10 @@ export function ToolDeniedCard({ result }: ToolDeniedCardProps) {
 
         <p className="python-card-summary">{result.message}</p>
         {result.correlationId ? (
-          <p className="python-card-helper">Mã hỗ trợ: {result.correlationId}</p>
+          <p className="python-card-helper">Reference code: {result.correlationId}</p>
         ) : (
           <p className="python-card-helper">
-            Trải nghiệm vẫn giữ ở dạng ngôn ngữ tự nhiên, không có chế độ bật Python riêng.
+            The workspace stays natural-language first and does not expose a dedicated Python mode switch.
           </p>
         )}
       </div>
