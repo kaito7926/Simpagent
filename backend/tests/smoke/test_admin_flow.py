@@ -112,6 +112,17 @@ async def test_public_stack_admin_flow_covers_search_evidence_and_role_changes()
         assert metrics_payload["users_total"] >= 2
         assert metrics_payload["security_events_total"] >= 1
         assert metrics_payload["tool_executions_total"] >= 1
+        assert set(metrics_payload) == {
+            "generated_at",
+            "users_total",
+            "users_active",
+            "security_events_total",
+            "security_events_last_24h",
+            "tool_executions_total",
+            "tool_executions_last_24h",
+        }
+        assert user_email not in metrics_response.text
+        assert user_password not in metrics_response.text
 
         orchestration_response = await client.get(
             "/api/admin/orchestration",
@@ -130,6 +141,17 @@ async def test_public_stack_admin_flow_covers_search_evidence_and_role_changes()
         )
         assert trusted_supervisor_response.status_code == 200
         assert trusted_supervisor_response.json()["trusted_supervisor_enabled"] is True
+
+        guardrail_response = await client.patch(
+            "/api/admin/orchestration/guardrail",
+            headers={
+                "Authorization": f"Bearer {admin_token}",
+                "X-Correlation-Id": unique_correlation_id("corr-smk-guardrail"),
+            },
+            json={"enabled": False},
+        )
+        assert guardrail_response.status_code == 200
+        assert guardrail_response.json()["guardrail_safety_enabled"] is False
 
         promote_response = await client.patch(
             f"/api/admin/users/{user_record['id']}",
