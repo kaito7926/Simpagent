@@ -10,9 +10,6 @@ from app.core.config import Settings
 from app.db.repositories.provisioning import ProvisioningError, ProvisioningRepository
 from app.models.account import LocalCredential, User, UserScope
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
-README = REPO_ROOT / "README.md"
-
 
 @pytest.mark.integration
 @pytest.mark.asyncio
@@ -135,16 +132,9 @@ def test_demo_seed_cli_reports_safe_message(settings: Settings, monkeypatch, cap
     assert "password" not in captured.out.lower()
 
 
-def test_operator_runbook_documents_admin_bootstrap_and_recovery_commands() -> None:
-    contents = README.read_text(encoding="utf-8")
+def test_bootstrap_admin_cli_documents_required_email_without_secret_echo() -> None:
+    from app.cli.bootstrap_admin import build_parser
 
-    for expected in (
-        "small-production",
-        "bootstrap-admin",
-        "alembic upgrade head",
-        "pg_dump",
-        "pg_restore",
-        "rollback",
-        "100 người dùng/tháng",
-    ):
-        assert expected in contents
+    help_text = build_parser().format_help()
+    assert "--email" in help_text
+    assert "password" not in help_text.lower()

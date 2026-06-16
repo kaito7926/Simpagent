@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 import pytest
 
 from app.core.config import Settings
 
-REPO_ROOT = __import__("pathlib").Path(__file__).resolve().parents[4]
+REPO_ROOT = Path(os.getenv("SIMPAGENT_REPO_ROOT", "/workspace/repo"))
+if not REPO_ROOT.exists():
+    REPO_ROOT = Path(__file__).resolve().parents[4]
 ENV_EXAMPLE = REPO_ROOT / ".env.example"
 COMPOSE_FILE = REPO_ROOT / "compose.yaml"
 
