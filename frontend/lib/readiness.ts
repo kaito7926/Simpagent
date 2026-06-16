@@ -1,4 +1,4 @@
-import type { ReadinessComponentState, ReadinessResponse } from "@/lib/auth-session";
+import type { OAuthProviderId, OAuthProviderState, ReadinessComponentState, ReadinessResponse } from "@/lib/auth-session";
 
 export const AGGREGATE_STATE_LABELS = {
   loading: "Checking system",
@@ -22,6 +22,8 @@ export const COMPONENT_LABELS = {
   llm: "AI chat service",
   search: "Grounded search",
   sandbox: "Limited Python foundation",
+  oauth_google: "Google sign-in",
+  oauth_github: "GitHub sign-in",
 } as const;
 
 export const COMPONENT_STATE_LABELS: Record<ReadinessComponentState | "unknown_state", string> = {
@@ -56,6 +58,31 @@ export function toAggregateUiState(readiness: ReadinessResponse | null): Aggrega
 export function formsEnabled(readiness: ReadinessResponse | null): boolean {
   const aggregate = toAggregateUiState(readiness);
   return aggregate === "ready" || aggregate === "degraded";
+}
+
+const OAUTH_LABELS: Record<OAuthProviderId, string> = {
+  google: "Continue with Google",
+  github: "Continue with GitHub",
+};
+
+const OAUTH_UNAVAILABLE_LABELS: Record<OAuthProviderId, string> = {
+  google: "Google sign-in is not configured",
+  github: "GitHub sign-in is not configured",
+};
+
+export function oauthProviderState(
+  readiness: ReadinessResponse | null,
+  provider: OAuthProviderId,
+): OAuthProviderState {
+  const component = provider === "google" ? readiness?.components.oauth_google : readiness?.components.oauth_github;
+  const enabled = component === "ready";
+
+  return {
+    provider,
+    label: OAUTH_LABELS[provider],
+    enabled,
+    unavailableLabel: enabled ? null : OAUTH_UNAVAILABLE_LABELS[provider],
+  };
 }
 
 export function componentStateLabel(state: string): string {

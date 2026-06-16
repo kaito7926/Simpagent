@@ -5,10 +5,12 @@ import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } f
 import type { DemoConfig } from "@/lib/demo-config";
 import {
   AuthSessionController,
+  beginOAuth,
+  type OAuthProviderId,
   type SessionState,
   type ShellViewModel,
 } from "@/lib/auth-session";
-import { formsEnabled, toAggregateUiState } from "@/lib/readiness";
+import { formsEnabled, oauthProviderState, toAggregateUiState } from "@/lib/readiness";
 
 import { ChatWorkspace } from "@/components/chat/ChatWorkspace";
 import { ActionButton } from "./ActionButton";
@@ -381,6 +383,12 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
     switchMode("login");
   }
 
+  function handleOAuthStart(provider: OAuthProviderId) {
+    clearFormState();
+    setAnnouncement(null);
+    beginOAuth(provider);
+  }
+
   function fillDemoAccount(kind: "user" | "admin") {
     if (!demoConfig.enabled) {
       return;
@@ -409,6 +417,10 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
   const disabled = !formsAreEnabled || isSubmitting;
   const combinedGlobalMessage = announcement ?? viewModel.globalMessage;
   const combinedCorrelationId = errorCorrelationId ?? viewModel.correlationId;
+  const oauthProviders = [
+    oauthProviderState(viewModel.readiness, "google"),
+    oauthProviderState(viewModel.readiness, "github"),
+  ];
 
   if (viewModel.sessionState === "authenticated" && viewModel.currentUser) {
     return (
@@ -589,6 +601,8 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
             globalMessage={combinedGlobalMessage}
             errorMessage={errorMessage}
             correlationId={combinedCorrelationId}
+            oauthProviders={oauthProviders}
+            onOAuthStart={handleOAuthStart}
             onModeChange={switchMode}
             onLoginSubmit={handleLoginSubmit}
             onRegisterSubmit={handleRegisterSubmit}

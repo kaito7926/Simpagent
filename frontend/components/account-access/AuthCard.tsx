@@ -4,7 +4,7 @@ import Image from "next/image";
 
 import { Card } from "@/components/ui/card";
 
-import type { CurrentUser, SessionState } from "@/lib/auth-session";
+import type { CurrentUser, OAuthProviderState, SessionState } from "@/lib/auth-session";
 
 import { ActionButton } from "./ActionButton";
 import { AuthModeSwitch } from "./AuthModeSwitch";
@@ -25,6 +25,8 @@ type AuthCardProps = {
   globalMessage: string | null;
   errorMessage: string | null;
   correlationId: string | null;
+  oauthProviders?: OAuthProviderState[];
+  onOAuthStart?: (provider: OAuthProviderState["provider"]) => void;
   onModeChange: (mode: "login" | "register") => void;
   onLoginSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onRegisterSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -118,6 +120,38 @@ function OAuthIcon({ provider }: { provider: "google" | "github" }) {
   );
 }
 
+function OAuthButton({
+  provider,
+  disabled,
+  onOAuthStart,
+}: {
+  provider: OAuthProviderState;
+  disabled: boolean;
+  onOAuthStart?: (provider: OAuthProviderState["provider"]) => void;
+}) {
+  const actionable = provider.enabled && !disabled;
+  const label = provider.enabled ? provider.label : provider.unavailableLabel ?? provider.label;
+
+  return (
+    <button
+      type="button"
+      disabled={!actionable}
+      aria-label={label}
+      onClick={() => {
+        if (actionable) {
+          onOAuthStart?.(provider.provider);
+        }
+      }}
+      className="w-full min-h-11 bg-gray-50 flex items-center justify-center border border-gray-300 text-foreground rounded-md disabled:opacity-60 transition-all px-3 py-2 text-center"
+    >
+      <span className="mr-3 text-gray-700">
+        <OAuthIcon provider={provider.provider} />
+      </span>
+      <span>{label}</span>
+    </button>
+  );
+}
+
 export function AuthCard({
   sessionState,
   authMode,
@@ -131,6 +165,8 @@ export function AuthCard({
   globalMessage,
   errorMessage,
   correlationId,
+  oauthProviders = [],
+  onOAuthStart,
   onModeChange,
   onLoginSubmit,
   onRegisterSubmit,
@@ -216,16 +252,18 @@ export function AuthCard({
         sessionState !== "authenticated" &&
         sessionState !== "registration_accepted" ? (
           <>
-            <div className="space-y-3">
-              <button type="button" disabled className="w-full h-11 bg-gray-50 flex items-center justify-center border border-gray-300 text-foreground rounded-md disabled:opacity-50 transition-all">
-                <span className="mr-3 text-gray-700"><OAuthIcon provider="google" /></span>
-                Continue with Google
-              </button>
-              <button type="button" disabled className="w-full h-11 bg-gray-50 flex items-center justify-center border border-gray-300 text-foreground rounded-md disabled:opacity-50 transition-all">
-                <span className="mr-3 text-gray-700"><OAuthIcon provider="github" /></span>
-                Continue with GitHub
-              </button>
-            </div>
+            {oauthProviders.length > 0 ? (
+              <div className="space-y-3">
+                {oauthProviders.map((provider) => (
+                  <OAuthButton
+                    key={provider.provider}
+                    provider={provider}
+                    disabled={disabled || isSubmitting}
+                    onOAuthStart={onOAuthStart}
+                  />
+                ))}
+              </div>
+            ) : null}
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -233,7 +271,7 @@ export function AuthCard({
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-background px-3 text-muted-foreground font-medium">
-                  Or sign in with email
+                  Or use local credentials
                 </span>
               </div>
             </div>
