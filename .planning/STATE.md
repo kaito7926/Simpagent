@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 05-07-PLAN.md
-last_updated: "2026-06-16T05:19:44.315Z"
+stopped_at: Completed 05-09-PLAN.md
+last_updated: "2026-06-16T10:01:08.939Z"
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 32
-  completed_plans: 30
+  completed_plans: 31
   percent: 67
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 05 (gateway-administration-and-security-evidence) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Roadmap order complete: Phases 01-02
 Integrated shipped slice: Phase 04 (isolated-python-execution) - PR #2
 Latest verification: `04-VERIFICATION.md` passed on 2026-06-13 with 5/5 end-to-end truths verified
@@ -61,6 +61,7 @@ Progress: 20/20 shipped plans tracked, Phase 05 Planned
 | Phase 05-gateway-administration-and-security-evidence P03 | 13 min | 2 tasks | 14 files |
 | Phase 05-gateway-administration-and-security-evidence P06 | 12 min | 3 tasks | 8 files |
 | Phase 05-gateway-administration-and-security-evidence P07 | 18 min | 3 tasks | 8 files |
+| Phase 05-gateway-administration-and-security-evidence P09 | 7 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase 05-gateway-administration-and-security-evidence]: Plan 05-06 keeps HTTP route exposure out of scope; Plan 05-07 can consume the service contract. — This preserves the planned slice boundary while giving the next plan a typed backend contract.
 - [Phase 05-gateway-administration-and-security-evidence]: Gateway evidence is exposed through the existing AdminEvidenceService admin:read gate. — Preserves FastAPI as the admin authorization authority while adding the final gateway evidence route.
 - [Phase 05-gateway-administration-and-security-evidence]: Admin evidence detail drawers render only row fields and backend-sanitized snippets. — Keeps D-19/D-20 redaction boundaries visible in the shared shell and avoids raw payload viewers.
+- [Phase 05-gateway-administration-and-security-evidence]: OAuth provider buttons are derived from backend readiness components instead of hardcoded frontend assumptions. — Keeps the auth shell truthful when Google or GitHub credentials are missing.
+- [Phase 05-gateway-administration-and-security-evidence]: OAuth starts by browser navigation to backend-owned start routes and does not persist session material in browser storage. — Preserves the existing first-party refresh-cookie session boundary and avoids localStorage/sessionStorage token handling.
+- [Phase 05-gateway-administration-and-security-evidence]: Unconfigured Google or GitHub providers remain visible as factual disabled states while local credentials stay available. — Satisfies provider-readiness truthfulness without blocking local account access.
 
 ### Pending Todos
 
@@ -122,6 +126,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-16T05:19:15.492Z
-Stopped at: Completed 05-07-PLAN.md
+Last session: 2026-06-16T10:00:30.968Z
+Stopped at: Completed 05-09-PLAN.md
 Resume file: None
