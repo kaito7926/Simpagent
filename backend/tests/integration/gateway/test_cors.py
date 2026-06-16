@@ -29,7 +29,7 @@ def test_kong_cors_is_strict_for_browser_clients() -> None:
     assert "http://localhost:8000" not in config
     assert re.search(r"(?m)^\s*-\s*['\"]?\*['\"]?\s*$", config) is None
     assert "credentials: true" in config
-    for method in ("GET", "POST", "DELETE", "OPTIONS"):
+    for method in ("GET", "POST", "PATCH", "DELETE", "OPTIONS"):
         assert f"- {method}" in config
     for header in ("Authorization", "Content-Type", "X-CSRF-Token", "X-Correlation-Id"):
         assert f"- {header}" in config
@@ -43,6 +43,9 @@ def test_kong_cors_plugin_is_bound_to_public_routes_not_a_wildcard_proxy() -> No
     assert "route: backend-auth-login" in config
     assert "route: backend-auth-register" in config
     assert "route: backend-auth-refresh" in config
+    assert "route: backend-oauth" in config
+    assert "- /api/auth/oauth" in config
+    assert "- /api/oauth" not in config
     assert "route: backend-chat-turns" in config
     assert "route: backend-python-execute" in config
 

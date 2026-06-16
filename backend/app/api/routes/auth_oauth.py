@@ -28,6 +28,7 @@ OAUTH_STATE_COOKIE_NAMES: dict[OAuthRouteProvider, str] = {
     "github": "simpagent_oauth_github_state",
 }
 OAUTH_STATE_MAX_AGE_SECONDS = 5 * 60
+OAUTH_STATE_SAMESITE = "lax"
 
 
 def _b64url(data: bytes) -> str:
@@ -47,7 +48,7 @@ def _issue_state_cookie(response: Response, *, provider: OAuthRouteProvider, sta
         path=f"/api/auth/oauth/{provider}",
         secure=settings.cookie_secure,
         httponly=True,
-        samesite=settings.cookie_samesite,
+        samesite=OAUTH_STATE_SAMESITE,
     )
 
 
@@ -57,7 +58,7 @@ def _delete_state_cookie(response: Response, *, provider: OAuthRouteProvider, se
         path=f"/api/auth/oauth/{provider}",
         secure=settings.cookie_secure,
         httponly=True,
-        samesite=settings.cookie_samesite,
+        samesite=OAUTH_STATE_SAMESITE,
     )
 
 

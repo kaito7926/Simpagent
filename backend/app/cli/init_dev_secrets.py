@@ -40,12 +40,14 @@ def init_dev_secrets(*, secrets_dir: Path) -> dict[str, bool]:
     public_path = secrets_dir / "jwt_public_key"
     refresh_path = secrets_dir / "refresh_hmac_key"
     csrf_path = secrets_dir / "csrf_hmac_key"
+    python_capability_path = secrets_dir / "python_capability_secret"
 
     created = {
         "jwt_private_key": False,
         "jwt_public_key": False,
         "refresh_hmac_key": False,
         "csrf_hmac_key": False,
+        "python_capability_secret": False,
     }
 
     if not private_path.exists() or not public_path.exists():
@@ -55,6 +57,7 @@ def init_dev_secrets(*, secrets_dir: Path) -> dict[str, bool]:
 
     created["refresh_hmac_key"] = _write_if_missing(refresh_path, secrets.token_urlsafe(48))
     created["csrf_hmac_key"] = _write_if_missing(csrf_path, secrets.token_urlsafe(48))
+    created["python_capability_secret"] = _write_if_missing(python_capability_path, secrets.token_urlsafe(48))
     return created
 
 

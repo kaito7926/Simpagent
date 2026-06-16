@@ -42,7 +42,7 @@ services:
         strip_path: false
       - name: backend-oauth
         paths:
-          - /api/oauth
+          - /api/auth/oauth
         strip_path: false
       - name: backend-admin
         paths:
@@ -90,6 +90,7 @@ plugins:
       methods:
         - GET
         - POST
+        - PATCH
         - DELETE
         - OPTIONS
       headers:

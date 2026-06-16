@@ -21,7 +21,23 @@ RUNTIME_IMAGE = os.getenv("SIMPAGENT_SANDBOX_RUNTIME_IMAGE", "simpagent-python-r
 DOCKER_BIN = os.getenv("SIMPAGENT_SANDBOX_DOCKER_BIN", "docker")
 CAPABILITY_AUDIENCE = "sandbox-worker"
 CAPABILITY_TYPE = "tool-capability+jwt"
-CAPABILITY_SECRET = os.getenv("SIMPAGENT_SANDBOX_CAPABILITY_SECRET", "sandbox-dev-secret")
+CAPABILITY_SECRET_FILE = os.getenv("SIMPAGENT_SANDBOX_CAPABILITY_SECRET_FILE")
+
+
+def _read_secret_file(path: str | None) -> str | None:
+    if not path:
+        return None
+    candidate = Path(path)
+    if not candidate.exists():
+        return None
+    return candidate.read_text(encoding="utf-8").strip()
+
+
+CAPABILITY_SECRET = (
+    os.getenv("SIMPAGENT_SANDBOX_CAPABILITY_SECRET")
+    or _read_secret_file(CAPABILITY_SECRET_FILE)
+    or "sandbox-dev-secret"
+)
 CAPABILITY_TTL_SECONDS = 60
 MAX_CODE_CHARS = 16_000
 MAX_REQUEST_BYTES = 96 * 1024

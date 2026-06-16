@@ -122,7 +122,7 @@ services:
       SIMPAGENT_GUARDRAIL_SAFETY_ENABLED_DEFAULT: ${GUARDRAIL_SAFETY_ENABLED_DEFAULT:-true}
       SIMPAGENT_PYTHON_SUPERVISOR_BASE_URL: http://sandbox:8080
       SIMPAGENT_PYTHON_SUPERVISOR_REQUEST_TIMEOUT_SECONDS: 30
-      SIMPAGENT_PYTHON_CAPABILITY_SECRET: sandbox-dev-secret
+      SIMPAGENT_PYTHON_CAPABILITY_SECRET_FILE: /run/secrets/python_capability_secret
       SIMPAGENT_PYTHON_CAPABILITY_TTL_SECONDS: 60
       SIMPAGENT_PYTHON_SESSION_TTL_SECONDS: 900
       SIMPAGENT_PYTHON_ARTIFACT_STORAGE_DIR: /tmp/simpagent-python-artifacts
@@ -302,11 +302,14 @@ services:
   sandbox:
     build:
       context: ./sandbox
+    depends_on:
+      init-dev-secrets:
+        condition: service_completed_successfully
     environment:
       SIMPAGENT_SANDBOX_RUNTIME_IMAGE: simpagent-python-runtime:local
-      SIMPAGENT_SANDBOX_CAPABILITY_SECRET: sandbox-dev-secret
+      SIMPAGENT_SANDBOX_CAPABILITY_SECRET_FILE: /run/secrets/python_capability_secret
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - dev-secrets:/run/secrets:ro
     networks:
       - private
 

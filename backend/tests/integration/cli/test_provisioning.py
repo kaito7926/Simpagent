@@ -107,11 +107,13 @@ def test_init_dev_secrets_creates_expected_files(tmp_path: Path) -> None:
     assert result["jwt_public_key"] is True
     assert result["refresh_hmac_key"] is True
     assert result["csrf_hmac_key"] is True
+    assert result["python_capability_secret"] is True
 
     assert (tmp_path / "jwt_private_key").exists()
     assert (tmp_path / "jwt_public_key").exists()
     assert (tmp_path / "refresh_hmac_key").exists()
     assert (tmp_path / "csrf_hmac_key").exists()
+    assert (tmp_path / "python_capability_secret").exists()
 
 
 @pytest.mark.integration
