@@ -28,6 +28,7 @@ key-files:
     - kong/kong.yml
     - backend/app/core/config.py
     - backend/app/main.py
+    - backend/app/security/access_tokens.py
     - backend/tests/security/test_jwt_profile.py
 key-decisions:
   - "Kong JWT screening was not enabled on live app routes because Compose development JWT keys are generated at runtime while DB-less Kong config is static; FastAPI remains the authorization authority."
@@ -106,6 +107,13 @@ completed: 2026-06-15
 
 **Total deviations:** 2 auto-fixed (1 blocking, 1 missing critical).
 **Impact on plan:** Both changes preserved the planned security boundary and kept the Compose public-port topology unchanged.
+
+### Post-Wave Repair
+
+- **Found during:** Orchestrator post-wave local verification on 2026-06-16.
+- **Issue:** Host-side non-DB gateway/JWT checks exposed stale assertions: the CORS test rejected legitimate YAML aliases/regex routes, and the JWT profile test expected Kong JWT plugin fields even though this plan intentionally left Kong JWT screening disabled in DB-less local config.
+- **Fix:** Narrowed CORS wildcard-origin detection, exposed the validated JWT `kid` on decoded access-token claims, and aligned the JWT profile test with the documented FastAPI-authoritative token boundary.
+- **Verification:** `py -3.13 -m pytest tests/integration/gateway/test_cors.py tests/security/test_jwt_profile.py tests/unit/test_admin_evidence_service.py -q` passed with 15 passed, 1 skipped.
 
 ## Issues Encountered
 

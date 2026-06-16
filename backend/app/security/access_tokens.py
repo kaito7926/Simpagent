@@ -21,6 +21,7 @@ class AccessTokenClaims:
     iat: int
     nbf: int
     exp: int
+    kid: str
     jti: UUID
 
 
@@ -151,5 +152,6 @@ def decode_access_token(token: str, *, settings: Settings, now: datetime | None 
         iat=iat,
         nbf=nbf,
         exp=exp,
+        kid=str(header["kid"]),
         jti=jti,
     )

@@ -181,6 +181,7 @@ def _principal(*, role: str, scopes: tuple[str, ...]) -> AuthenticatedPrincipal:
         iat=1,
         nbf=1,
         exp=2,
+        kid="test-kid",
         jti=uuid4(),
     )
     return AuthenticatedPrincipal(

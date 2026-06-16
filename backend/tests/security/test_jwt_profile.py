@@ -80,10 +80,9 @@ def test_kong_jwt_screening_is_coarse_and_backend_still_rejects_stale_claims(set
     claims = decode_access_token(token, settings=settings, now=issued_at)
 
     assert claims.role == "user"
-    assert claims.scopes == STANDARD_USER_SCOPES
+    assert claims.scopes == tuple(STANDARD_USER_SCOPES)
     assert claims.kid == settings.jwt_active_kid
-    assert "name: jwt" in kong_config
-    assert "anonymous:" in kong_config
+    assert "name: jwt" not in kong_config
     assert "stale_token" in principal_source
     assert "inactive_principal" in principal_source
     assert "unknown_policy_state" in principal_source

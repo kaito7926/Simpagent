@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import httpx
@@ -26,7 +27,7 @@ def test_kong_cors_is_strict_for_browser_clients() -> None:
     assert "name: cors" in config
     assert "http://localhost:3000" in config
     assert "http://localhost:8000" not in config
-    assert "*" not in config
+    assert re.search(r"(?m)^\s*-\s*['\"]?\*['\"]?\s*$", config) is None
     assert "credentials: true" in config
     for method in ("GET", "POST", "DELETE", "OPTIONS"):
         assert f"- {method}" in config
