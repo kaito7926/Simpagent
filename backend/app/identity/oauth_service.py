@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings
 from app.db.repositories.accounts import AccountsRepository, DuplicateEmailError, normalize_email
 from app.db.repositories.sessions import SessionsRepository
+from app.identity.providers.github import GitHubOAuthIdentity
 from app.identity.providers.google import GoogleOAuthIdentity
 from app.schemas.auth import CurrentUserResponse
 from app.security.access_tokens import issue_access_token
@@ -23,7 +24,8 @@ from app.security.refresh_tokens import (
 )
 
 
-OAuthProviderName = Literal["google"]
+OAuthProviderName = Literal["google", "github"]
+OAuthIdentity = GoogleOAuthIdentity | GitHubOAuthIdentity
 
 
 @dataclass(frozen=True)
@@ -51,10 +53,10 @@ class OAuthService:
         self,
         *,
         provider_name: OAuthProviderName,
-        identity: GoogleOAuthIdentity,
+        identity: OAuthIdentity,
         now: datetime,
     ) -> OAuthLoginOutcome:
-        if provider_name != "google":
+        if provider_name not in {"google", "github"}:
             raise OAuthAuthenticationError("Unsupported OAuth provider.")
         if not identity.subject or not identity.issuer:
             raise OAuthAuthenticationError("OAuth identity is incomplete.")
@@ -64,7 +66,7 @@ class OAuthService:
         normalized_email, _ = normalize_email(identity.email)
         try:
             async with self.session.begin():
-                bundle = await self.accounts.get_user_bundle_by_identity(
+                bundle = await self.accounts.get_user_bundle_by_identity_subject(
                     issuer=identity.issuer,
                     subject=identity.subject,
                 )
@@ -123,7 +125,7 @@ class OAuthService:
     async def _link_or_provision_verified_identity(
         self,
         *,
-        identity: GoogleOAuthIdentity,
+        identity: OAuthIdentity,
         normalized_email: str,
     ):
         bundle = await self.accounts.get_user_bundle_by_email(normalized_email)

@@ -4,7 +4,7 @@ import base64
 import hashlib
 import hmac
 import secrets
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Request, Response, status
@@ -15,13 +15,18 @@ from app.core.config import Settings
 from app.core.errors import ApiError
 from app.db.session import get_session
 from app.identity.oauth_service import OAuthAuthenticationError, OAuthService
+from app.identity.providers.github import GitHubOAuthProvider, GitHubOAuthRequest
 from app.identity.providers.google import GoogleOAuthProvider, GoogleOAuthRequest
 from app.security.refresh_tokens import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME
 
 
 router = APIRouter(prefix="/api/auth/oauth", tags=["auth"])
 
-OAUTH_STATE_COOKIE_NAME = "simpagent_oauth_google_state"
+OAuthRouteProvider = Literal["google", "github"]
+OAUTH_STATE_COOKIE_NAMES: dict[OAuthRouteProvider, str] = {
+    "google": "simpagent_oauth_google_state",
+    "github": "simpagent_oauth_github_state",
+}
 OAUTH_STATE_MAX_AGE_SECONDS = 5 * 60
 
 
@@ -34,22 +39,22 @@ def _state_signature(state: str, settings: Settings) -> str:
     return _b64url(digest)
 
 
-def _issue_state_cookie(response: Response, *, state: str, settings: Settings) -> None:
+def _issue_state_cookie(response: Response, *, provider: OAuthRouteProvider, state: str, settings: Settings) -> None:
     response.set_cookie(
-        key=OAUTH_STATE_COOKIE_NAME,
+        key=OAUTH_STATE_COOKIE_NAMES[provider],
         value=f"{state}.{_state_signature(state, settings)}",
         max_age=OAUTH_STATE_MAX_AGE_SECONDS,
-        path="/api/auth/oauth/google",
+        path=f"/api/auth/oauth/{provider}",
         secure=settings.cookie_secure,
         httponly=True,
         samesite=settings.cookie_samesite,
     )
 
 
-def _delete_state_cookie(response: Response, *, settings: Settings) -> None:
+def _delete_state_cookie(response: Response, *, provider: OAuthRouteProvider, settings: Settings) -> None:
     response.delete_cookie(
-        OAUTH_STATE_COOKIE_NAME,
-        path="/api/auth/oauth/google",
+        OAUTH_STATE_COOKIE_NAMES[provider],
+        path=f"/api/auth/oauth/{provider}",
         secure=settings.cookie_secure,
         httponly=True,
         samesite=settings.cookie_samesite,
@@ -94,7 +99,13 @@ def _frontend_session_url(settings: Settings, *, status_value: str) -> str:
     return f"{base}/?{urlencode({'oauth': status_value})}"
 
 
-def _redirect_to_frontend_session(*, settings: Settings, refresh_token: str, csrf_token: str) -> RedirectResponse:
+def _redirect_to_frontend_session(
+    *,
+    provider: OAuthRouteProvider,
+    settings: Settings,
+    refresh_token: str,
+    csrf_token: str,
+) -> RedirectResponse:
     response = RedirectResponse(
         url=_frontend_session_url(settings, status_value="success"),
         status_code=status.HTTP_303_SEE_OTHER,
@@ -106,7 +117,7 @@ def _redirect_to_frontend_session(*, settings: Settings, refresh_token: str, csr
         csrf_token=csrf_token,
         max_age=settings.refresh_idle_ttl_seconds,
     )
-    _delete_state_cookie(response, settings=settings)
+    _delete_state_cookie(response, provider=provider, settings=settings)
     return response
 
 
@@ -115,6 +126,13 @@ def _google_provider(request: Request, settings: Settings) -> GoogleOAuthProvide
     if provider is not None:
         return provider
     return GoogleOAuthProvider.from_settings(settings)
+
+
+def _github_provider(request: Request, settings: Settings) -> GitHubOAuthProvider:
+    provider = getattr(request.app.state, "github_oauth_provider", None)
+    if provider is not None:
+        return provider
+    return GitHubOAuthProvider.from_settings(settings)
 
 
 @router.get("/google/start", name="google_oauth_start")
@@ -137,7 +155,7 @@ async def google_oauth_start(request: Request) -> RedirectResponse:
         ) from exc
 
     response = RedirectResponse(url=authorization_url, status_code=status.HTTP_303_SEE_OTHER)
-    _issue_state_cookie(response, state=state, settings=settings)
+    _issue_state_cookie(response, provider="google", state=state, settings=settings)
     return response
 
 
@@ -157,7 +175,7 @@ async def google_oauth_callback(
         raise ApiError(status_code=401, code="oauth_login_failed", message="Google OAuth login failed.")
 
     _validate_state_cookie(
-        cookie_value=request.cookies.get(OAUTH_STATE_COOKIE_NAME),
+        cookie_value=request.cookies.get(OAUTH_STATE_COOKIE_NAMES["google"]),
         state=request.query_params.get("state"),
         settings=settings,
     )
@@ -179,6 +197,76 @@ async def google_oauth_callback(
         raise ApiError(status_code=401, code="oauth_login_failed", message="Google OAuth login failed.") from exc
 
     return _redirect_to_frontend_session(
+        provider="google",
+        settings=settings,
+        refresh_token=outcome.refresh_token,
+        csrf_token=outcome.csrf_token,
+    )
+
+
+@router.get("/github/start", name="github_oauth_start")
+async def github_oauth_start(request: Request) -> RedirectResponse:
+    settings: Settings = request.app.state.settings
+    if not settings.github_oauth_configured:
+        raise ApiError(
+            status_code=503,
+            code="oauth_provider_unconfigured",
+            message="GitHub OAuth is not configured.",
+        )
+    state = secrets.token_urlsafe(32)
+    try:
+        authorization_url = _github_provider(request, settings).authorization_url(state=state)
+    except ValueError as exc:
+        raise ApiError(
+            status_code=503,
+            code="oauth_provider_unconfigured",
+            message="GitHub OAuth is not configured.",
+        ) from exc
+
+    response = RedirectResponse(url=authorization_url, status_code=status.HTTP_303_SEE_OTHER)
+    _issue_state_cookie(response, provider="github", state=state, settings=settings)
+    return response
+
+
+@router.get("/github/callback", name="github_oauth_callback")
+async def github_oauth_callback(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> RedirectResponse:
+    settings: Settings = request.app.state.settings
+    if not settings.github_oauth_configured:
+        raise ApiError(
+            status_code=503,
+            code="oauth_provider_unconfigured",
+            message="GitHub OAuth is not configured.",
+        )
+    if request.query_params.get("error"):
+        raise ApiError(status_code=401, code="oauth_login_failed", message="GitHub OAuth login failed.")
+
+    _validate_state_cookie(
+        cookie_value=request.cookies.get(OAUTH_STATE_COOKIE_NAMES["github"]),
+        state=request.query_params.get("state"),
+        settings=settings,
+    )
+    code = request.query_params.get("code")
+    if not code:
+        raise ApiError(status_code=400, code="oauth_code_missing", message="OAuth code is required.")
+
+    provider = _github_provider(request, settings)
+    try:
+        identity = await provider.authenticate(
+            GitHubOAuthRequest(code=code, redirect_uri=settings.github_redirect_uri or "")
+        )
+        outcome = await OAuthService(session, settings).complete_login(
+            provider_name="github",
+            identity=identity,
+            now=request.app.state.clock(),
+        )
+    except (OAuthAuthenticationError, ValueError) as exc:
+        raise ApiError(status_code=401, code="oauth_login_failed", message="GitHub OAuth login failed.") from exc
+
+    return _redirect_to_frontend_session(
+        provider="github",
         settings=settings,
         refresh_token=outcome.refresh_token,
         csrf_token=outcome.csrf_token,

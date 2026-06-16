@@ -195,6 +195,18 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("SIMPAGENT_GOOGLE_REDIRECT_URI", "GOOGLE_REDIRECT_URI"),
     )
+    github_client_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_GITHUB_CLIENT_ID", "GITHUB_CLIENT_ID"),
+    )
+    github_client_secret: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_GITHUB_CLIENT_SECRET", "GITHUB_CLIENT_SECRET"),
+    )
+    github_redirect_uri: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_GITHUB_REDIRECT_URI", "GITHUB_REDIRECT_URI"),
+    )
     search_model: str | None = None
     search_worker_timeout_seconds: float = Field(default=8.0, gt=0)
     search_max_prompt_chars: int = Field(default=2000, ge=128, le=4000)
@@ -336,6 +348,16 @@ class Settings(BaseSettings):
             self.google_client_id
             and secret_value
             and self.google_redirect_uri
+        )
+
+    @property
+    def github_oauth_configured(self) -> bool:
+        secret = self.github_client_secret
+        secret_value = secret.get_secret_value() if isinstance(secret, SecretStr) else secret
+        return bool(
+            self.github_client_id
+            and secret_value
+            and self.github_redirect_uri
         )
 
     @property

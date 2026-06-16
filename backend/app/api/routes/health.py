@@ -40,6 +40,7 @@ async def ready(request: Request) -> JSONResponse:
         search=providers.search,
         sandbox=providers.sandbox,
         oauth_google=providers.oauth_google,
+        oauth_github=providers.oauth_github,
     )
     if database_status != "ready" or migrations_status != "ready":
         payload = ReadinessResponse(status="not_ready", components=components)

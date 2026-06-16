@@ -85,6 +85,9 @@ class AccountsRepository:
             return None
         return UserBundle(user=user, scopes=list(user.scopes), identities=list(user.identities), local_credential=user.local_credential)
 
+    async def get_user_bundle_by_identity_subject(self, *, issuer: str, subject: str) -> UserBundle | None:
+        return await self.get_user_bundle_by_identity(issuer=issuer, subject=subject)
+
     async def create_user_with_local_credentials(self, *, email: str, password_hash: str, role: str = "user", is_demo: bool = False) -> UserBundle:
         normalized, email_key = normalize_email(email)
         user = User(id=uuid4(), email=normalized, email_key=email_key, role=role, is_active=True, is_demo=is_demo)
