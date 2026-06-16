@@ -399,8 +399,8 @@ void test("workspace renders backend-backed users, event, tool, and gateway evid
       items: [
         {
           id: "kong-config-rate-limit-api",
-          evidence_type: "rate_limit",
-          source: "kong_config",
+          evidence_type: "rate_limit" as const,
+          source: "kong_config" as const,
           route: "api",
           plugin: "rate-limiting",
           status_codes: [429],

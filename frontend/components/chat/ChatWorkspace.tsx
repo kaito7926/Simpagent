@@ -4,12 +4,22 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { ApiError } from "@/lib/api";
 import {
+  getAdminUsers,
+  getGatewayEvidence,
   getAdminMetrics,
   getOrchestrationSettings,
+  getSecurityEvents,
+  getToolExecutions,
   setGuardrailSafetyEnabled,
   setTrustedSupervisorEnabled,
 } from "@/lib/admin-api";
-import type { AdminMetricsResponse } from "@/lib/admin-api";
+import type {
+  AdminMetricsResponse,
+  AdminUsersPage,
+  GatewayEvidencePage,
+  SecurityEventsPage,
+  ToolExecutionsPage,
+} from "@/lib/admin-api";
 import type { AuthSessionController, CurrentUser } from "@/lib/auth-session";
 import {
   createConversationWithMessage,
@@ -36,6 +46,9 @@ import { ChatSidebar, type AppWorkspaceView, type ChatNavigationProps } from "./
 import { ChatThread } from "./ChatThread";
 import { UndoToast } from "./UndoToast";
 import { SettingsPage } from "@/components/settings/SettingsPage";
+import { EvidenceDetailDrawer } from "@/components/admin/EvidenceDetailDrawer";
+import { EvidenceTable, type EvidenceRow } from "@/components/admin/EvidenceTable";
+import { StatePanel } from "@/components/admin/StatePanel";
 
 type AdminOrchestrationSettings = {
   guardrailSafetyEnabled: boolean;
@@ -48,8 +61,16 @@ type ChatWorkspaceProps = {
   initialConversation?: ConversationDetail;
   initialView?: AppWorkspaceView;
   initialAdminMetrics?: AdminMetricsResponse | null;
+  initialAdminPages?: Partial<AdminEvidencePages>;
   onSessionExpired: () => void;
   onLogout: () => void | Promise<void>;
+};
+
+type AdminEvidencePages = {
+  users: AdminUsersPage | null;
+  securityEvents: SecurityEventsPage | null;
+  toolExecutions: ToolExecutionsPage | null;
+  gatewayEvidence: GatewayEvidencePage | null;
 };
 
 function sortConversations(items: ConversationSummary[]): ConversationSummary[] {
@@ -101,6 +122,106 @@ function formatCount(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
 }
 
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function userRows(page: AdminUsersPage | null): EvidenceRow[] {
+  return (
+    page?.items.map((item) => ({
+      id: item.id,
+      primary: item.email,
+      secondary: `${item.role} account with ${item.scopes.length} scopes`,
+      status: item.is_active ? "active" : "inactive",
+      correlationId: null,
+      fields: {
+        Email: item.email,
+        Role: item.role,
+        Scopes: item.scopes.join(", "),
+        Status: item.is_active ? "Active" : "Inactive",
+        Created: formatDateTime(item.created_at),
+        Actions: item.is_demo ? "Demo account" : "Managed account",
+      },
+      snippets: [
+        {
+          kind: "user",
+          text: `role=${item.role} active=${item.is_active} demo=${item.is_demo} scopes=${item.scopes.join(",")}`,
+          truncated: false,
+        },
+      ],
+    })) ?? []
+  );
+}
+
+function securityEventRows(page: SecurityEventsPage | null): EvidenceRow[] {
+  return (
+    page?.items.map((item) => ({
+      id: item.id,
+      primary: item.event_type,
+      secondary: item.description,
+      status: item.severity,
+      correlationId: item.correlation_id,
+      fields: {
+        "Event type": item.event_type,
+        Severity: item.severity,
+        User: item.user_id ?? "Unknown",
+        Description: item.description,
+        "Correlation ID": item.correlation_id ?? "None",
+        Time: formatDateTime(item.created_at),
+      },
+      snippets: item.snippets,
+    })) ?? []
+  );
+}
+
+function toolExecutionRows(page: ToolExecutionsPage | null): EvidenceRow[] {
+  return (
+    page?.items.map((item) => ({
+      id: item.id,
+      primary: item.tool_name,
+      secondary: item.input_summary,
+      status: item.status,
+      correlationId: item.correlation_id,
+      fields: {
+        Tool: item.tool_name,
+        Status: item.status,
+        User: item.user_id,
+        Conversation: item.conversation_id ?? "None",
+        "Input summary": item.input_summary,
+        "Output summary": item.output_summary ?? "No output summary",
+        Duration: item.duration_ms === null ? "Unknown" : `${item.duration_ms} ms`,
+        "Correlation ID": item.correlation_id ?? "None",
+        Time: formatDateTime(item.created_at),
+      },
+      snippets: item.snippets,
+    })) ?? []
+  );
+}
+
+function gatewayEvidenceRows(page: GatewayEvidencePage | null): EvidenceRow[] {
+  return (
+    page?.items.map((item) => ({
+      id: item.id,
+      primary: item.summary,
+      secondary: `${item.source} via ${item.plugin}`,
+      status: item.evidence_type,
+      correlationId: null,
+      fields: {
+        Type: item.evidence_type,
+        Source: item.source,
+        Route: item.route ?? "Global",
+        Plugin: item.plugin,
+        "Status codes": item.status_codes.length ? item.status_codes.join(", ") : "Config evidence",
+        Summary: item.summary,
+      },
+      snippets: item.snippets,
+    })) ?? []
+  );
+}
+
 const ADMIN_VIEW_META: Record<
   Exclude<AppWorkspaceView, "chat">,
   { title: string; description: string }
@@ -150,15 +271,6 @@ function AdminMetricCard(props: {
       </div>
       <p className="metric-value">{props.value}</p>
       <p className="metric-help">{props.help}</p>
-    </Card>
-  );
-}
-
-function EmptyAdminState(props: { title: string; body: string }) {
-  return (
-    <Card className="admin-empty-card">
-      <h2 className="card-title">{props.title}</h2>
-      <p className="body-copy">{props.body}</p>
     </Card>
   );
 }
@@ -229,50 +341,51 @@ function OverviewView(props: {
   );
 }
 
-function UsersView(props: { currentUser: CurrentUser }) {
+function UsersView(props: {
+  page: AdminUsersPage | null;
+  adminCanWrite: boolean;
+  selectedRow: EvidenceRow | null;
+  onSelectRow: (row: EvidenceRow) => void;
+  onCloseDrawer: () => void;
+}) {
+  const rows = userRows(props.page);
   return (
     <div className="admin-layout">
-      <Card className="admin-table-card">
-        <div className="admin-card-copy">
-          <p className="small-label">Users</p>
-          <h2 className="card-title">Protected account summary</h2>
-        </div>
-        <div className="admin-table-wrapper">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Scopes</th>
-                <th>Status</th>
-                <th>Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="admin-table-row">
-                <td>{props.currentUser.email}</td>
-                <td>{props.currentUser.role}</td>
-                <td>{props.currentUser.scopes.join(", ")}</td>
-                <td>{props.currentUser.is_active ? "Active" : "Inactive"}</td>
-                <td>Available from backend admin endpoints</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div className="admin-mobile-list">
-          <div className="admin-row">
-            <strong>{props.currentUser.email}</strong>
-            <span className="row-meta">Role: {props.currentUser.role}</span>
-            <span className="row-meta">Scopes: {props.currentUser.scopes.join(", ")}</span>
-          </div>
-        </div>
-      </Card>
-      <EmptyAdminState title="User directory unavailable" body="Only the signed-in account is available in this local workspace. Directory paging is hidden until backend data is connected." />
+      {!props.adminCanWrite ? (
+        <StatePanel
+          state="empty"
+          title="Read-only admin access"
+          body="This account can inspect bounded user evidence, but backend admin:write is required for role or status changes."
+        />
+      ) : null}
+      <EvidenceTable
+        title="Users"
+        description="Backend-paged accounts with role, scope, and status evidence."
+        emptyTitle="No users match the current filter."
+        rows={rows}
+        page={props.page?.page}
+        onSelectRow={props.onSelectRow}
+      />
+      <EvidenceDetailDrawer
+        open={props.selectedRow !== null}
+        title="User details"
+        description="Backend-sanitized user evidence fields."
+        row={props.selectedRow}
+        onOpenChange={(open) => {
+          if (!open) props.onCloseDrawer();
+        }}
+      />
     </div>
   );
 }
 
-function SecurityEventsView() {
+function SecurityEventsView(props: {
+  page: SecurityEventsPage | null;
+  selectedRow: EvidenceRow | null;
+  onSelectRow: (row: EvidenceRow) => void;
+  onCloseDrawer: () => void;
+}) {
+  const rows = securityEventRows(props.page);
   return (
     <div className="admin-layout">
       <Card className="admin-card">
@@ -296,31 +409,106 @@ function SecurityEventsView() {
           ))}
         </div>
       </Card>
-      <EmptyAdminState title="No security events loaded" body="Security evidence will appear here when the backend returns event rows for this local stack." />
+      <EvidenceTable
+        title="Security events"
+        description="Bounded event evidence from the backend security log."
+        emptyTitle="No evidence matches the current filter."
+        rows={rows}
+        page={props.page?.page}
+        onSelectRow={props.onSelectRow}
+      />
+      <EvidenceDetailDrawer
+        open={props.selectedRow !== null}
+        title="Security event details"
+        description="Backend-sanitized snippets only."
+        row={props.selectedRow}
+        onOpenChange={(open) => {
+          if (!open) props.onCloseDrawer();
+        }}
+      />
     </div>
   );
 }
 
-function ToolExecutionsView() {
+function ToolExecutionsView(props: {
+  page: ToolExecutionsPage | null;
+  selectedRow: EvidenceRow | null;
+  onSelectRow: (row: EvidenceRow) => void;
+  onCloseDrawer: () => void;
+}) {
+  const rows = toolExecutionRows(props.page);
   return (
     <div className="admin-layout">
-      <EmptyAdminState title="Tool execution evidence unavailable" body="Search and Python execution summaries will appear here after telemetry data is connected." />
+      <EvidenceTable
+        title="Tool executions"
+        description="Search and Python tool summaries with bounded snippets and durations."
+        emptyTitle="No evidence matches the current filter."
+        rows={rows}
+        page={props.page?.page}
+        onSelectRow={props.onSelectRow}
+      />
+      <EvidenceDetailDrawer
+        open={props.selectedRow !== null}
+        title="Tool execution details"
+        description="Backend-sanitized input and output summaries only."
+        row={props.selectedRow}
+        onOpenChange={(open) => {
+          if (!open) props.onCloseDrawer();
+        }}
+      />
     </div>
   );
 }
 
-function GatewayEvidenceView() {
+function GatewayEvidenceView(props: {
+  page: GatewayEvidencePage | null;
+  selectedRow: EvidenceRow | null;
+  onSelectRow: (row: EvidenceRow) => void;
+  onCloseDrawer: () => void;
+}) {
+  const rows = gatewayEvidenceRows(props.page);
   return (
     <div className="admin-layout">
-      <Card className="admin-card">
-        <div className="admin-card-copy">
-          <p className="small-label">Gateway evidence</p>
-          <h2 className="card-title">Rate-limit and correlation evidence</h2>
-        </div>
-        <p className="body-copy">
-          Gateway evidence is not connected in this local workspace. This page avoids fake telemetry and stays out of primary navigation until real data is available.
-        </p>
-      </Card>
+      <section className="metrics-grid">
+        <AdminMetricCard
+          label="Rate-limit routes"
+          value={formatCount(props.page?.summary.rate_limit_routes ?? 0)}
+          help="Kong routes protected by local rate limiting."
+          badge="429"
+          tone="warning"
+        />
+        <AdminMetricCard
+          label="Request-size routes"
+          value={formatCount(props.page?.summary.request_size_routes ?? 0)}
+          help="Kong routes protected by request-size limiting."
+          badge="413"
+          tone="warning"
+        />
+        <AdminMetricCard
+          label="Correlation ID"
+          value={props.page?.summary.correlation_id_enabled ? "Enabled" : "Missing"}
+          help="Kong injects or echoes X-Correlation-Id."
+          badge="Kong"
+          tone={props.page?.summary.correlation_id_enabled ? "success" : "danger"}
+        />
+      </section>
+      <EvidenceTable
+        title="Gateway evidence"
+        description="Kong-backed route, rate-limit, request-size, and correlation evidence."
+        emptyTitle="No evidence matches the current filter."
+        rows={rows}
+        page={props.page?.page}
+        onSelectRow={props.onSelectRow}
+      />
+      <EvidenceDetailDrawer
+        open={props.selectedRow !== null}
+        title="Gateway evidence details"
+        description="Backend-sanitized Kong evidence snippets only."
+        row={props.selectedRow}
+        onOpenChange={(open) => {
+          if (!open) props.onCloseDrawer();
+        }}
+      />
     </div>
   );
 }
@@ -380,6 +568,7 @@ export function ChatWorkspace({
   initialConversation,
   initialView = "chat",
   initialAdminMetrics = null,
+  initialAdminPages,
   onSessionExpired,
   onLogout,
 }: ChatWorkspaceProps) {
@@ -402,9 +591,16 @@ export function ChatWorkspace({
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [workspaceCorrelationId, setWorkspaceCorrelationId] = useState<string | null>(null);
   const [adminMetrics, setAdminMetrics] = useState<AdminMetricsResponse | null>(initialAdminMetrics);
+  const [adminPages, setAdminPages] = useState<AdminEvidencePages>({
+    users: initialAdminPages?.users ?? null,
+    securityEvents: initialAdminPages?.securityEvents ?? null,
+    toolExecutions: initialAdminPages?.toolExecutions ?? null,
+    gatewayEvidence: initialAdminPages?.gatewayEvidence ?? null,
+  });
   const [adminSettings, setAdminSettings] = useState<AdminOrchestrationSettings | null>(null);
   const [adminBusy, setAdminBusy] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
+  const [selectedEvidenceRow, setSelectedEvidenceRow] = useState<EvidenceRow | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [workspaceView, setWorkspaceView] = useState<AppWorkspaceView>(initialView);
@@ -506,17 +702,40 @@ export function ChatWorkspace({
     async function loadAdminState() {
       if (!adminCanRead) {
         setAdminMetrics(null);
+        setAdminPages({
+          users: null,
+          securityEvents: null,
+          toolExecutions: null,
+          gatewayEvidence: null,
+        });
         setAdminSettings(null);
         setAdminError(null);
         return;
       }
       try {
-        const [metricsResponse, orchestrationResponse] = await Promise.all([
+        const [
+          metricsResponse,
+          usersResponse,
+          securityEventsResponse,
+          toolExecutionsResponse,
+          gatewayEvidenceResponse,
+          orchestrationResponse,
+        ] = await Promise.all([
           getAdminMetrics(controller),
+          getAdminUsers(controller, { limit: 25, offset: 0 }),
+          getSecurityEvents(controller, { limit: 25, offset: 0 }),
+          getToolExecutions(controller, { limit: 25, offset: 0 }),
+          getGatewayEvidence(controller, { limit: 25, offset: 0 }),
           getOrchestrationSettings(controller),
         ]);
         if (!cancelled) {
           setAdminMetrics(metricsResponse);
+          setAdminPages({
+            users: usersResponse,
+            securityEvents: securityEventsResponse,
+            toolExecutions: toolExecutionsResponse,
+            gatewayEvidence: gatewayEvidenceResponse,
+          });
           setAdminSettings({
             guardrailSafetyEnabled: orchestrationResponse.guardrail_safety_enabled,
             trustedSupervisorEnabled: orchestrationResponse.trusted_supervisor_enabled,
@@ -526,6 +745,12 @@ export function ChatWorkspace({
       } catch (error) {
         if (!cancelled) {
           setAdminMetrics(null);
+          setAdminPages({
+            users: null,
+            securityEvents: null,
+            toolExecutions: null,
+            gatewayEvidence: null,
+          });
           setAdminSettings(null);
           setAdminError(
             error instanceof ApiError
@@ -826,7 +1051,10 @@ export function ChatWorkspace({
     currentView: workspaceView,
     onNewChat: startNewChat,
     onSelectConversation: (conversationId) => void selectConversation(conversationId),
-    onSelectView: setWorkspaceView,
+    onSelectView: (view) => {
+      setSelectedEvidenceRow(null);
+      setWorkspaceView(view);
+    },
     onLoadMore: () => void loadMoreConversations(),
     onDeleteConversation: (conversationId) => void deleteVisibleConversation(conversationId),
     onSignOut: onLogout,
@@ -837,7 +1065,11 @@ export function ChatWorkspace({
     if (!adminCanRead && workspaceView !== "chat") {
       return (
         <div className="admin-layout">
-          <EmptyAdminState title="Access denied" body="This account does not have permission to view administrative surfaces." />
+          <StatePanel
+            state="forbidden"
+            title="You do not have permission to view this area."
+            body="Use an account with the required access or contact an administrator."
+          />
         </div>
       );
     }
@@ -846,13 +1078,42 @@ export function ChatWorkspace({
       case "overview":
         return <OverviewView adminSettings={adminSettings} metrics={adminMetrics} />;
       case "users":
-        return <UsersView currentUser={currentUser} />;
+        return (
+          <UsersView
+            adminCanWrite={adminCanWrite}
+            page={adminPages.users}
+            selectedRow={selectedEvidenceRow}
+            onCloseDrawer={() => setSelectedEvidenceRow(null)}
+            onSelectRow={setSelectedEvidenceRow}
+          />
+        );
       case "security-events":
-        return <SecurityEventsView />;
+        return (
+          <SecurityEventsView
+            page={adminPages.securityEvents}
+            selectedRow={selectedEvidenceRow}
+            onCloseDrawer={() => setSelectedEvidenceRow(null)}
+            onSelectRow={setSelectedEvidenceRow}
+          />
+        );
       case "tool-executions":
-        return <ToolExecutionsView />;
+        return (
+          <ToolExecutionsView
+            page={adminPages.toolExecutions}
+            selectedRow={selectedEvidenceRow}
+            onCloseDrawer={() => setSelectedEvidenceRow(null)}
+            onSelectRow={setSelectedEvidenceRow}
+          />
+        );
       case "gateway-evidence":
-        return <GatewayEvidenceView />;
+        return (
+          <GatewayEvidenceView
+            page={adminPages.gatewayEvidence}
+            selectedRow={selectedEvidenceRow}
+            onCloseDrawer={() => setSelectedEvidenceRow(null)}
+            onSelectRow={setSelectedEvidenceRow}
+          />
+        );
       case "orchestration":
         return (
           <OrchestrationView
