@@ -4,6 +4,10 @@ import pytest
 
 from app.core.config import Settings
 
+REPO_ROOT = __import__("pathlib").Path(__file__).resolve().parents[4]
+ENV_EXAMPLE = REPO_ROOT / ".env.example"
+COMPOSE_FILE = REPO_ROOT / "compose.yaml"
+
 
 def _base_settings(**overrides):
     values = {
@@ -49,6 +53,50 @@ def test_production_requires_trusted_proxy_cidrs_for_forwarded_headers() -> None
 def test_trusted_proxy_cidrs_are_valid_networks() -> None:
     with pytest.raises(ValueError, match="trusted proxy"):
         Settings(**_base_settings(trusted_proxy_cidrs=["not-a-cidr"]))
+
+
+def test_env_example_documents_small_production_profile_without_real_secrets() -> None:
+    contents = ENV_EXAMPLE.read_text(encoding="utf-8")
+
+    required_keys = {
+        "SIMPAGENT_APP_ENV=production",
+        "SIMPAGENT_PUBLIC_APP_ORIGIN=",
+        "SIMPAGENT_PUBLIC_API_ORIGIN=",
+        "SIMPAGENT_ALLOWED_ORIGINS=",
+        "SIMPAGENT_TRUSTED_PROXY_CIDRS=",
+        "SIMPAGENT_COOKIE_SECURE=true",
+        "SIMPAGENT_GOOGLE_CLIENT_ID=",
+        "SIMPAGENT_GOOGLE_CLIENT_SECRET=",
+        "SIMPAGENT_GOOGLE_REDIRECT_URI=",
+        "SIMPAGENT_GITHUB_CLIENT_ID=",
+        "SIMPAGENT_GITHUB_CLIENT_SECRET=",
+        "SIMPAGENT_GITHUB_REDIRECT_URI=",
+        "SIMPAGENT_CLOUDFLARE_EDGE_OPTIONAL=",
+        "SIMPAGENT_CLOUDFLARE_TUNNEL_HOSTNAME=",
+        "SIMPAGENT_CLOUDFLARE_SOURCE_IP_HEADER=CF-Connecting-IP",
+    }
+    missing = sorted(key for key in required_keys if key not in contents)
+    assert missing == []
+    assert "sk-" not in contents
+    assert "ghp_" not in contents
+    assert "BEGIN PRIVATE KEY" not in contents
+
+
+def test_compose_exposes_small_production_profile_and_proxy_environment() -> None:
+    contents = COMPOSE_FILE.read_text(encoding="utf-8")
+
+    for expected in (
+        "small-production",
+        "SIMPAGENT_PUBLIC_APP_ORIGIN",
+        "SIMPAGENT_PUBLIC_API_ORIGIN",
+        "SIMPAGENT_TRUSTED_PROXY_CIDRS",
+        "SIMPAGENT_GOOGLE_CLIENT_ID",
+        "SIMPAGENT_GITHUB_CLIENT_ID",
+        "SIMPAGENT_COOKIE_SECURE",
+    ):
+        assert expected in contents
+    assert "8001:8001" not in contents
+    assert "8444:8444" not in contents
 
 
 @pytest.mark.asyncio
