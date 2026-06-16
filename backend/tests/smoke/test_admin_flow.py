@@ -58,6 +58,16 @@ async def test_public_stack_admin_flow_covers_search_evidence_and_role_changes()
         assert denied_response.status_code == 403
         assert denied_response.json()["error"]["code"] == "admin_role_required"
 
+        denied_gateway_response = await client.get(
+            "/api/admin/gateway-evidence",
+            headers={
+                "Authorization": f"Bearer {user_token}",
+                "X-Correlation-Id": unique_correlation_id("corr-smk-gateway-deny"),
+            },
+        )
+        assert denied_gateway_response.status_code == 403
+        assert denied_gateway_response.json()["error"]["code"] == "admin_role_required"
+
         admin_token = await login(
             client,
             email=DEMO_ADMIN_EMAIL,
@@ -102,6 +112,20 @@ async def test_public_stack_admin_flow_covers_search_evidence_and_role_changes()
             and item["tool_name"] == "google_search"
             for item in tools_response.json()["items"]
         )
+
+        gateway_response = await client.get(
+            "/api/admin/gateway-evidence",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            params={"limit": 100, "offset": 0},
+        )
+        assert gateway_response.status_code == 200
+        gateway_payload = gateway_response.json()
+        assert gateway_payload["summary"]["correlation_id_enabled"] is True
+        assert gateway_payload["summary"]["rate_limit_routes"] >= 1
+        assert gateway_payload["summary"]["request_size_routes"] >= 1
+        assert any(item["source"] == "kong_config" for item in gateway_payload["items"])
+        assert user_email not in gateway_response.text
+        assert user_password not in gateway_response.text
 
         metrics_response = await client.get(
             "/api/admin/metrics",
