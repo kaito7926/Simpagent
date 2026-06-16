@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 05-09-PLAN.md
-last_updated: "2026-06-16T10:01:08.939Z"
+status: Phase complete — ready for verification
+stopped_at: Completed 05-08-PLAN.md
+last_updated: "2026-06-16T10:19:42.810Z"
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 32
-  completed_plans: 31
-  percent: 67
+  completed_plans: 32
+  percent: 83
 ---
 
 # Project State
@@ -62,6 +62,7 @@ Progress: 20/20 shipped plans tracked, Phase 05 Planned
 | Phase 05-gateway-administration-and-security-evidence P06 | 12 min | 3 tasks | 8 files |
 | Phase 05-gateway-administration-and-security-evidence P07 | 18 min | 3 tasks | 8 files |
 | Phase 05-gateway-administration-and-security-evidence P09 | 7 min | 2 tasks | 5 files |
+| Phase 05-gateway-administration-and-security-evidence P08 | 13 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,9 @@ Recent decisions affecting current work:
 - [Phase 05-gateway-administration-and-security-evidence]: OAuth provider buttons are derived from backend readiness components instead of hardcoded frontend assumptions. — Keeps the auth shell truthful when Google or GitHub credentials are missing.
 - [Phase 05-gateway-administration-and-security-evidence]: OAuth starts by browser navigation to backend-owned start routes and does not persist session material in browser storage. — Preserves the existing first-party refresh-cookie session boundary and avoids localStorage/sessionStorage token handling.
 - [Phase 05-gateway-administration-and-security-evidence]: Unconfigured Google or GitHub providers remain visible as factual disabled states while local credentials stay available. — Satisfies provider-readiness truthfulness without blocking local account access.
+- [Phase ?]: [Phase 05-gateway-administration-and-security-evidence]: The small-production profile stays environment-only and optional; local Compose remains the primary demo path.
+- [Phase ?]: [Phase 05-gateway-administration-and-security-evidence]: Cloudflare is documented as an optional edge in front of Kong with explicit trusted-proxy/source-IP assumptions, not as mandatory enterprise protection.
+- [Phase ?]: [Phase 05-gateway-administration-and-security-evidence]: Backend profile tests read root-level deployment artifacts through read-only Compose mounts instead of copying production docs into the backend package.
 
 ### Pending Todos
 
@@ -126,6 +130,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-16T10:00:30.968Z
-Stopped at: Completed 05-09-PLAN.md
+Last session: 2026-06-16T10:19:42.803Z
+Stopped at: Completed 05-08-PLAN.md
 Resume file: None

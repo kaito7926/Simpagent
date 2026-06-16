@@ -17,7 +17,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 - [x] **Phase 2: Private Direct Chat** - Users can use a safe browser chat experience with owner-only conversation history.
 - [ ] **Phase 3: Policy-Controlled Google Search** - Authorized users can receive grounded search answers through a bounded coordinator.
 - [x] **Phase 4: Isolated Python Execution** - Authorized users can run bounded Python without host, secret, or network access.
-- [ ] **Phase 5: Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence** - The assembled application supports local, Google, and GitHub login, hardened ingress, redacted observability, protected admin evidence, and a small production deployment profile.
+- [x] **Phase 5: Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence** - The assembled application supports local, Google, and GitHub login, hardened ingress, redacted observability, protected admin evidence, and a small production deployment profile. (completed 2026-06-16)
 - [ ] **Phase 6: Adversarial Verification and Vietnamese Delivery** - Evaluators can verify the claimed controls and operate the documented prototype.
 
 ## Phase Details
@@ -133,7 +133,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   6. Properly scoped administrators can page through bounded users, audits, security events, tool executions, failed logins, rate-limit evidence, aggregate metrics, and orchestration controls, while ordinary and under-scoped users are denied.
   7. Operator can follow a documented small-production deployment profile for about 100 users/month, including Cloudflare-to-Kong routing, trusted-proxy assumptions, secure cookies/origins, migrations, backup/restore, smoke checks, and explicit limits without overclaiming distributed rate limiting, edge protection, or production-grade guarantees.
 
-**Plans:** 7/8 plans executed
+**Plans:** 8/8 plans complete
 **Wave 1**
 
 - [x] 05-02-PLAN.md - Hold the Authlib legitimacy gate inside the Google OAuth implementation plan, then ship the Google OAuth redirect/callback slice.
@@ -152,7 +152,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 **Wave 4** *(blocked on Wave 2-3 completion where referenced)*
 
 - [x] 05-09-PLAN.md - Wire the shared Google and GitHub auth-shell CTA/readiness experience.
-- [ ] 05-08-PLAN.md - Finalize the small-production profile, Cloudflare/trusted-proxy documentation, and assembled smoke coverage.
+- [x] 05-08-PLAN.md - Finalize the small-production profile, Cloudflare/trusted-proxy documentation, and assembled smoke coverage.
 
 **UI hint:** no
 
@@ -186,5 +186,5 @@ Note: PR #2 ships the Phase 4 Python slice before Phase 3 planning metadata was 
 | 2. Private Direct Chat | 7/7 | Complete | 2026-06-12 |
 | 3. Policy-Controlled Google Search | 0/TBD | Artifact closeout pending | - |
 | 4. Isolated Python Execution | 5/5 | Shipped (PR #2) | 2026-06-13 |
-| 5. Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 7/8 | In Progress|  |
+| 5. Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 8/8 | Complete   | 2026-06-16 |
 | 6. Adversarial Verification and Vietnamese Delivery | 0/TBD | Not started | - |

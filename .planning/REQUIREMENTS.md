@@ -102,8 +102,8 @@
 - [x] **GATE-04**: Kong applies request-size limits and propagates or creates a validated correlation ID.
 - [x] **GATE-05**: Kong may reject coarse invalid JWT traffic early, but FastAPI independently remains authoritative for complete token, account, role, scope, ownership, and tool-policy validation.
 - [x] **GATE-06**: Kong Admin API, PostgreSQL, search worker, and sandbox control plane are not exposed as public application ports.
-- [ ] **GATE-07**: Documentation defines the optional request path `Client -> Cloudflare -> Kong -> FastAPI -> PostgreSQL/LLM/Tools` and trusted proxy assumptions.
-- [ ] **GATE-08**: Cloudflare documentation covers Tunnel, DNS, TLS, Free-plan WAF guidance, Turnstile integration points, Bot Fight Mode, limitations, and source-IP trust.
+- [x] **GATE-07**: Documentation defines the optional request path `Client -> Cloudflare -> Kong -> FastAPI -> PostgreSQL/LLM/Tools` and trusted proxy assumptions.
+- [x] **GATE-08**: Cloudflare documentation covers Tunnel, DNS, TLS, Free-plan WAF guidance, Turnstile integration points, Bot Fight Mode, limitations, and source-IP trust.
 
 ### Logging and Administration
 
@@ -117,11 +117,11 @@
 
 ### Small Production Readiness
 
-- [ ] **PRODREADY-01**: Operator can configure a small production deployment profile for about 100 users/month through environment variables without hardcoded origins, cookie settings, OAuth secrets, JWT keys, database credentials, or provider credentials.
+- [x] **PRODREADY-01**: Operator can configure a small production deployment profile for about 100 users/month through environment variables without hardcoded origins, cookie settings, OAuth secrets, JWT keys, database credentials, or provider credentials.
 - [x] **PRODREADY-02**: Production-mode cookies, CORS, trusted proxy handling, HTTPS assumptions, and frontend/backend public URLs are documented and enforced consistently for the selected deployment profile.
-- [ ] **PRODREADY-03**: Database migrations, seed/admin bootstrap, backup, restore, and rollback guidance are documented and testable against the Compose-based deployment target.
-- [ ] **PRODREADY-04**: Startup, readiness, smoke-test, and basic operational checks cover local credentials, Google login, GitHub login, gateway routing, admin evidence, chat, Search, and Python paths.
-- [ ] **PRODREADY-05**: Documentation states realistic capacity, reliability, security, rate-limit, observability, and external-provider limitations for a 100 users/month prototype and does not claim high availability or enterprise production guarantees.
+- [x] **PRODREADY-03**: Database migrations, seed/admin bootstrap, backup, restore, and rollback guidance are documented and testable against the Compose-based deployment target.
+- [x] **PRODREADY-04**: Startup, readiness, smoke-test, and basic operational checks cover local credentials, Google login, GitHub login, gateway routing, admin evidence, chat, Search, and Python paths.
+- [x] **PRODREADY-05**: Documentation states realistic capacity, reliability, security, rate-limit, observability, and external-provider limitations for a 100 users/month prototype and does not claim high availability or enterprise production guarantees.
 
 ### Verification and Documentation
 
@@ -285,8 +285,8 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | GATE-04 | Phase 5 | Complete |
 | GATE-05 | Phase 5 | Complete |
 | GATE-06 | Phase 5 | Complete |
-| GATE-07 | Phase 5 | Pending |
-| GATE-08 | Phase 5 | Pending |
+| GATE-07 | Phase 5 | Complete |
+| GATE-08 | Phase 5 | Complete |
 | OBS-01 | Phase 5 | Complete |
 | OBS-02 | Phase 5 | Complete |
 | OBS-03 | Phase 5 | Complete |
@@ -294,11 +294,11 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | OBS-05 | Phase 5 | Complete |
 | OBS-06 | Phase 5 | Complete |
 | OBS-07 | Phase 5 | Complete |
-| PRODREADY-01 | Phase 5 | Pending |
+| PRODREADY-01 | Phase 5 | Complete |
 | PRODREADY-02 | Phase 5 | Complete |
-| PRODREADY-03 | Phase 5 | Pending |
-| PRODREADY-04 | Phase 5 | Pending |
-| PRODREADY-05 | Phase 5 | Pending |
+| PRODREADY-03 | Phase 5 | Complete |
+| PRODREADY-04 | Phase 5 | Complete |
+| PRODREADY-05 | Phase 5 | Complete |
 | TEST-01 | Phase 6 | Pending |
 | TEST-02 | Phase 6 | Pending |
 | TEST-03 | Phase 6 | Pending |
