@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from app.core.config import Settings
+from app.identity.redaction import sanitize_admin_evidence
 
 
 @pytest.mark.security
@@ -44,3 +45,29 @@ async def test_github_oauth_failure_does_not_leak_secret_material(client, secret
     assert secret_canary not in response.text
     assert "github-code-containing-client_secret" not in response.text
     assert "GITHUB_CLIENT_SECRET" not in response.text
+
+
+@pytest.mark.security
+def test_admin_evidence_redaction_removes_canary_from_recursive_snippets(secret_canary: str) -> None:
+    sanitized = sanitize_admin_evidence(
+        {
+            "prompt": f"please summarize {secret_canary}",
+            "provider_payload": {
+                "groundingMetadata": {"token": secret_canary},
+                "searchEntryPoint": {"renderedContent": f"<b>{secret_canary}</b>"},
+            },
+            "sandbox": {
+                "stdout": f"full sandbox output {secret_canary}",
+                "container_id": "abc123def456",
+                "host_path": "/var/run/docker.sock",
+            },
+            "safe": "retained",
+        }
+    )
+
+    dumped = repr(sanitized)
+    assert secret_canary not in dumped
+    assert "groundingMetadata" not in dumped
+    assert "renderedContent" not in dumped
+    assert "/var/run/docker.sock" not in dumped
+    assert sanitized["safe"] == "retained"

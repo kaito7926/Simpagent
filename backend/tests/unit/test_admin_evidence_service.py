@@ -21,6 +21,7 @@ from app.services.admin_evidence import (
     AdminEvidenceService,
     AdminWriteRejected,
 )
+from app.services.gateway_evidence import GatewayEvidenceService
 
 
 @dataclass
@@ -508,3 +509,127 @@ async def test_admin_write_blocks_self_mutation_and_records_event() -> None:
         "reason": "self_mutation_forbidden",
     }
     assert session.commit_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_security_event_metadata_is_recursively_redacted_before_serialization() -> None:
+    now = datetime.now(UTC)
+    repository = FakeAdminRepository(
+        security_events=[
+            SecurityEventRecord(
+                id=uuid4(),
+                event_type="provider_error",
+                severity="medium",
+                user_id=None,
+                description="Provider request failed.",
+                correlation_id="corr-sensitive-event",
+                metadata={
+                    "authorization": "Bearer should-not-leak",
+                    "cookie": "__Host-simpagent_refresh=should-not-leak",
+                    "prompt": "raw user prompt should not leave backend",
+                    "provider_payload": {
+                        "raw_grounding_json": {"secret": "canary-secret-value"},
+                        "searchEntryPoint": {"renderedContent": "<div>raw html</div>"},
+                    },
+                    "nested": [{"api_key": "key-123"}, {"safe_count": 2}],
+                    "safe": {"decision": "denied"},
+                },
+                created_at=now,
+            )
+        ]
+    )
+    service = AdminEvidenceService(
+        None,
+        correlation_id="corr-sensitive-event",
+        now=now,
+        repository=repository,
+        security_events=FakeSecurityEventSink(),
+    )
+
+    result = await service.list_security_events(
+        principal=_principal(role="admin", scopes=("admin:read",)),
+        limit=10,
+        offset=0,
+    )
+
+    item = result.items[0]
+    dumped = item.model_dump_json()
+    assert "should-not-leak" not in dumped
+    assert "raw user prompt" not in dumped
+    assert "raw_grounding_json" not in dumped
+    assert "renderedContent" not in dumped
+    assert "canary-secret-value" not in dumped
+    assert item.metadata["authorization"] == "[REDACTED]"
+    assert item.metadata["safe"] == {"decision": "denied"}
+    assert item.snippets
+    assert item.snippets[0].text
+    assert len(item.snippets[0].text) <= 240
+
+
+@pytest.mark.asyncio
+async def test_tool_execution_evidence_keeps_correlation_but_redacts_prompt_and_full_output() -> None:
+    now = datetime.now(UTC)
+    user_id = uuid4()
+    conversation_id = uuid4()
+    repository = FakeAdminRepository(
+        tool_executions=[
+            ToolExecutionRecord(
+                id=uuid4(),
+                user_id=user_id,
+                conversation_id=conversation_id,
+                tool_name="python",
+                input_summary="raw prompt: print secret token",
+                output_summary=(
+                    "container_id=abcdef123456 host_path=/var/run/docker.sock "
+                    "full output with bearer token"
+                ),
+                status="denied",
+                duration_ms=321,
+                correlation_id="corr-tool-safe",
+                created_at=now,
+            )
+        ]
+    )
+    service = AdminEvidenceService(
+        None,
+        correlation_id="corr-tool-safe",
+        now=now,
+        repository=repository,
+        security_events=FakeSecurityEventSink(),
+    )
+
+    result = await service.list_tool_executions(
+        principal=_principal(role="admin", scopes=("admin:read",)),
+        limit=10,
+        offset=0,
+    )
+
+    item = result.items[0]
+    dumped = item.model_dump_json()
+    assert str(user_id) in dumped
+    assert str(conversation_id) in dumped
+    assert item.tool_name == "python"
+    assert item.status == "denied"
+    assert item.duration_ms == 321
+    assert item.correlation_id == "corr-tool-safe"
+    assert "raw prompt" not in dumped
+    assert "abcdef123456" not in dumped
+    assert "/var/run/docker.sock" not in dumped
+    assert "bearer token" not in dumped
+    assert item.snippets
+    assert all(len(snippet.text) <= 240 for snippet in item.snippets)
+
+
+def test_gateway_evidence_service_reads_kong_contract_without_security_event_rows() -> None:
+    service = GatewayEvidenceService.from_kong_config("kong/kong.yml")
+
+    page = service.list_evidence(limit=10, offset=0)
+    dumped = page.model_dump_json()
+
+    assert page.items
+    assert any(item.evidence_type == "rate_limit" for item in page.items)
+    assert any(item.evidence_type == "request_size" for item in page.items)
+    assert any(item.evidence_type == "correlation_id" for item in page.items)
+    assert all(item.source == "kong_config" for item in page.items)
+    assert "security_event" not in dumped
+    assert "fabricated" not in dumped.casefold()
