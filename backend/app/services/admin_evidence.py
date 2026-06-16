@@ -19,6 +19,7 @@ from app.db.repositories.admin import (
 )
 from app.db.repositories.agent_settings import AgentRuntimeSettingsRepository
 from app.db.repositories.sessions import SessionsRepository
+from app.identity.redaction import REDACTED, sanitize_admin_evidence, summarize_admin_evidence
 from app.schemas.admin import (
     AdminMetricsResponse,
     AdminPage,
@@ -157,7 +158,8 @@ class AdminEvidenceService:
                     user_id=row.user_id,
                     description=row.description,
                     correlation_id=row.correlation_id,
-                    metadata=row.metadata,
+                    metadata=sanitize_admin_evidence(row.metadata),
+                    snippets=summarize_admin_evidence(row.metadata, kind="metadata"),
                     created_at=row.created_at,
                 )
                 for row in rows
@@ -181,18 +183,7 @@ class AdminEvidenceService:
         rows, has_more = await self.repository.list_tool_executions(limit=limit, offset=offset)
         return ToolExecutionsPage(
             items=[
-                ToolExecutionItem(
-                    id=row.id,
-                    user_id=row.user_id,
-                    conversation_id=row.conversation_id,
-                    tool_name=row.tool_name,
-                    input_summary=row.input_summary,
-                    output_summary=row.output_summary,
-                    status=row.status,
-                    duration_ms=row.duration_ms,
-                    correlation_id=row.correlation_id,
-                    created_at=row.created_at,
-                )
+                self._tool_execution_item(row)
                 for row in rows
             ],
             page=self._page(limit=limit, offset=offset, has_more=has_more),
@@ -459,6 +450,34 @@ class AdminEvidenceService:
             offset=offset,
             has_more=has_more,
             next_offset=offset + limit if has_more else None,
+        )
+
+    def _tool_execution_item(self, row: ToolExecutionRecord) -> ToolExecutionItem:
+        safe_input = sanitize_admin_evidence(row.input_summary, key="prompt") or REDACTED
+        safe_output = (
+            sanitize_admin_evidence(row.output_summary, key="sandbox_output")
+            if row.output_summary is not None
+            else None
+        )
+        snippet_payload = {
+            "input_summary": safe_input,
+            "output_summary": safe_output,
+            "status": row.status,
+            "duration_ms": row.duration_ms,
+            "correlation_id": row.correlation_id,
+        }
+        return ToolExecutionItem(
+            id=row.id,
+            user_id=row.user_id,
+            conversation_id=row.conversation_id,
+            tool_name=row.tool_name,
+            input_summary=safe_input,
+            output_summary=safe_output,
+            status=row.status,
+            duration_ms=row.duration_ms,
+            correlation_id=row.correlation_id,
+            snippets=summarize_admin_evidence(snippet_payload, kind="tool_execution"),
+            created_at=row.created_at,
         )
 
     def _user_item_from_bundle(self, bundle: UserBundle) -> AdminUserItem:
