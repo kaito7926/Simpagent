@@ -633,3 +633,54 @@ def test_gateway_evidence_service_reads_kong_contract_without_security_event_row
     assert all(item.source == "kong_config" for item in page.items)
     assert "security_event" not in dumped
     assert "fabricated" not in dumped.casefold()
+
+
+@pytest.mark.asyncio
+async def test_admin_service_lists_gateway_evidence_for_authorized_admin() -> None:
+    service = AdminEvidenceService(
+        None,
+        correlation_id="corr-gateway-admin",
+        now=datetime.now(UTC),
+        repository=FakeAdminRepository(),
+        security_events=FakeSecurityEventSink(),
+        gateway_evidence=GatewayEvidenceService.from_kong_config("kong/kong.yml"),
+    )
+
+    page = await service.list_gateway_evidence(
+        principal=_principal(role="admin", scopes=("admin:read",)),
+        limit=5,
+        offset=0,
+    )
+
+    assert page.items
+    assert page.page.limit == 5
+    assert page.summary.correlation_id_enabled is True
+    assert all(item.source == "kong_config" for item in page.items)
+
+
+@pytest.mark.asyncio
+async def test_admin_service_denies_gateway_evidence_without_admin_read() -> None:
+    sink = FakeSecurityEventSink()
+    service = AdminEvidenceService(
+        None,
+        correlation_id="corr-gateway-denied",
+        now=datetime.now(UTC),
+        repository=FakeAdminRepository(),
+        security_events=sink,
+        gateway_evidence=GatewayEvidenceService.from_kong_config("kong/kong.yml"),
+    )
+
+    with pytest.raises(AdminAccessDenied) as exc_info:
+        await service.list_gateway_evidence(
+            principal=_principal(role="user", scopes=("chat:read",)),
+            limit=5,
+            offset=0,
+        )
+
+    assert exc_info.value.decision is PolicyResult.deny_role
+    assert sink.calls[0]["event_type"] == "admin_access_denied"
+    assert sink.calls[0]["metadata"] == {
+        "resource": "gateway_evidence",
+        "required_scope": "admin:read",
+        "decision": PolicyResult.deny_role.value,
+    }

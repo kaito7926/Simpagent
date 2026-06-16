@@ -26,6 +26,7 @@ from app.schemas.admin import (
     AdminUserItem,
     AdminUserUpdateResponse,
     AdminUsersPage,
+    GatewayEvidencePage,
     OrchestrationSettingsResponse,
     SecurityEventItem,
     SecurityEventsPage,
@@ -33,6 +34,7 @@ from app.schemas.admin import (
     ToolExecutionsPage,
 )
 from app.schemas.auth import ADMIN_SCOPES, STANDARD_USER_SCOPES
+from app.services.gateway_evidence import GatewayEvidenceService
 
 
 class AdminEvidenceRepositoryProtocol(Protocol):
@@ -99,6 +101,7 @@ class AdminEvidenceService:
         security_events: SecurityEventSinkProtocol | None = None,
         accounts: AccountsRepositoryProtocol | None = None,
         agent_settings: AgentRuntimeSettingsRepository | None = None,
+        gateway_evidence: GatewayEvidenceService | None = None,
     ) -> None:
         self.session = session
         self.now = now or datetime.now(UTC)
@@ -107,6 +110,7 @@ class AdminEvidenceService:
         self.security_events = security_events or SessionsRepository(session)
         self.accounts = accounts or AccountsRepository(session)
         self.agent_settings = agent_settings or AgentRuntimeSettingsRepository(session)
+        self.gateway_evidence = gateway_evidence or GatewayEvidenceService.from_kong_config("kong/kong.yml")
 
     async def list_users(
         self,
@@ -203,6 +207,21 @@ class AdminEvidenceService:
             correlation_references_total=snapshot.correlation_references_total,
             rate_limit_events_total=snapshot.rate_limit_events_total,
         )
+
+    async def list_gateway_evidence(
+        self,
+        *,
+        principal: AuthenticatedPrincipal,
+        limit: int = 25,
+        offset: int = 0,
+    ) -> GatewayEvidencePage:
+        limit, offset = self._normalize_page(limit=limit, offset=offset)
+        await self._require_admin_scope(
+            principal=principal,
+            required_scope="admin:read",
+            resource="gateway_evidence",
+        )
+        return self.gateway_evidence.list_evidence(limit=limit, offset=offset)
 
     async def get_orchestration_settings(
         self,
