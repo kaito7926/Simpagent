@@ -33,8 +33,8 @@
 
 - [x] **IDEN-03**: User can authenticate through real external OAuth2/OIDC providers using authorization-code redirect flows with CSRF state protection and provider-specific configuration.
 - [x] **IDEN-06**: User can sign in with Google when `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and the configured redirect URI are present, while missing configuration hides or disables the provider without breaking local login.
-- [ ] **IDEN-07**: User can sign in with GitHub when `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and the configured redirect URI are present, while missing configuration hides or disables the provider without breaking local login.
-- [ ] **IDEN-08**: OAuth provisioning and account linking fail closed for missing, unverified, or conflicting email identity and never allow a provider login to take over an existing local account without an explicit safe match.
+- [x] **IDEN-07**: User can sign in with GitHub when `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and the configured redirect URI are present, while missing configuration hides or disables the provider without breaking local login.
+- [x] **IDEN-08**: OAuth provisioning and account linking fail closed for missing, unverified, or conflicting email identity and never allow a provider login to take over an existing local account without an explicit safe match.
 
 ### Authorization
 
@@ -277,8 +277,8 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | AUTHZ-02 | Phase 5 | Complete |
 | IDEN-03 | Phase 5 | Complete |
 | IDEN-06 | Phase 5 | Complete |
-| IDEN-07 | Phase 5 | Pending |
-| IDEN-08 | Phase 5 | Pending |
+| IDEN-07 | Phase 5 | Complete |
+| IDEN-08 | Phase 5 | Complete |
 | GATE-01 | Phase 5 | Complete |
 | GATE-02 | Phase 5 | Complete |
 | GATE-03 | Phase 5 | Complete |

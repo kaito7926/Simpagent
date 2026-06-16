@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 05-05-PLAN.md
-last_updated: "2026-06-15T17:48:34.024Z"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-06-16T04:40:03.787Z"
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 32
-  completed_plans: 27
-  percent: 84
+  completed_plans: 28
+  percent: 67
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 05 (gateway-administration-and-security-evidence) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Roadmap order complete: Phases 01-02
 Integrated shipped slice: Phase 04 (isolated-python-execution) - PR #2
 Latest verification: `04-VERIFICATION.md` passed on 2026-06-13 with 5/5 end-to-end truths verified
@@ -58,6 +58,7 @@ Progress: 20/20 shipped plans tracked, Phase 05 Planned
 | Phase 05 P02 | 18 min | 3 tasks | 17 files |
 | Phase 05-gateway-administration-and-security-evidence P04 | 16 min | 3 tasks | 11 files |
 | Phase 05-gateway-administration-and-security-evidence P05 | 15 min | 3 tasks | 8 files |
+| Phase 05-gateway-administration-and-security-evidence P03 | 13 min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -81,8 +82,11 @@ Recent decisions affecting current work:
 - [Phase 05]: Admin Overview uses backend-owned bounded aggregate counters, and Orchestration write confirmations remain UI-side guardrails with FastAPI `admin:write` enforcement as the authority.
 - [Phase 05]: Kong JWT screening was not enabled on live app routes because Compose development JWT keys are generated at runtime while DB-less Kong config is static; FastAPI remains the authorization authority.
 - [Phase 05]: Gateway config assertions that need repo-root files are skipped in backend-only containers and backed by direct host-side Kong config parsing.
+- [Phase 05-gateway-administration-and-security-evidence]: GitHub OAuth reuses the existing backend OAuth service and first-party refresh-cookie session model. — This preserves local/Google session semantics and avoids a second browser session path.
+- [Phase 05-gateway-administration-and-security-evidence]: GitHub identity is resolved by stable provider subject before any verified-email linking attempt. — This satisfies D-06/D-08 and prevents mutable provider email from becoming the login key.
 
 ### Pending Todos
+
 - Reconcile or recreate Phase 03 planning artifacts so the roadmap can represent Search status accurately.
 - Decide whether Phase 05 planning starts immediately or only after the Phase 03 metadata debt is repaired.
 
@@ -111,6 +115,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-15T17:48:33.170Z
-Stopped at: Completed 05-05-PLAN.md
+Last session: 2026-06-16T04:40:03.780Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
