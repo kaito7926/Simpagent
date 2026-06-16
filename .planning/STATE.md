@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 05-06-PLAN.md
-last_updated: "2026-06-16T04:55:21.240Z"
+stopped_at: Completed 05-07-PLAN.md
+last_updated: "2026-06-16T05:19:44.315Z"
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 32
-  completed_plans: 29
-  percent: 91
+  completed_plans: 30
+  percent: 67
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-06-08)
 ## Current Position
 
 Phase: 05 (gateway-administration-and-security-evidence) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Roadmap order complete: Phases 01-02
 Integrated shipped slice: Phase 04 (isolated-python-execution) - PR #2
 Latest verification: `04-VERIFICATION.md` passed on 2026-06-13 with 5/5 end-to-end truths verified
@@ -60,6 +60,7 @@ Progress: 20/20 shipped plans tracked, Phase 05 Planned
 | Phase 05-gateway-administration-and-security-evidence P05 | 15 min | 3 tasks | 8 files |
 | Phase 05-gateway-administration-and-security-evidence P03 | 13 min | 2 tasks | 14 files |
 | Phase 05-gateway-administration-and-security-evidence P06 | 12 min | 3 tasks | 8 files |
+| Phase 05-gateway-administration-and-security-evidence P07 | 18 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,9 @@ Recent decisions affecting current work:
 - [Phase 05-gateway-administration-and-security-evidence]: Admin evidence redaction runs in the backend service layer before schema serialization. — This ensures secrets and raw operational payloads are removed before admin contracts leave FastAPI.
 - [Phase 05-gateway-administration-and-security-evidence]: Gateway-only 429/413 evidence is exposed from Kong-backed service contracts instead of fabricated FastAPI security_events rows. — This preserves D-14 truthfulness for requests blocked before the backend.
 - [Phase 05-gateway-administration-and-security-evidence]: Plan 05-06 keeps HTTP route exposure out of scope; Plan 05-07 can consume the service contract. — This preserves the planned slice boundary while giving the next plan a typed backend contract.
+- [Phase 05-gateway-administration-and-security-evidence]: Gateway evidence is exposed through the existing AdminEvidenceService admin:read gate. — Preserves FastAPI as the admin authorization authority while adding the final gateway evidence route.
+- [Phase 05-gateway-administration-and-security-evidence]: Admin evidence detail drawers render only row fields and backend-sanitized snippets. — Keeps D-19/D-20 redaction boundaries visible in the shared shell and avoids raw payload viewers.
+
 ### Pending Todos
 
 - Reconcile or recreate Phase 03 planning artifacts so the roadmap can represent Search status accurately.
@@ -118,6 +122,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-06-16T04:55:21.232Z
-Stopped at: Completed 05-06-PLAN.md
+Last session: 2026-06-16T05:19:15.492Z
+Stopped at: Completed 05-07-PLAN.md
 Resume file: None
