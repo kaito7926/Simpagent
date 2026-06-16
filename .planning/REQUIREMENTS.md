@@ -108,9 +108,9 @@
 ### Logging and Administration
 
 - [x] **OBS-01**: Every request receives a validated correlation ID propagated through Kong, FastAPI, provider calls, tool calls, audit records, and the response.
-- [ ] **OBS-02**: Application logs are structured JSON with allowlisted fields and recursive redaction of credentials, tokens, cookies, API keys, secrets, and sensitive raw content.
-- [ ] **OBS-03**: Auth failures, forbidden access, refresh replay, rate-limit events, tool decisions, sandbox violations, and admin actions create typed redacted evidence.
-- [ ] **OBS-04**: Tool execution records contain actor, conversation, tool, safe input/output summaries, status, duration, and correlation ID.
+- [x] **OBS-02**: Application logs are structured JSON with allowlisted fields and recursive redaction of credentials, tokens, cookies, API keys, secrets, and sensitive raw content.
+- [x] **OBS-03**: Auth failures, forbidden access, refresh replay, rate-limit events, tool decisions, sandbox violations, and admin actions create typed redacted evidence.
+- [x] **OBS-04**: Tool execution records contain actor, conversation, tool, safe input/output summaries, status, duration, and correlation ID.
 - [x] **OBS-05**: Properly authorized admin can list users and paginated recent audit logs, security events, tool executions, failed logins, and available rate-limit evidence.
 - [x] **OBS-06**: Ordinary users and under-scoped admins cannot access administrative evidence endpoints.
 - [x] **OBS-07**: Admin metrics expose bounded aggregate operational/security counts without leaking user content or credentials.
@@ -288,9 +288,9 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | GATE-07 | Phase 5 | Pending |
 | GATE-08 | Phase 5 | Pending |
 | OBS-01 | Phase 5 | Complete |
-| OBS-02 | Phase 5 | Pending |
-| OBS-03 | Phase 5 | Pending |
-| OBS-04 | Phase 5 | Pending |
+| OBS-02 | Phase 5 | Complete |
+| OBS-03 | Phase 5 | Complete |
+| OBS-04 | Phase 5 | Complete |
 | OBS-05 | Phase 5 | Complete |
 | OBS-06 | Phase 5 | Complete |
 | OBS-07 | Phase 5 | Complete |
