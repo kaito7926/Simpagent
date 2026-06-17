@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.decisions import PythonToolPlan
 from app.db.repositories.accounts import AccountsRepository
-from app.models.domain import ToolExecution
+from app.models.domain import AgentRuntimeSetting, ToolExecution
 from app.models.python_state import PythonArtifactRecord, PythonSessionState
 from app.python_contract import PythonArtifactType, PythonExecutionProfile, PythonExecutionStatus
 from app.schemas.auth import STANDARD_USER_SCOPES
@@ -86,6 +86,17 @@ def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+async def _enable_trusted_supervisor(db_session: AsyncSession, *, user_id: UUID) -> None:
+    db_session.add(
+        AgentRuntimeSetting(
+            key="trusted_supervisor_agent",
+            enabled=True,
+            updated_by_user_id=user_id,
+        )
+    )
+    await db_session.commit()
+
+
 def _snapshot_blob(*binding_names: str) -> bytes:
     payload = {
         "version": 1,
@@ -139,13 +150,14 @@ async def test_successful_python_turn_persists_artifacts_reuses_state_and_extend
     tmp_path: Path,
 ) -> None:
     frozen_now = {"value": datetime(2026, 6, 13, 1, 0, tzinfo=UTC)}
-    _, token = await _create_user_token(
+    owner_id, token = await _create_user_token(
         db_session,
         settings,
         email="python-full-flow@example.test",
         now=frozen_now["value"],
     )
     app.state.settings = settings.model_copy(update={"python_artifact_storage_dir": str(tmp_path)})
+    await _enable_trusted_supervisor(db_session, user_id=owner_id)
     app.state.clock = lambda: frozen_now["value"]
 
     snapshot_one = _snapshot_blob("sales_rows")
@@ -215,6 +227,8 @@ async def test_successful_python_turn_persists_artifacts_reuses_state_and_extend
     assert created.status_code == 201
     body = created.json()
     conversation_id = UUID(body["id"])
+    assert "first run" in body["messages"][1]["content"]
+    assert "Reviewed Python execution completed successfully." not in body["messages"][1]["content"]
     first_python = body["messages"][1]["metadata"]["python_result"]
     artifact_path = first_python["artifacts"][0]["download_path"]
 
@@ -254,6 +268,8 @@ async def test_successful_python_turn_persists_artifacts_reuses_state_and_extend
 
     assert follow_up.status_code == 200
     follow_up_body = follow_up.json()
+    assert "second run" in follow_up_body["messages"][-1]["content"]
+    assert "Reviewed Python execution completed successfully." not in follow_up_body["messages"][-1]["content"]
     second_python = follow_up_body["messages"][-1]["metadata"]["python_result"]
 
     assert second_python["status"] == "succeeded"
@@ -299,13 +315,14 @@ async def test_user_code_exception_is_failed_and_not_infra_failure(
     tmp_path: Path,
 ) -> None:
     frozen_now = datetime(2026, 6, 13, 2, 0, tzinfo=UTC)
-    _, token = await _create_user_token(
+    owner_id, token = await _create_user_token(
         db_session,
         settings,
         email="python-user-exception@example.test",
         now=frozen_now,
     )
     app.state.settings = settings.model_copy(update={"python_artifact_storage_dir": str(tmp_path)})
+    await _enable_trusted_supervisor(db_session, user_id=owner_id)
     app.state.clock = lambda: frozen_now
     app.state.python_planner = SequencePythonPlanner([PythonToolPlan(code="raise ValueError('boom')")])
     app.state.python_client = SequencePythonClient(

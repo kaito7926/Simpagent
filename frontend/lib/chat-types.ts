@@ -35,4 +35,5 @@ export type ConversationPage = {
 export type ChatMessageInput = {
   clientMessageId: string;
   content: string;
+  toolMode?: "auto" | "google_search" | "python";
 };

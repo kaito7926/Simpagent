@@ -13,20 +13,20 @@ import {
 } from "@/lib/chat-session";
 
 const citations: CitationReference[] = [
-  { id: "citation-1", source_id: "source-1", marker: 1, label: "Nguồn 1" },
-  { id: "citation-2", source_id: "source-2", marker: 2, label: "Nguồn 2" },
+  { id: "citation-1", source_id: "source-1", marker: 1, label: "Source 1" },
+  { id: "citation-2", source_id: "source-2", marker: 2, label: "Source 2" },
 ];
 
 const sources: SearchSource[] = [
   {
     id: "source-1",
-    title: "Cổng thông tin A",
+    title: "Reference portal A",
     url: "https://news.example.com/a",
     domain: "news.example.com",
   },
   {
     id: "source-2",
-    title: "Cổng thông tin B",
+    title: "Reference portal B",
     url: "https://docs.example.com/b",
     domain: "docs.example.com",
   },
@@ -35,13 +35,13 @@ const sources: SearchSource[] = [
 const suggestions: SearchSuggestion[] = [
   {
     id: "suggestion-1",
-    label: "Tìm tiếp chủ đề hôm nay",
-    query: "chủ đề hôm nay",
+    label: "Search the topic again for today",
+    query: "topic today",
   },
   {
     id: "suggestion-2",
-    label: "<b>Không được render HTML</b>",
-    query: "an toàn html",
+    label: "<b>HTML must not render</b>",
+    query: "safe html",
   },
 ];
 
@@ -61,29 +61,29 @@ void test("grounded turns render badge, inline citations, source list, and sugge
     role: "assistant",
     state: "grounded",
     mode: "search",
-    answer: "Bản tóm tắt hiện tại",
+    answer: "Current verified summary",
     citations,
     sources,
     suggestions,
   });
 
   const badgeIndex = markup.indexOf("Google-grounded");
-  const answerIndex = markup.indexOf("Bản tóm tắt hiện tại");
-  const sourceHeadingIndex = markup.indexOf("Nguồn tham khảo");
-  const suggestionHeadingIndex = markup.indexOf("Gợi ý tìm kiếm tiếp theo");
+  const answerIndex = markup.indexOf("Current verified summary");
+  const sourceHeadingIndex = markup.indexOf("Sources");
+  const suggestionHeadingIndex = markup.indexOf("Suggested follow-up searches");
 
   assert.notEqual(badgeIndex, -1);
-  assert.notEqual(markup.indexOf("aria-label=\"Nguồn 1\""), -1);
-  assert.notEqual(markup.indexOf("aria-label=\"Nguồn 2\""), -1);
+  assert.notEqual(markup.indexOf('aria-label="Source 1"'), -1);
+  assert.notEqual(markup.indexOf('aria-label="Source 2"'), -1);
   assert.notEqual(sourceHeadingIndex, -1);
   assert.notEqual(suggestionHeadingIndex, -1);
   assert.ok(badgeIndex < answerIndex);
   assert.ok(answerIndex < sourceHeadingIndex);
   assert.ok(sourceHeadingIndex < suggestionHeadingIndex);
-  assert.match(markup, /Cổng thông tin A/);
+  assert.match(markup, /Reference portal A/);
   assert.match(markup, /news\.example\.com/);
-  assert.match(markup, /Tìm tiếp chủ đề hôm nay/);
-  assert.match(markup, /&lt;b&gt;Không được render HTML&lt;\/b&gt;/);
+  assert.match(markup, /Search the topic again for today/);
+  assert.match(markup, /&lt;b&gt;HTML must not render&lt;\/b&gt;/);
 });
 
 void test("missing-grounding turns show a tentative note without badge, citations, sources, or suggestions", () => {
@@ -92,7 +92,7 @@ void test("missing-grounding turns show a tentative note without badge, citation
     role: "assistant",
     state: "missing_grounding",
     mode: "search",
-    answer: "Đây là câu trả lời chưa có nguồn xác thực rõ ràng.",
+    answer: "This answer does not have fully verified sources yet.",
     citations,
     sources,
     suggestions,
@@ -100,12 +100,12 @@ void test("missing-grounding turns show a tentative note without badge, citation
 
   assert.match(
     markup,
-    /Kết quả này có thể tham khảo vì chưa có nguồn xác thực rõ ràng\./,
+    /This answer may still be useful, but clear verified grounding was not available\./,
   );
   assert.equal(markup.includes("Google-grounded"), false);
-  assert.equal(markup.includes("Nguồn tham khảo"), false);
-  assert.equal(markup.includes("Gợi ý tìm kiếm tiếp theo"), false);
-  assert.equal(markup.includes("aria-label=\"Nguồn 1\""), false);
+  assert.equal(markup.includes("Sources"), false);
+  assert.equal(markup.includes("Suggested follow-up searches"), false);
+  assert.equal(markup.includes('aria-label="Source 1"'), false);
 });
 
 void test("denied turns visibly state that search was blocked and no search was executed", () => {
@@ -121,19 +121,19 @@ void test("denied turns visibly state that search was blocked and no search was 
     correlationId: null,
   });
 
-  assert.match(markup, /Tìm kiếm đã bị chặn/);
+  assert.match(markup, /Search was blocked/);
   assert.match(
     markup,
-    /Yêu cầu này không được phép dùng Google Search\. Không có lượt tìm kiếm nào được thực hiện\./,
+    /This request is not allowed to use Google Search\. No external search was executed\./,
   );
-  assert.equal(markup.includes("Thử lại tìm kiếm"), false);
+  assert.equal(markup.includes("Retry search"), false);
 });
 
 void test("unavailable, provider-failed, and timeout turns keep distinct copy and render an inline retry control", () => {
   const expected = new Map<AssistantTurn["state"], string>([
-    ["search_unavailable", "Tìm kiếm hiện không khả dụng"],
-    ["provider_failed", "Tìm kiếm đã thất bại"],
-    ["timeout", "Tìm kiếm đã quá thời gian chờ"],
+    ["search_unavailable", "Search is currently unavailable"],
+    ["provider_failed", "Search failed"],
+    ["timeout", "Search timed out"],
   ]);
 
   for (const [state, heading] of expected) {
@@ -150,7 +150,7 @@ void test("unavailable, provider-failed, and timeout turns keep distinct copy an
     });
 
     assert.match(markup, new RegExp(heading));
-    assert.match(markup, /Thử lại tìm kiếm/);
-    assert.match(markup, /Mã tham chiếu: corr-123/);
+    assert.match(markup, /Retry search/);
+    assert.match(markup, /Reference code: corr-123/);
   }
 });

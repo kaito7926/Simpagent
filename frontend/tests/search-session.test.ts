@@ -30,27 +30,27 @@ function groundedEnvelope(): ChatResponseEnvelope {
     request_mode: "search",
     response_state: "grounded",
     turn_id: "assistant-1",
-    answer_markdown: "Tình hình hiện tại đã được xác nhận.",
+    answer_markdown: "The current situation has been verified.",
     citations: [
-      { id: "citation-1", source_id: "source-1", marker: 1, label: "Nguồn 1" },
-      { id: "citation-2", source_id: "source-2", marker: 2, label: "Nguồn 2" },
+      { id: "citation-1", source_id: "source-1", marker: 1, label: "Source 1" },
+      { id: "citation-2", source_id: "source-2", marker: 2, label: "Source 2" },
     ],
     sources: [
       {
         id: "source-1",
-        title: "Nguồn A",
+        title: "Source A",
         url: "https://news.example.com/a",
         domain: "news.example.com",
       },
       {
         id: "source-2",
-        title: "Nguồn B",
+        title: "Source B",
         url: "https://docs.example.com/b",
         domain: "docs.example.com",
       },
     ],
     suggestions: [
-      { id: "suggestion-1", label: "Tìm thêm về diễn biến hôm nay", query: "diễn biến hôm nay" },
+      { id: "suggestion-1", label: "Search for today’s latest update", query: "today latest update" },
     ],
   };
 }
@@ -71,16 +71,16 @@ function timeoutEnvelope(turnId = "assistant-timeout"): ChatResponseEnvelope {
 void test("switching mode preserves draft and updates mode-specific submit labels", () => {
   const controller = new ChatSessionController();
 
-  controller.setDraft("Câu hỏi đang soạn");
+  controller.setDraft("Draft question");
   controller.setMode("search");
   assert.equal(controller.snapshot.mode, "search");
-  assert.equal(controller.snapshot.draft, "Câu hỏi đang soạn");
-  assert.equal(controller.snapshot.submitLabel, "Tìm bằng Google");
+  assert.equal(controller.snapshot.draft, "Draft question");
+  assert.equal(controller.snapshot.submitLabel, "Search with Google");
 
   controller.setMode("direct");
   assert.equal(controller.snapshot.mode, "direct");
-  assert.equal(controller.snapshot.draft, "Câu hỏi đang soạn");
-  assert.equal(controller.snapshot.submitLabel, "Gửi câu hỏi");
+  assert.equal(controller.snapshot.draft, "Draft question");
+  assert.equal(controller.snapshot.submitLabel, "Send message");
 });
 
 void test("pending requests lock mode switching until the request settles", async () => {
@@ -95,11 +95,11 @@ void test("pending requests lock mode switching until the request settles", asyn
   });
 
   controller.setMode("direct");
-  controller.setDraft("Cho tôi biết trạng thái hiện tại");
+  controller.setDraft("Tell me the current status");
   const submitPromise = controller.submitTurn();
 
   assert.equal(controller.snapshot.isPending, true);
-  assert.equal(controller.snapshot.submitLabel, "Đang gửi...");
+  assert.equal(controller.snapshot.submitLabel, "Sending...");
 
   controller.setMode("search");
   assert.equal(controller.snapshot.mode, "direct");
@@ -108,7 +108,7 @@ void test("pending requests lock mode switching until the request settles", asyn
     request_mode: "direct",
     response_state: "direct",
     turn_id: "assistant-direct",
-    answer_markdown: "Đây là câu trả lời bình thường.",
+    answer_markdown: "This is a normal direct answer.",
     citations: [],
     sources: [],
     suggestions: [],
@@ -129,15 +129,15 @@ void test("suggestion clicks prefill composer, switch to search mode, and never 
     },
   });
 
-  controller.prefillSuggestion("lịch cập nhật hôm nay");
+  controller.prefillSuggestion("today update schedule");
 
   assert.equal(controller.snapshot.mode, "search");
-  assert.equal(controller.snapshot.draft, "lịch cập nhật hôm nay");
+  assert.equal(controller.snapshot.draft, "today update schedule");
   assert.equal(controller.snapshot.isPending, false);
   assert.equal(controller.snapshot.turns.length, 0);
   assert.equal(
     controller.snapshot.announcement,
-    'Đã điền gợi ý tìm kiếm vào ô soạn. Nhấn "Tìm bằng Google" để tiếp tục.',
+    'The suggested search has been added to the composer. Click "Search with Google" to continue.',
   );
   assert.deepEqual(submitted, []);
 });
@@ -152,7 +152,7 @@ void test("retry replaces the failed assistant slot instead of duplicating the u
   });
 
   controller.setMode("search");
-  controller.setDraft("Cập nhật thời tiết hôm nay");
+  controller.setDraft("Current weather update");
   await controller.submitTurn();
 
   assert.equal(controller.snapshot.turns.length, 2);
@@ -187,7 +187,7 @@ void test("response mapping keeps grounded, missing-grounding, denied, unavailab
         request_mode: "search",
         response_state: state,
         turn_id: `assistant-${state}`,
-        answer_markdown: state === "denied" ? null : "Nội dung phản hồi",
+        answer_markdown: state === "denied" ? null : "Response content",
         citations: [],
         sources: [],
         suggestions: [],
@@ -195,7 +195,7 @@ void test("response mapping keeps grounded, missing-grounding, denied, unavailab
     });
 
     controller.setMode("search");
-    controller.setDraft(`Kiểm tra trạng thái ${state}`);
+    controller.setDraft(`Check state ${state}`);
     await controller.submitTurn();
 
     const assistantTurn = controller.snapshot.turns.at(-1);

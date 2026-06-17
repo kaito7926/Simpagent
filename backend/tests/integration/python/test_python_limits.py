@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.decisions import PythonToolPlan
 from app.db.repositories.accounts import AccountsRepository
-from app.models.domain import ToolExecution
+from app.models.domain import AgentRuntimeSetting, ToolExecution
 from app.python_contract import PythonExecutionProfile, PythonExecutionStatus, PythonLimitName
 from app.schemas.auth import STANDARD_USER_SCOPES
 from app.schemas.python import PythonExecutionResult
@@ -65,6 +65,17 @@ def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+async def _enable_trusted_supervisor(db_session: AsyncSession) -> None:
+    db_session.add(
+        AgentRuntimeSetting(
+            key="trusted_supervisor_agent",
+            enabled=True,
+            updated_by_user_id=None,
+        )
+    )
+    await db_session.commit()
+
+
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_exact_limit_name_is_returned_to_chat_and_persisted_on_tool_execution(
@@ -74,6 +85,7 @@ async def test_exact_limit_name_is_returned_to_chat_and_persisted_on_tool_execut
     settings,
 ) -> None:
     token = await _create_user_token(db_session, settings, email="python-limit@example.test")
+    await _enable_trusted_supervisor(db_session)
     app.state.python_planner = StaticPythonPlanner(
         PythonToolPlan(code="print('x' * 50000)")
     )

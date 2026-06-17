@@ -45,7 +45,7 @@ export function PythonResultCard({ result }: PythonResultCardProps) {
                   <FlaskConical size={18} strokeWidth={1.75} />
                 )}
               </span>
-              <p className="eyebrow">{result.eyebrow}</p>
+              <p className="auth-eyebrow">{result.eyebrow}</p>
             </div>
             <h2 className="python-card-title">{result.title}</h2>
           </div>
@@ -53,8 +53,8 @@ export function PythonResultCard({ result }: PythonResultCardProps) {
         </header>
 
         <div className="python-card-meta">
-          {result.durationLabel ? <span>Thời lượng {result.durationLabel}</span> : null}
-          {result.profileLabel ? <span>Hồ sơ {result.profileLabel}</span> : null}
+          {result.durationLabel ? <span>Duration {result.durationLabel}</span> : null}
+          {result.profileLabel ? <span>Profile {result.profileLabel}</span> : null}
         </div>
 
         <p className="python-card-summary">{result.summary}</p>

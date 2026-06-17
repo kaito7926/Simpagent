@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from app.schemas.search import SearchTurnResult, TurnMode
 
 
+ChatToolMode = Literal["auto", "google_search", "python"]
 MessageRole = Literal["system", "user", "assistant", "tool"]
 MessageStatus = Literal["pending", "completed", "failed"]
 
@@ -18,6 +19,7 @@ class ChatMessageCreateRequest(BaseModel):
 
     client_message_id: str = Field(min_length=1, max_length=128)
     content: str = Field(min_length=1, max_length=20_000)
+    tool_mode: ChatToolMode = "auto"
 
 
 class ConversationCreateRequest(BaseModel):

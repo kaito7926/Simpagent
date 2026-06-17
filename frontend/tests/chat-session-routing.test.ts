@@ -130,6 +130,6 @@ void test("terminal chat session expiry returns to English login copy", async ()
       demoConfig: { enabled: false },
     }),
   );
-  assert.match(html, /Sign in to SimpAgent|Session ended/);
-  assert.match(html, /Use your local account to open a protected session\.|Your session is no longer valid\. Sign in again to continue\./);
+  assert.match(html, /SimpAgent|Session ended/);
+  assert.match(html, /Intelligent\. Secure\. Always by your side\.|Your session is no longer valid\. Sign in again to continue\./);
 });

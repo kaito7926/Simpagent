@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.decisions import PythonToolPlan
 from app.db.repositories.accounts import AccountsRepository
-from app.models.domain import ToolExecution
+from app.models.domain import AgentRuntimeSetting, ToolExecution
 from app.models.python_state import PythonArtifactRecord, PythonSessionState
 from app.python_contract import PythonExecutionProfile, PythonExecutionStatus, PythonPolicyErrorCode
 from app.schemas.auth import STANDARD_USER_SCOPES
@@ -93,6 +93,17 @@ def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+async def _enable_trusted_supervisor(db_session: AsyncSession) -> None:
+    db_session.add(
+        AgentRuntimeSetting(
+            key="trusted_supervisor_agent",
+            enabled=True,
+            updated_by_user_id=None,
+        )
+    )
+    await db_session.commit()
+
+
 @pytest.mark.security
 @pytest.mark.asyncio
 async def test_policy_error_creates_execution_evidence_without_session_or_artifact_side_effects(
@@ -103,6 +114,7 @@ async def test_policy_error_creates_execution_evidence_without_session_or_artifa
     tmp_path: Path,
 ) -> None:
     token = await _create_user_token(db_session, settings, email="python-policy-side-effect@example.test")
+    await _enable_trusted_supervisor(db_session)
     app.state.settings = settings.model_copy(update={"python_artifact_storage_dir": str(tmp_path)})
     app.state.python_planner = StaticPythonPlanner(PythonToolPlan(code="import requests\nprint('blocked')"))
     python_client = RecordingPythonClient(

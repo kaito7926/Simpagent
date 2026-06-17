@@ -46,7 +46,29 @@ export type ReadinessResponse = {
     llm: ReadinessComponentState;
     search: ReadinessComponentState;
     sandbox: ReadinessComponentState;
+    oauth_google?: ReadinessComponentState;
+    oauth_github?: ReadinessComponentState;
   };
+};
+
+export type OAuthProviderId = "google" | "github";
+
+export type OAuthProviderState = {
+  provider: OAuthProviderId;
+  label: string;
+  enabled: boolean;
+  unavailableLabel: string | null;
+};
+
+type OAuthStorageTrap = {
+  setItem: (key: string, value: string) => void;
+  removeItem: (key: string) => void;
+};
+
+export type BeginOAuthDependencies = {
+  navigate?: (url: string) => void;
+  localStorage?: OAuthStorageTrap;
+  sessionStorage?: OAuthStorageTrap;
 };
 
 export type DemoConfig = {
@@ -123,6 +145,22 @@ function defaultHeaders(accessToken?: string | null): HeadersInit {
         Authorization: `Bearer ${accessToken}`,
       }
     : {};
+}
+
+const OAUTH_START_ROUTES: Record<OAuthProviderId, string> = {
+  google: "/api/auth/oauth/google/start",
+  github: "/api/auth/oauth/github/start",
+};
+
+export function beginOAuth(provider: OAuthProviderId, deps: BeginOAuthDependencies = {}): void {
+  const startUrl = OAUTH_START_ROUTES[provider];
+  const navigate =
+    deps.navigate ??
+    ((url: string) => {
+      window.location.assign(url);
+    });
+
+  navigate(startUrl);
 }
 
 export class AuthSessionController {

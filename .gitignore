@@ -8,3 +8,6 @@ node_modules/
 *.egg-info/
 .mcp.json
 seed.spec.ts
+.claude/*
+.env.1
+.env.2

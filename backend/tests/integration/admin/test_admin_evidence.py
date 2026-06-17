@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select
 
 from app.models.evidence import SecurityEvent
+from app.services.gateway_evidence import GatewayEvidenceService
 from tests.integration.search._helpers import create_user, issue_token
 
 
@@ -85,3 +86,39 @@ async def test_admin_endpoints_return_bounded_evidence_for_admin(client, db_sess
     assert metrics_response.status_code == 200
     metrics_payload = metrics_response.json()
     assert metrics_payload["users_total"] >= 2
+
+
+async def test_gateway_only_evidence_is_separate_from_security_event_rows(
+    client,
+    db_session,
+    settings,
+) -> None:
+    admin = await create_user(
+        db_session,
+        email="gateway-admin@example.test",
+        scopes=["chat:read", "admin:read"],
+        role="admin",
+    )
+    await db_session.commit()
+
+    gateway_page = GatewayEvidenceService.from_kong_config("kong/kong.yml").list_evidence(
+        limit=10,
+        offset=0,
+    )
+    token = issue_token(user=admin, scopes=["chat:read", "admin:read"], settings=settings)
+    events_response = await client.get(
+        "/api/admin/security-events?limit=100&offset=0",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert events_response.status_code == 200
+    security_event_payload = events_response.json()
+    assert gateway_page.items
+    assert any(item.evidence_type == "rate_limit" for item in gateway_page.items)
+    assert any(item.evidence_type == "request_size" for item in gateway_page.items)
+    assert all(item.source == "kong_config" for item in gateway_page.items)
+    assert all(
+        item["event_type"] not in {"gateway_rate_limited", "gateway_request_too_large"}
+        for item in security_event_payload["items"]
+    )
+    assert "security_event" not in gateway_page.model_dump_json()

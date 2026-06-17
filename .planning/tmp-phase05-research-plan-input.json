@@ -1,0 +1,32 @@
+{
+  "ecosystem": "pypi",
+  "config": {
+    "exa_search": false,
+    "brave_search": false,
+    "firecrawl": false,
+    "tavily_search": false
+  },
+  "questions": [
+    {
+      "text": "How does Authlib's Starlette/FastAPI OAuth client perform authorization redirect and token exchange, and what session/state handling does it require?",
+      "kind": "docs",
+      "library": "authlib"
+    },
+    {
+      "text": "How should Google OpenID Connect claims like sub and email_verified be used for account linking and identity persistence?",
+      "kind": "web"
+    },
+    {
+      "text": "How do GitHub OAuth apps obtain verified user email addresses, and what happens when email is private or unverified?",
+      "kind": "web"
+    },
+    {
+      "text": "How should Kong Gateway DB-less mode configure CORS, correlation IDs, rate limiting, request size limits, and JWT screening for a small single-node deployment?",
+      "kind": "web"
+    },
+    {
+      "text": "What Cloudflare documentation matters for optional Tunnel, WAF, Turnstile, Bot Fight Mode, TLS, and restoring client IP when Cloudflare fronts Kong?",
+      "kind": "web"
+    }
+  ]
+}

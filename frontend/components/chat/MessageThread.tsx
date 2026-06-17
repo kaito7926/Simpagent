@@ -22,11 +22,11 @@ export function MessageThread({
     return (
       <section className="message-thread empty-thread">
         <div className="message-card assistant-message-card">
-          <h2 className="section-heading">Chưa có lượt tìm kiếm</h2>
+          <h2 className="section-heading">No messages yet</h2>
           <p className="body-copy">
             {mode === "search"
-              ? 'Chọn "Tìm bằng Google", nhập câu hỏi cần thông tin hiện tại rồi gửi.'
-              : "Nhập câu hỏi để bắt đầu một lượt trò chuyện bình thường."}
+              ? 'Choose "Google Search", enter a question that needs current information, and send it.'
+              : "Write a message to start a direct conversation."}
           </p>
         </div>
       </section>

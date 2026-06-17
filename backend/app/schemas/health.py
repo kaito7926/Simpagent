@@ -18,6 +18,8 @@ class ReadinessComponents(BaseModel):
     llm: ProviderStatus
     search: ProviderStatus
     sandbox: SandboxStatus
+    oauth_google: ProviderStatus
+    oauth_github: ProviderStatus
 
 
 class ReadinessResponse(BaseModel):

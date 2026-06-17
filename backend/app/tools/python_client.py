@@ -267,7 +267,7 @@ def _infra_failure_response(
     result = PythonExecutionResult(
         execution_id=execution_id,
         status=PythonExecutionStatus.infra_failure,
-        summary="Trusted supervisor could not complete the reviewed Python execution.",
+        summary="The Python execution service could not complete the reviewed run.",
         duration_ms=None,
         profile_name=profile_name,
         stdout_excerpt=None,

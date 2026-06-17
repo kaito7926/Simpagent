@@ -9,20 +9,19 @@ type DemoAccountPanelProps = {
 
 export function DemoAccountPanel({ onFillUser, onFillAdmin }: DemoAccountPanelProps) {
   return (
-    <section className="demo-panel" aria-labelledby="demo-panel-heading">
-      <h3 className="label-heading" id="demo-panel-heading">
+    <section className="space-y-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4" aria-labelledby="demo-panel-heading">
+      <h3 className="text-sm font-semibold text-zinc-900" id="demo-panel-heading">
         Local demo accounts
       </h3>
-      <p className="body-copy max-copy">
-        Use these only for the local development demo. Do not use these credentials in a real
-        environment.
+      <p className="text-sm leading-6 text-zinc-600">
+        Use these shortcuts only for the local development stack. Do not reuse demo credentials in a real deployment.
       </p>
-      <div className="demo-actions">
+      <div className="grid gap-3 sm:grid-cols-2">
         <ActionButton type="button" variant="secondary" onClick={onFillUser}>
-          Fill Standard User
+          Fill standard user
         </ActionButton>
         <ActionButton type="button" variant="secondary" onClick={onFillAdmin}>
-          Fill Administrator
+          Fill administrator
         </ActionButton>
       </div>
     </section>

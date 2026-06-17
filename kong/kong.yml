@@ -5,14 +5,65 @@ services:
   - name: backend
     url: http://backend:8000
     routes:
-      - name: backend-api
+      - name: backend-auth-register
         paths:
-          - /api
+          - ~/api/auth/register$
+        methods:
+          - POST
+          - OPTIONS
+        strip_path: false
+      - name: backend-auth-login
+        paths:
+          - ~/api/auth/login$
+        methods:
+          - POST
+          - OPTIONS
+        strip_path: false
+      - name: backend-auth-refresh
+        paths:
+          - ~/api/auth/refresh$
+        methods:
+          - POST
+          - OPTIONS
+        strip_path: false
+      - name: backend-auth-logout
+        paths:
+          - ~/api/auth/logout$
+        methods:
+          - POST
+          - OPTIONS
+        strip_path: false
+      - name: backend-auth-me
+        paths:
+          - ~/api/auth/me$
+        methods:
+          - GET
+          - OPTIONS
+        strip_path: false
+      - name: backend-oauth
+        paths:
+          - /api/auth/oauth
+        strip_path: false
+      - name: backend-admin
+        paths:
+          - /api/admin
+        strip_path: false
+      - name: backend-chat-turns
+        paths:
+          - ~/api/conversations/[^/]+/(messages|turns)(/[^/]+/retry)?$
+          - ~/api/conversations$
+          - ~/api/conversations/[^/]+$
+        strip_path: false
+      - name: backend-python-execute
+        paths:
+          - ~/api/python/.*
         strip_path: false
       - name: backend-health
         paths:
-          - /health
-          - /ready
+          - ~/health$
+          - ~/ready$
+        methods:
+          - GET
         strip_path: false
 
   - name: frontend
@@ -24,14 +75,23 @@ services:
         strip_path: false
 
 plugins:
-  - name: cors
+  - name: correlation-id
     config:
+      header_name: X-Correlation-Id
+      generator: uuid
+      echo_downstream: true
+
+  - name: cors
+    route: backend-auth-register
+    config: &strict_cors
       origins:
-        - http://localhost:8000
+        - http://localhost:3000
       credentials: true
       methods:
         - GET
         - POST
+        - PATCH
+        - DELETE
         - OPTIONS
       headers:
         - Authorization
@@ -40,4 +100,93 @@ plugins:
         - X-Correlation-Id
       exposed_headers:
         - X-Correlation-Id
+        - RateLimit-Limit
+        - RateLimit-Remaining
+        - RateLimit-Reset
+        - X-RateLimit-Limit-Minute
+        - X-RateLimit-Remaining-Minute
       max_age: 3600
+  - name: cors
+    route: backend-auth-login
+    config: *strict_cors
+  - name: cors
+    route: backend-auth-refresh
+    config: *strict_cors
+  - name: cors
+    route: backend-auth-logout
+    config: *strict_cors
+  - name: cors
+    route: backend-auth-me
+    config: *strict_cors
+  - name: cors
+    route: backend-oauth
+    config: *strict_cors
+  - name: cors
+    route: backend-admin
+    config: *strict_cors
+  - name: cors
+    route: backend-chat-turns
+    config: *strict_cors
+  - name: cors
+    route: backend-python-execute
+    config: *strict_cors
+
+  - name: request-size-limiting
+    route: backend-auth-register
+    config: &small_payload
+      allowed_payload_size: 1
+  - name: request-size-limiting
+    route: backend-auth-login
+    config: *small_payload
+  - name: request-size-limiting
+    route: backend-auth-refresh
+    config: *small_payload
+  - name: request-size-limiting
+    route: backend-chat-turns
+    config:
+      allowed_payload_size: 1
+  - name: request-size-limiting
+    route: backend-python-execute
+    config:
+      allowed_payload_size: 1
+
+  - name: rate-limiting
+    instance_name: auth-sensitive-rate-limit
+    route: backend-auth-login
+    config: &auth_sensitive_rate_limit
+      minute: 5
+      policy: local
+      limit_by: ip
+      fault_tolerant: true
+      hide_client_headers: false
+  - name: rate-limiting
+    instance_name: auth-register-sensitive-rate-limit
+    route: backend-auth-register
+    config: *auth_sensitive_rate_limit
+  - name: rate-limiting
+    instance_name: refresh-sensitive-rate-limit
+    route: backend-auth-refresh
+    config:
+      minute: 20
+      policy: local
+      limit_by: ip
+      fault_tolerant: true
+      hide_client_headers: false
+  - name: rate-limiting
+    instance_name: tool-sensitive-rate-limit
+    route: backend-python-execute
+    config:
+      minute: 30
+      policy: local
+      limit_by: ip
+      fault_tolerant: true
+      hide_client_headers: false
+  - name: rate-limiting
+    instance_name: chat-standard-rate-limit
+    route: backend-chat-turns
+    config:
+      minute: 60
+      policy: local
+      limit_by: ip
+      fault_tolerant: true
+      hide_client_headers: false

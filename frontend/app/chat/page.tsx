@@ -4,15 +4,15 @@ import { ChatPreviewShell } from "@/components/chat/ChatPreviewShell";
 import type { ChatMessage } from "@/lib/chat/tool-results";
 
 export const metadata: Metadata = {
-  title: "Xem trước chat | SimpAgent",
-  description: "Bản xem trước UI chat và Python giới hạn trong Next.js.",
+  title: "Chat preview | SimpAgent",
+  description: "Preview the rebuilt SimpAgent chat UI with distinct assistant and limited Python surfaces.",
 };
 
 const previewMessages: ChatMessage[] = [
   {
     id: "user-0",
     kind: "user",
-    content: "Làm sạch bảng doanh thu này rồi báo cho tôi khi tiến trình Python đang chạy.",
+    content: "Clean this revenue table and let me know when limited Python is actively running.",
     timestamp: "09:39",
   },
   {
@@ -22,7 +22,7 @@ const previewMessages: ChatMessage[] = [
     result: {
       execution_id: "exec-running-001",
       status: "running",
-      summary: "Đã nhận yêu cầu và đang gom nhóm dữ liệu trong môi trường Python giới hạn.",
+      summary: "The request was accepted and the limited Python worker is grouping the dataset now.",
       duration_ms: null,
       profile_name: "python-data-v1",
       stdout_excerpt: null,
@@ -39,14 +39,14 @@ const previewMessages: ChatMessage[] = [
   {
     id: "user-1",
     kind: "user",
-    content: "Tính tổng doanh thu theo quý từ bảng này và cho tôi một tệp CSV để tải về.",
+    content: "Calculate quarterly totals from this table and return a CSV I can download.",
     timestamp: "09:41",
   },
   {
     id: "assistant-1",
     kind: "assistant",
     content:
-      "Tôi sẽ dùng Python giới hạn để gom nhóm dữ liệu, giữ phần tóm tắt ở trên cùng, và chỉ trả lại tệp đầu ra đã được duyệt.",
+      "I'll use limited Python to group the data, keep the summary up front, and return only reviewed output artifacts.",
     timestamp: "09:41",
   },
   {
@@ -56,7 +56,7 @@ const previewMessages: ChatMessage[] = [
     result: {
       execution_id: "exec-success-001",
       status: "succeeded",
-      summary: "Đã gom nhóm doanh thu theo bốn quý và tạo một tệp CSV để tải về.",
+      summary: "Quarterly totals were grouped successfully and a reviewed CSV is ready for download.",
       duration_ms: 842,
       profile_name: "python-data-v1",
       stdout_excerpt: "quarters=4\nrows=4\ncsv_written=true",
@@ -88,7 +88,7 @@ const previewMessages: ChatMessage[] = [
   {
     id: "user-2",
     kind: "user",
-    content: "Import requests rồi gọi ra một API ngoài để lấy dữ liệu mới nhất giúp tôi.",
+    content: "Import requests and call an external API to fetch the newest data for me.",
     timestamp: "09:45",
   },
   {
@@ -98,7 +98,7 @@ const previewMessages: ChatMessage[] = [
     result: {
       execution_id: "exec-policy-001",
       status: "policy_error",
-      summary: "Lệnh đã dừng trước khi thực thi vì import yêu cầu nằm ngoài allowlist đã duyệt.",
+      summary: "The request was stopped before execution because the import is outside the reviewed allowlist.",
       duration_ms: 21,
       profile_name: "python-basic-v1",
       stdout_excerpt: null,
@@ -115,7 +115,7 @@ const previewMessages: ChatMessage[] = [
   {
     id: "user-3",
     kind: "user",
-    content: "Chạy Python cho tôi dù tài khoản này chưa được cấp quyền công cụ.",
+    content: "Run Python for me even though this account doesn't have the tool permission.",
     timestamp: "09:47",
   },
   {
@@ -125,7 +125,7 @@ const previewMessages: ChatMessage[] = [
     result: {
       execution_id: "exec-denied-001",
       status: "denied",
-      summary: "Yêu cầu đã bị chặn trước khi tạo môi trường Python.",
+      summary: "The request was blocked before the Python environment could be created.",
       duration_ms: null,
       profile_name: null,
       stdout_excerpt: null,
@@ -142,7 +142,7 @@ const previewMessages: ChatMessage[] = [
   {
     id: "user-4",
     kind: "user",
-    content: "Tạo ma trận rất lớn và ghi toàn bộ ra màn hình để tôi xem ngay trong chat.",
+    content: "Create a huge matrix and print all of it directly in chat.",
     timestamp: "09:51",
   },
   {
@@ -152,7 +152,7 @@ const previewMessages: ChatMessage[] = [
     result: {
       execution_id: "exec-limit-001",
       status: "limit_reached",
-      summary: "Bản in đầu ra đã bị dừng để tránh tràn giới hạn an toàn của phiên chạy.",
+      summary: "Output printing was stopped to keep the reviewed runtime inside its safety envelope.",
       duration_ms: 1304,
       profile_name: "python-basic-v1",
       stdout_excerpt: "matrix shape=(5000, 5000)\nprinting halted...",
@@ -173,7 +173,7 @@ const previewMessages: ChatMessage[] = [
     result: {
       execution_id: "exec-infra-001",
       status: "infra_failure",
-      summary: "Worker Python chưa khởi động xong nên phiên thực thi không thể hoàn tất.",
+      summary: "The Python worker wasn't fully ready, so the execution couldn't finish safely.",
       duration_ms: null,
       profile_name: "python-data-v1",
       stdout_excerpt: null,

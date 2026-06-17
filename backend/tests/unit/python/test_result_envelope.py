@@ -108,6 +108,7 @@ def test_denied_state_requires_a_specific_denial_reason() -> None:
     assert result.denial_reason is PythonDeniedReason.missing_permission
 
 
+
 def test_policy_error_requires_a_reviewed_policy_code() -> None:
     with pytest.raises(ValidationError):
         build_result(status=PythonExecutionStatus.policy_error, artifacts=[])

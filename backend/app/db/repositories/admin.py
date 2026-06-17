@@ -59,6 +59,8 @@ class AdminMetricsRecord:
     security_events_last_24h: int
     tool_executions_total: int
     tool_executions_last_24h: int
+    correlation_references_total: int
+    rate_limit_events_total: int
 
 
 class AdminEvidenceRepository:
@@ -176,6 +178,37 @@ class AdminEvidenceRepository:
                 )
             ).scalar_one()
         )
+        security_event_correlation_refs = int(
+            (
+                await self.session.execute(
+                    select(func.count(SecurityEvent.correlation_id)).select_from(SecurityEvent)
+                )
+            ).scalar_one()
+        )
+        tool_execution_correlation_refs = int(
+            (
+                await self.session.execute(
+                    select(func.count(ToolExecution.correlation_id)).select_from(ToolExecution)
+                )
+            ).scalar_one()
+        )
+        rate_limit_events_total = int(
+            (
+                await self.session.execute(
+                    select(func.count())
+                    .select_from(SecurityEvent)
+                    .where(
+                        SecurityEvent.event_type.in_(
+                            (
+                                "gateway_rate_limited",
+                                "rate_limit_exceeded",
+                                "admin_rate_limited",
+                            )
+                        )
+                    )
+                )
+            ).scalar_one()
+        )
         return AdminMetricsRecord(
             users_total=users_total,
             users_active=users_active,
@@ -183,4 +216,6 @@ class AdminEvidenceRepository:
             security_events_last_24h=security_events_last_24h,
             tool_executions_total=tool_executions_total,
             tool_executions_last_24h=tool_executions_last_24h,
+            correlation_references_total=security_event_correlation_refs + tool_execution_correlation_refs,
+            rate_limit_events_total=rate_limit_events_total,
         )

@@ -4,6 +4,7 @@ import json
 import logging
 
 from app.core.logging import JsonFormatter, reset_correlation_id, set_correlation_id
+from app.identity.redaction import sanitize_admin_evidence
 
 
 def test_json_formatter_includes_correlation_and_redacts_sensitive_fields() -> None:
@@ -33,3 +34,24 @@ def test_json_formatter_includes_correlation_and_redacts_sensitive_fields() -> N
     assert payload["user_id"] == "user-1"
     assert payload["authorization"] == "[REDACTED]"
     assert payload["database_url"] == "[REDACTED]"
+
+
+def test_admin_evidence_sanitizer_matches_logging_redaction_for_sensitive_values() -> None:
+    payload = {
+        "authorization": "Bearer shared-secret",
+        "cookie": "__Host-simpagent_refresh=refresh-secret",
+        "nested": {
+            "client_secret": "oauth-secret",
+            "database_url": "postgresql+psycopg://postgres:postgres@postgres:5432/simpagent",
+        },
+        "items": [{"api_key": "provider-key"}, {"safe": "kept"}],
+    }
+
+    sanitized = sanitize_admin_evidence(payload)
+
+    assert sanitized["authorization"] == "[REDACTED]"
+    assert sanitized["cookie"] == "[REDACTED]"
+    assert sanitized["nested"]["client_secret"] == "[REDACTED]"
+    assert sanitized["nested"]["database_url"] == "[REDACTED]"
+    assert sanitized["items"][0]["api_key"] == "[REDACTED]"
+    assert sanitized["items"][1]["safe"] == "kept"

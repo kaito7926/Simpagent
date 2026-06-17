@@ -44,7 +44,7 @@ export function PythonArtifactList({ artifacts }: PythonArtifactListProps) {
             </div>
             <a className="python-artifact-link" download href={artifact.href}>
               <Download size={16} strokeWidth={1.75} aria-hidden="true" />
-              <span>Tải về</span>
+              <span>Download</span>
             </a>
           </li>
         ))}

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 
@@ -101,6 +102,15 @@ def test_settings_include_provider_timeout_retry_and_keep_secret_repr_safe() -> 
     assert "sk-test-secret-value" not in settings.model_dump_json()
 
 
+def test_blank_env_key_falls_back_to_secret_file(tmp_path) -> None:
+    secret_file = tmp_path / "llm_api_key"
+    secret_file.write_text("file-backed-secret\n", encoding="utf-8")
+
+    settings = make_settings(llm_api_key="", llm_api_key_file=str(secret_file))
+
+    assert settings.llm_api_key_value == "file-backed-secret"
+
+
 @pytest.mark.asyncio
 async def test_adapter_constructs_async_openai_from_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     install_fake_client(monkeypatch)
@@ -123,7 +133,9 @@ async def test_adapter_sends_direct_non_streaming_chat_completion_payload(
 ) -> None:
     completions = install_fake_client(monkeypatch)
 
-    adapter = OpenAIChatAdapter(settings=make_settings())
+    adapter = OpenAIChatAdapter(
+        settings=make_settings(test_now=datetime(2026, 6, 14, 0, 0, tzinfo=UTC))
+    )
     result = await adapter.complete(
         messages=[
             ChatTurn(role="user", content="Write a tiny Python list comprehension."),
@@ -147,8 +159,11 @@ async def test_adapter_sends_direct_non_streaming_chat_completion_payload(
     assert FORBIDDEN_PROVIDER_KEYS.isdisjoint(payload)
 
     assert payload["messages"][0]["role"] == "system"
-    assert "SimpAgent" in payload["messages"][0]["content"]
-    assert "web search" in payload["messages"][0]["content"]
+    system_prompt = payload["messages"][0]["content"]
+    assert "SimpAgent" in system_prompt
+    assert "web search" in system_prompt
+    assert "Current runtime date: 2026-06-14 (UTC)." in system_prompt
+    assert "knowledge cutoff is 2025-08-31" in system_prompt
     assert payload["messages"][1:] == [
         {"role": "user", "content": "Write a tiny Python list comprehension."},
         {"role": "assistant", "content": "Use `[x for x in range(3)]`."},

@@ -16,6 +16,7 @@ from app.db.session import get_session
 from app.models.domain import Conversation, Message
 from app.schemas.chat import (
     ChatMessageResponse,
+    ChatToolMode,
     ChatMessageCreateRequest,
     ConversationCreateRequest,
     ConversationDetail,
@@ -122,6 +123,12 @@ def _provider_failed_error(exc: ProviderTurnFailedError) -> ApiError:
     )
 
 
+def _requested_tool(tool_mode: ChatToolMode) -> str | None:
+    if tool_mode == "auto":
+        return None
+    return tool_mode
+
+
 @router.post("", response_model=ConversationDetail, status_code=status.HTTP_201_CREATED)
 async def create_conversation(
     payload: ConversationCreateRequest,
@@ -138,6 +145,7 @@ async def create_conversation(
                     user_id=principal.user_id,
                     content=payload.initial_message.content,
                     client_message_id=payload.initial_message.client_message_id,
+                    requested_tool=_requested_tool(payload.initial_message.tool_mode),
                     executor=lambda: _chat_coordinator(request, session=session, principal=principal),
                     correlation_id=getattr(request.state, "correlation_id", None),
                 )
@@ -198,6 +206,7 @@ async def send_message(
             conversation_id=conversation_id,
             content=payload.content,
             client_message_id=payload.client_message_id,
+            requested_tool=_requested_tool(payload.tool_mode),
             executor=lambda: _chat_coordinator(request, session=session, principal=principal),
             correlation_id=getattr(request.state, "correlation_id", None),
         )

@@ -5,6 +5,12 @@ import os
 import httpx
 import pytest
 
+from tests.smoke._helpers import (
+    DEMO_ADMIN_EMAIL,
+    DEMO_ADMIN_PASSWORD,
+    unique_correlation_id,
+)
+
 
 PUBLIC_BASE_URL = os.getenv("SIMPAGENT_PUBLIC_BASE_URL", "http://kong:8000")
 RUN_SMOKE = os.getenv("SIMPAGENT_RUN_SMOKE", "false").lower() == "true"
@@ -39,6 +45,21 @@ async def test_python_tool_flow_through_public_topology() -> None:
             email=DEMO_EMAIL,
             password=DEMO_PASSWORD,
         )
+        admin_token = await _login(
+            client,
+            email=DEMO_ADMIN_EMAIL,
+            password=DEMO_ADMIN_PASSWORD,
+        )
+        toggle_response = await client.patch(
+            "/api/admin/orchestration/trusted-supervisor",
+            headers={
+                **_auth(admin_token),
+                "X-Correlation-Id": unique_correlation_id("corr-smk-supervisor-enable"),
+            },
+            json={"enabled": True},
+        )
+        assert toggle_response.status_code == 200
+        assert toggle_response.json()["trusted_supervisor_enabled"] is True
 
         created = await client.post(
             "/api/conversations",

@@ -29,10 +29,17 @@
 - [x] **AUTH-09**: Browser session handling keeps refresh tokens unavailable to JavaScript and applies CSRF and Origin protections appropriate to the deployment topology.
 - [x] **AUTH-10**: Identity code exposes an OIDC-ready provider boundary without claiming that local password authentication is itself an OpenID Provider.
 
+### External OAuth Identity
+
+- [x] **IDEN-03**: User can authenticate through real external OAuth2/OIDC providers using authorization-code redirect flows with CSRF state protection and provider-specific configuration.
+- [x] **IDEN-06**: User can sign in with Google when `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and the configured redirect URI are present, while missing configuration hides or disables the provider without breaking local login.
+- [x] **IDEN-07**: User can sign in with GitHub when `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and the configured redirect URI are present, while missing configuration hides or disables the provider without breaking local login.
+- [x] **IDEN-08**: OAuth provisioning and account linking fail closed for missing, unverified, or conflicting email identity and never allow a provider login to take over an existing local account without an explicit safe match.
+
 ### Authorization
 
 - [x] **AUTHZ-01**: Every protected endpoint rejects inactive users and tokens missing the required authenticated principal.
-- [ ] **AUTHZ-02**: Admin APIs require the Admin role and the corresponding `admin:read` or `admin:write` scope.
+- [x] **AUTHZ-02**: Admin APIs require the Admin role and the corresponding `admin:read` or `admin:write` scope.
 - [x] **AUTHZ-03**: Chat read operations require `chat:read`, and chat mutation operations require `chat:write`.
 - [ ] **AUTHZ-04**: Web Search execution requires `tool:websearch`, and Python execution requires `tool:python`.
 - [x] **AUTHZ-05**: Conversation and message queries constrain resource ID and authenticated owner in the same data-access operation.
@@ -89,24 +96,32 @@
 
 ### Gateway and Edge Security
 
-- [ ] **GATE-01**: Kong OSS runs in DB-less mode with declarative services and routes for approved `/api/*`, `/health`, and readiness traffic.
-- [ ] **GATE-02**: Kong applies strict configured CORS origins, methods, and headers without using a wildcard credentialed origin.
-- [ ] **GATE-03**: Kong applies stricter limits to login, registration, and tool routes than to ordinary chat routes and returns useful `429` metadata.
-- [ ] **GATE-04**: Kong applies request-size limits and propagates or creates a validated correlation ID.
-- [ ] **GATE-05**: Kong may reject coarse invalid JWT traffic early, but FastAPI independently remains authoritative for complete token, account, role, scope, ownership, and tool-policy validation.
-- [ ] **GATE-06**: Kong Admin API, PostgreSQL, search worker, and sandbox control plane are not exposed as public application ports.
-- [ ] **GATE-07**: Documentation defines the optional request path `Client -> Cloudflare -> Kong -> FastAPI -> PostgreSQL/LLM/Tools` and trusted proxy assumptions.
-- [ ] **GATE-08**: Cloudflare documentation covers Tunnel, DNS, TLS, Free-plan WAF guidance, Turnstile integration points, Bot Fight Mode, limitations, and source-IP trust.
+- [x] **GATE-01**: Kong OSS runs in DB-less mode with declarative services and routes for approved `/api/*`, `/health`, and readiness traffic.
+- [x] **GATE-02**: Kong applies strict configured CORS origins, methods, and headers without using a wildcard credentialed origin.
+- [x] **GATE-03**: Kong applies stricter limits to login, registration, and tool routes than to ordinary chat routes and returns useful `429` metadata.
+- [x] **GATE-04**: Kong applies request-size limits and propagates or creates a validated correlation ID.
+- [x] **GATE-05**: Kong may reject coarse invalid JWT traffic early, but FastAPI independently remains authoritative for complete token, account, role, scope, ownership, and tool-policy validation.
+- [x] **GATE-06**: Kong Admin API, PostgreSQL, search worker, and sandbox control plane are not exposed as public application ports.
+- [x] **GATE-07**: Documentation defines the optional request path `Client -> Cloudflare -> Kong -> FastAPI -> PostgreSQL/LLM/Tools` and trusted proxy assumptions.
+- [x] **GATE-08**: Cloudflare documentation covers Tunnel, DNS, TLS, Free-plan WAF guidance, Turnstile integration points, Bot Fight Mode, limitations, and source-IP trust.
 
 ### Logging and Administration
 
-- [ ] **OBS-01**: Every request receives a validated correlation ID propagated through Kong, FastAPI, provider calls, tool calls, audit records, and the response.
-- [ ] **OBS-02**: Application logs are structured JSON with allowlisted fields and recursive redaction of credentials, tokens, cookies, API keys, secrets, and sensitive raw content.
-- [ ] **OBS-03**: Auth failures, forbidden access, refresh replay, rate-limit events, tool decisions, sandbox violations, and admin actions create typed redacted evidence.
-- [ ] **OBS-04**: Tool execution records contain actor, conversation, tool, safe input/output summaries, status, duration, and correlation ID.
-- [ ] **OBS-05**: Properly authorized admin can list users and paginated recent audit logs, security events, tool executions, failed logins, and available rate-limit evidence.
-- [ ] **OBS-06**: Ordinary users and under-scoped admins cannot access administrative evidence endpoints.
-- [ ] **OBS-07**: Admin metrics expose bounded aggregate operational/security counts without leaking user content or credentials.
+- [x] **OBS-01**: Every request receives a validated correlation ID propagated through Kong, FastAPI, provider calls, tool calls, audit records, and the response.
+- [x] **OBS-02**: Application logs are structured JSON with allowlisted fields and recursive redaction of credentials, tokens, cookies, API keys, secrets, and sensitive raw content.
+- [x] **OBS-03**: Auth failures, forbidden access, refresh replay, rate-limit events, tool decisions, sandbox violations, and admin actions create typed redacted evidence.
+- [x] **OBS-04**: Tool execution records contain actor, conversation, tool, safe input/output summaries, status, duration, and correlation ID.
+- [x] **OBS-05**: Properly authorized admin can list users and paginated recent audit logs, security events, tool executions, failed logins, and available rate-limit evidence.
+- [x] **OBS-06**: Ordinary users and under-scoped admins cannot access administrative evidence endpoints.
+- [x] **OBS-07**: Admin metrics expose bounded aggregate operational/security counts without leaking user content or credentials.
+
+### Small Production Readiness
+
+- [x] **PRODREADY-01**: Operator can configure a small production deployment profile for about 100 users/month through environment variables without hardcoded origins, cookie settings, OAuth secrets, JWT keys, database credentials, or provider credentials.
+- [x] **PRODREADY-02**: Production-mode cookies, CORS, trusted proxy handling, HTTPS assumptions, and frontend/backend public URLs are documented and enforced consistently for the selected deployment profile.
+- [x] **PRODREADY-03**: Database migrations, seed/admin bootstrap, backup, restore, and rollback guidance are documented and testable against the Compose-based deployment target.
+- [x] **PRODREADY-04**: Startup, readiness, smoke-test, and basic operational checks cover local credentials, Google login, GitHub login, gateway routing, admin evidence, chat, Search, and Python paths.
+- [x] **PRODREADY-05**: Documentation states realistic capacity, reliability, security, rate-limit, observability, and external-provider limitations for a 100 users/month prototype and does not claim high availability or enterprise production guarantees.
 
 ### Verification and Documentation
 
@@ -130,6 +145,7 @@
 ## User Stories
 
 - As a user, I can authenticate and continue a protected session without exposing a long-lived token to browser JavaScript.
+- As a user, I can sign in with Google or GitHub without weakening the existing protected session model.
 - As a user, I can create and revisit private conversations that no other user can access.
 - As an authorized user, I can ask for current web information and see verifiable Google-grounded citations.
 - As an authorized user, I can run bounded Python code without granting it access to the host, application network, or secrets.
@@ -140,10 +156,10 @@
 
 - All v1 requirements map to exactly one roadmap phase and have executable or inspectable verification.
 - `docker compose up --build` starts the documented local topology.
-- Real OpenAI-compatible chat and Google ADK Search work when valid external credentials and a compatible Gemini 2 model are configured.
+- Real OpenAI-compatible chat, Google ADK Search, Google OAuth, and GitHub OAuth work when valid external credentials and compatible provider settings are configured.
 - Negative authorization and sandbox tests prove denied actions create no forbidden data disclosure, provider call, network access, host access, or privileged side effect.
 - Logs and evidence correlate sensitive operations without retaining secrets.
-- Documentation describes actual implemented behavior and does not overclaim OIDC, distributed rate limiting, Cloudflare protection, or production-grade sandbox isolation.
+- Documentation describes actual implemented behavior and does not overclaim hosted OIDC provider capability, high availability, distributed rate limiting, Cloudflare protection, or production-grade sandbox isolation.
 
 ## Definition of Done
 
@@ -159,7 +175,6 @@
 
 - **IDEN-01**: User can verify an email address through a bounded single-use token.
 - **IDEN-02**: User can reset a forgotten password through a bounded single-use token without account enumeration.
-- **IDEN-03**: User can authenticate through a real external OAuth2/OIDC provider using Authorization Code with PKCE.
 - **IDEN-04**: User can view and revoke individual device/session families.
 - **IDEN-05**: Admin can use MFA or WebAuthn step-up authentication for sensitive actions.
 
@@ -259,22 +274,31 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | SBOX-06 | Phase 4 | Complete |
 | SBOX-07 | Phase 4 | Complete |
 | SBOX-08 | Phase 4 | Complete |
-| AUTHZ-02 | Phase 5 | Pending |
-| GATE-01 | Phase 5 | Pending |
-| GATE-02 | Phase 5 | Pending |
-| GATE-03 | Phase 5 | Pending |
-| GATE-04 | Phase 5 | Pending |
-| GATE-05 | Phase 5 | Pending |
-| GATE-06 | Phase 5 | Pending |
-| GATE-07 | Phase 5 | Pending |
-| GATE-08 | Phase 5 | Pending |
-| OBS-01 | Phase 5 | Pending |
-| OBS-02 | Phase 5 | Pending |
-| OBS-03 | Phase 5 | Pending |
-| OBS-04 | Phase 5 | Pending |
-| OBS-05 | Phase 5 | Pending |
-| OBS-06 | Phase 5 | Pending |
-| OBS-07 | Phase 5 | Pending |
+| AUTHZ-02 | Phase 5 | Complete |
+| IDEN-03 | Phase 5 | Complete |
+| IDEN-06 | Phase 5 | Complete |
+| IDEN-07 | Phase 5 | Complete |
+| IDEN-08 | Phase 5 | Complete |
+| GATE-01 | Phase 5 | Complete |
+| GATE-02 | Phase 5 | Complete |
+| GATE-03 | Phase 5 | Complete |
+| GATE-04 | Phase 5 | Complete |
+| GATE-05 | Phase 5 | Complete |
+| GATE-06 | Phase 5 | Complete |
+| GATE-07 | Phase 5 | Complete |
+| GATE-08 | Phase 5 | Complete |
+| OBS-01 | Phase 5 | Complete |
+| OBS-02 | Phase 5 | Complete |
+| OBS-03 | Phase 5 | Complete |
+| OBS-04 | Phase 5 | Complete |
+| OBS-05 | Phase 5 | Complete |
+| OBS-06 | Phase 5 | Complete |
+| OBS-07 | Phase 5 | Complete |
+| PRODREADY-01 | Phase 5 | Complete |
+| PRODREADY-02 | Phase 5 | Complete |
+| PRODREADY-03 | Phase 5 | Complete |
+| PRODREADY-04 | Phase 5 | Complete |
+| PRODREADY-05 | Phase 5 | Complete |
 | TEST-01 | Phase 6 | Pending |
 | TEST-02 | Phase 6 | Pending |
 | TEST-03 | Phase 6 | Pending |
@@ -294,8 +318,8 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 
 **Coverage:**
 
-- v1 requirements: 90 total
-- Mapped to phases: 90
+- v1 requirements: 99 total
+- Mapped to phases: 99
 - Unmapped: 0
 
 **Phase allocation:**
@@ -304,7 +328,7 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 - Phase 2: 14 requirements
 - Phase 3: 17 requirements
 - Phase 4: 9 requirements
-- Phase 5: 16 requirements
+- Phase 5: 25 requirements
 - Phase 6: 16 requirements
 
 ---

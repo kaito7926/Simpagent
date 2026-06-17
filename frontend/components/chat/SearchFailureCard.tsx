@@ -14,26 +14,26 @@ type SearchFailureCardProps = {
 const COPY = {
   denied: {
     tone: "warning" as const,
-    title: "Tìm kiếm đã bị chặn",
-    body: "Yêu cầu này không được phép dùng Google Search. Không có lượt tìm kiếm nào được thực hiện.",
+    title: "Search was blocked",
+    body: "This request is not allowed to use Google Search. No external search was executed.",
     retry: false,
   },
   search_unavailable: {
     tone: "danger" as const,
-    title: "Tìm kiếm hiện không khả dụng",
-    body: "Gemini Google Search chưa sẵn sàng cho lượt này. Hãy thử lại tìm kiếm hoặc chuyển sang câu hỏi bình thường.",
+    title: "Search is currently unavailable",
+    body: "Google Search is not ready for this turn yet. Try the search again or switch back to direct chat.",
     retry: true,
   },
   provider_failed: {
     tone: "danger" as const,
-    title: "Tìm kiếm đã thất bại",
-    body: "Không thể hoàn tất lượt tìm kiếm này từ dịch vụ tìm kiếm. Hãy thử lại tìm kiếm hoặc chuyển sang câu hỏi bình thường.",
+    title: "Search failed",
+    body: "The search provider could not complete this request. Try the search again or switch back to direct chat.",
     retry: true,
   },
   timeout: {
     tone: "danger" as const,
-    title: "Tìm kiếm đã quá thời gian chờ",
-    body: "Không nhận được kết quả từ Google Search trong thời gian cho phép. Hãy thử lại tìm kiếm hoặc chuyển sang câu hỏi bình thường.",
+    title: "Search timed out",
+    body: "Google Search did not return a result in time. Try the search again or switch back to direct chat.",
     retry: true,
   },
 };
@@ -52,7 +52,7 @@ export function SearchFailureCard({
         tone={copy.tone}
         title={copy.title}
         message={copy.body}
-        detail={correlationId ? `Mã tham chiếu: ${correlationId}` : null}
+        detail={correlationId ? `Reference code: ${correlationId}` : null}
         urgent
       />
       {copy.retry ? (
@@ -64,7 +64,7 @@ export function SearchFailureCard({
           disabled={retryDisabled}
           onClick={onRetry}
         >
-          {retryDisabled ? "Đang thử lại..." : "Thử lại tìm kiếm"}
+          {retryDisabled ? "Retrying..." : "Retry search"}
         </ActionButton>
       ) : null}
     </div>

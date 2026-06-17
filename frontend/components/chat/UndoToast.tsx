@@ -1,5 +1,7 @@
 import React from "react";
 
+import { ActionButton } from "@/components/account-access/ActionButton";
+
 type UndoToastProps = {
   visible: boolean;
   undoing: boolean;
@@ -14,9 +16,9 @@ export function UndoToast({ visible, undoing, onUndo }: UndoToastProps) {
   return (
     <div className="undo-toast" role="status" aria-live="polite">
       <p>Conversation deleted</p>
-      <button type="button" disabled={undoing} onClick={() => void onUndo()}>
+      <ActionButton type="button" disabled={undoing} fullWidth={false} variant="secondary" onClick={() => void onUndo()}>
         {undoing ? "Restoring..." : "Undo"}
-      </button>
+      </ActionButton>
     </div>
   );
 }

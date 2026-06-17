@@ -77,13 +77,14 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
         </button>
       </figcaption>
       <SyntaxHighlighter
+        className="code-block-pre"
         PreTag="pre"
         CodeTag="code"
         language={normalizedLanguage === "text" ? undefined : normalizedLanguage}
         style={oneDark}
         customStyle={{ margin: 0, background: "transparent" }}
         codeTagProps={{ className: "code-block-code" }}
-        wrapLongLines
+        wrapLongLines={false}
       >
         {code}
       </SyntaxHighlighter>

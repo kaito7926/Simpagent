@@ -19,12 +19,14 @@ from app.db.repositories.admin import (
 )
 from app.db.repositories.agent_settings import AgentRuntimeSettingsRepository
 from app.db.repositories.sessions import SessionsRepository
+from app.identity.redaction import REDACTED, sanitize_admin_evidence, summarize_admin_evidence
 from app.schemas.admin import (
     AdminMetricsResponse,
     AdminPage,
     AdminUserItem,
     AdminUserUpdateResponse,
     AdminUsersPage,
+    GatewayEvidencePage,
     OrchestrationSettingsResponse,
     SecurityEventItem,
     SecurityEventsPage,
@@ -32,6 +34,7 @@ from app.schemas.admin import (
     ToolExecutionsPage,
 )
 from app.schemas.auth import ADMIN_SCOPES, STANDARD_USER_SCOPES
+from app.services.gateway_evidence import GatewayEvidenceService
 
 
 class AdminEvidenceRepositoryProtocol(Protocol):
@@ -98,6 +101,7 @@ class AdminEvidenceService:
         security_events: SecurityEventSinkProtocol | None = None,
         accounts: AccountsRepositoryProtocol | None = None,
         agent_settings: AgentRuntimeSettingsRepository | None = None,
+        gateway_evidence: GatewayEvidenceService | None = None,
     ) -> None:
         self.session = session
         self.now = now or datetime.now(UTC)
@@ -106,6 +110,7 @@ class AdminEvidenceService:
         self.security_events = security_events or SessionsRepository(session)
         self.accounts = accounts or AccountsRepository(session)
         self.agent_settings = agent_settings or AgentRuntimeSettingsRepository(session)
+        self.gateway_evidence = gateway_evidence or GatewayEvidenceService.from_kong_config("kong/kong.yml")
 
     async def list_users(
         self,
@@ -157,7 +162,8 @@ class AdminEvidenceService:
                     user_id=row.user_id,
                     description=row.description,
                     correlation_id=row.correlation_id,
-                    metadata=row.metadata,
+                    metadata=sanitize_admin_evidence(row.metadata),
+                    snippets=summarize_admin_evidence(row.metadata, kind="metadata"),
                     created_at=row.created_at,
                 )
                 for row in rows
@@ -181,18 +187,7 @@ class AdminEvidenceService:
         rows, has_more = await self.repository.list_tool_executions(limit=limit, offset=offset)
         return ToolExecutionsPage(
             items=[
-                ToolExecutionItem(
-                    id=row.id,
-                    user_id=row.user_id,
-                    conversation_id=row.conversation_id,
-                    tool_name=row.tool_name,
-                    input_summary=row.input_summary,
-                    output_summary=row.output_summary,
-                    status=row.status,
-                    duration_ms=row.duration_ms,
-                    correlation_id=row.correlation_id,
-                    created_at=row.created_at,
-                )
+                self._tool_execution_item(row)
                 for row in rows
             ],
             page=self._page(limit=limit, offset=offset, has_more=has_more),
@@ -209,7 +204,24 @@ class AdminEvidenceService:
             security_events_last_24h=snapshot.security_events_last_24h,
             tool_executions_total=snapshot.tool_executions_total,
             tool_executions_last_24h=snapshot.tool_executions_last_24h,
+            correlation_references_total=snapshot.correlation_references_total,
+            rate_limit_events_total=snapshot.rate_limit_events_total,
         )
+
+    async def list_gateway_evidence(
+        self,
+        *,
+        principal: AuthenticatedPrincipal,
+        limit: int = 25,
+        offset: int = 0,
+    ) -> GatewayEvidencePage:
+        limit, offset = self._normalize_page(limit=limit, offset=offset)
+        await self._require_admin_scope(
+            principal=principal,
+            required_scope="admin:read",
+            resource="gateway_evidence",
+        )
+        return self.gateway_evidence.list_evidence(limit=limit, offset=offset)
 
     async def get_orchestration_settings(
         self,
@@ -222,8 +234,10 @@ class AdminEvidenceService:
             required_scope="admin:read",
             resource="orchestration",
         )
-        enabled = await self.agent_settings.is_guardrail_enabled(default=default_guardrail_enabled)
-        return OrchestrationSettingsResponse(guardrail_safety_enabled=enabled)
+        guardrail_enabled = await self.agent_settings.is_guardrail_enabled(default=default_guardrail_enabled)
+        return OrchestrationSettingsResponse(
+            guardrail_safety_enabled=guardrail_enabled,
+        )
 
     async def set_guardrail_safety_enabled(
         self,
@@ -260,7 +274,9 @@ class AdminEvidenceService:
             if self.session.in_transaction():
                 await self.session.rollback()
             raise
-        return OrchestrationSettingsResponse(guardrail_safety_enabled=enabled)
+        return OrchestrationSettingsResponse(
+            guardrail_safety_enabled=enabled,
+        )
 
     async def update_user_access(
         self,
@@ -400,6 +416,34 @@ class AdminEvidenceService:
             offset=offset,
             has_more=has_more,
             next_offset=offset + limit if has_more else None,
+        )
+
+    def _tool_execution_item(self, row: ToolExecutionRecord) -> ToolExecutionItem:
+        safe_input = sanitize_admin_evidence(row.input_summary, key="prompt") or REDACTED
+        safe_output = (
+            sanitize_admin_evidence(row.output_summary, key="sandbox_output")
+            if row.output_summary is not None
+            else None
+        )
+        snippet_payload = {
+            "input_summary": safe_input,
+            "output_summary": safe_output,
+            "status": row.status,
+            "duration_ms": row.duration_ms,
+            "correlation_id": row.correlation_id,
+        }
+        return ToolExecutionItem(
+            id=row.id,
+            user_id=row.user_id,
+            conversation_id=row.conversation_id,
+            tool_name=row.tool_name,
+            input_summary=safe_input,
+            output_summary=safe_output,
+            status=row.status,
+            duration_ms=row.duration_ms,
+            correlation_id=row.correlation_id,
+            snippets=summarize_admin_evidence(snippet_payload, kind="tool_execution"),
+            created_at=row.created_at,
         )
 
     def _user_item_from_bundle(self, bundle: UserBundle) -> AdminUserItem:

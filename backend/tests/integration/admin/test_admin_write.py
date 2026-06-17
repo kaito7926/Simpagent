@@ -216,7 +216,9 @@ async def test_admin_can_read_and_toggle_guardrail_safety_agent(client, db_sessi
         headers={"Authorization": f"Bearer {reader_token}"},
     )
     assert read_response.status_code == 200
-    assert read_response.json() == {"guardrail_safety_enabled": True}
+    assert read_response.json() == {
+        "guardrail_safety_enabled": True,
+    }
 
     denied_response = await client.patch(
         "/api/admin/orchestration/guardrail",
@@ -235,7 +237,9 @@ async def test_admin_can_read_and_toggle_guardrail_safety_agent(client, db_sessi
         json={"enabled": False},
     )
     assert write_response.status_code == 200
-    assert write_response.json() == {"guardrail_safety_enabled": False}
+    assert write_response.json() == {
+        "guardrail_safety_enabled": False,
+    }
 
     await db_session.rollback()
     setting = await db_session.scalar(
@@ -250,3 +254,104 @@ async def test_admin_can_read_and_toggle_guardrail_safety_agent(client, db_sessi
         )
     ).scalar_one()
     assert event.event_type == "guardrail_safety_toggled"
+
+
+async def test_overview_and_orchestration_enforce_read_write_split_and_record_denials(
+    client,
+    db_session,
+    settings,
+) -> None:
+    admin_reader = await create_user(
+        db_session,
+        email="overview-reader@example.test",
+        scopes=["admin:read"],
+        role="admin",
+    )
+    admin_writer = await create_user(
+        db_session,
+        email="overview-writer@example.test",
+        scopes=["admin:write"],
+        role="admin",
+    )
+    ordinary_user = await create_user(
+        db_session,
+        email="overview-user@example.test",
+        scopes=["admin:read", "admin:write"],
+        role="user",
+    )
+    await db_session.commit()
+
+    reader_token = issue_token(user=admin_reader, scopes=["admin:read"], settings=settings)
+    writer_token = issue_token(user=admin_writer, scopes=["admin:write"], settings=settings)
+    ordinary_token = issue_token(
+        user=ordinary_user,
+        scopes=["admin:read", "admin:write"],
+        settings=settings,
+    )
+
+    metrics_response = await client.get(
+        "/api/admin/metrics",
+        headers={"Authorization": f"Bearer {reader_token}"},
+    )
+    assert metrics_response.status_code == 200
+    assert metrics_response.json()["users_total"] >= 3
+
+    orchestration_response = await client.get(
+        "/api/admin/orchestration",
+        headers={"Authorization": f"Bearer {reader_token}"},
+    )
+    assert orchestration_response.status_code == 200
+    assert set(orchestration_response.json()) == {"guardrail_safety_enabled"}
+
+    denied_metrics_response = await client.get(
+        "/api/admin/metrics",
+        headers={
+            "Authorization": f"Bearer {writer_token}",
+            "X-Correlation-Id": "corr-admin-metrics-write-only-denied",
+        },
+    )
+    assert denied_metrics_response.status_code == 403
+    assert denied_metrics_response.json()["error"]["code"] == "admin_scope_required"
+
+    denied_orchestration_response = await client.get(
+        "/api/admin/orchestration",
+        headers={
+            "Authorization": f"Bearer {ordinary_token}",
+            "X-Correlation-Id": "corr-admin-orchestration-user-denied",
+        },
+    )
+    assert denied_orchestration_response.status_code == 403
+    assert denied_orchestration_response.json()["error"]["code"] == "admin_role_required"
+
+    denied_guardrail_write = await client.patch(
+        "/api/admin/orchestration/guardrail",
+        headers={
+            "Authorization": f"Bearer {reader_token}",
+            "X-Correlation-Id": "corr-admin-guardrail-read-only-denied",
+        },
+        json={"enabled": False},
+    )
+    assert denied_guardrail_write.status_code == 403
+    assert denied_guardrail_write.json()["error"]["code"] == "admin_scope_required"
+
+    await db_session.rollback()
+    denial_events = (
+        await db_session.execute(
+            select(SecurityEvent).where(
+                SecurityEvent.correlation_id.in_(
+                    [
+                        "corr-admin-metrics-write-only-denied",
+                        "corr-admin-orchestration-user-denied",
+                        "corr-admin-guardrail-read-only-denied",
+                    ]
+                )
+            )
+        )
+    ).scalars().all()
+    assert {event.correlation_id for event in denial_events} == {
+        "corr-admin-metrics-write-only-denied",
+        "corr-admin-orchestration-user-denied",
+        "corr-admin-guardrail-read-only-denied",
+    }
+    assert all(event.event_type == "admin_access_denied" for event in denial_events)
+    assert all("token" not in str(event.event_metadata).lower() for event in denial_events)

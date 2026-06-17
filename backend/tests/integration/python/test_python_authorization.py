@@ -10,14 +10,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.decisions import PythonToolPlan
+from app.ai.schemas import ChatCompletionResult
 from app.db.repositories.accounts import AccountsRepository
 from app.db.repositories.python_state import PythonStateRepository
-from app.models.domain import Conversation, ToolExecution
+from app.models.domain import AgentRuntimeSetting, Conversation, ToolExecution
 from app.python_contract import PythonArtifactType, PythonExecutionProfile, PythonExecutionStatus
 from app.schemas.auth import STANDARD_USER_SCOPES
 from app.schemas.python import PythonExecutionResult
 from app.security.access_tokens import issue_access_token
 from app.tools.python_client import PythonArtifactPayload, PythonExecutionInvocation, PythonExecutionResponse
+from tests.integration.search._helpers import RecordingSearchWorker, grounded_result
 
 
 class StaticPythonPlanner:
@@ -52,6 +54,22 @@ class RecordingPythonClient:
         return self.response
 
 
+class RecordingSummaryAdapter:
+    def __init__(self, content: str) -> None:
+        self.content = content
+        self.calls: list[list[Any]] = []
+
+    async def complete(self, *, messages: list[Any]) -> ChatCompletionResult:
+        self.calls.append(list(messages))
+        return ChatCompletionResult(
+            content=self.content,
+            provider_request_id=f"summary-{len(self.calls)}",
+            prompt_tokens=31,
+            completion_tokens=13,
+            finish_reason="stop",
+        )
+
+
 async def _create_user_token(
     db_session: AsyncSession,
     settings,
@@ -83,11 +101,23 @@ def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+async def _enable_trusted_supervisor(db_session: AsyncSession, *, user_id: UUID) -> None:
+    db_session.add(
+        AgentRuntimeSetting(
+            key="trusted_supervisor_agent",
+            enabled=True,
+            updated_by_user_id=user_id,
+        )
+    )
+    await db_session.commit()
+
+
 def _success_result(
     *,
     execution_id: UUID,
     profile_name: PythonExecutionProfile,
     correlation_id: str | None = None,
+    stdout_excerpt: str = "ok",
 ) -> PythonExecutionResult:
     return PythonExecutionResult(
         execution_id=execution_id,
@@ -95,7 +125,7 @@ def _success_result(
         summary="Reviewed Python execution completed successfully.",
         duration_ms=84,
         profile_name=profile_name,
-        stdout_excerpt="ok",
+        stdout_excerpt=stdout_excerpt,
         stderr_excerpt=None,
         artifacts=[],
         limit_triggered=None,
@@ -168,13 +198,135 @@ async def test_missing_tool_python_scope_returns_denied_card_and_never_calls_sup
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_search_plus_python_prompt_is_denied_without_touching_planner_or_supervisor(
+async def test_trusted_supervisor_disabled_still_allows_python_execution(
     app,
     client,
     db_session,
     settings,
 ) -> None:
-    _, token = await _create_user_token(db_session, settings, email="python-search-deny@example.test")
+    _, token = await _create_user_token(
+        db_session,
+        settings,
+        email="python-supervisor-disabled@example.test",
+    )
+    planner = StaticPythonPlanner(PythonToolPlan(code="print(sum([1, 2, 3]))"))
+    python_client = RecordingPythonClient(
+        PythonExecutionResponse(
+            result=_success_result(
+                execution_id=UUID("00000000-0000-0000-0000-000000000009"),
+                profile_name=PythonExecutionProfile.basic,
+            ),
+            snapshot_blob=b'{"version":1,"binding_names":[],"pickle_b64":"gAR9lC4="}',
+        )
+    )
+    app.state.python_planner = planner
+    app.state.python_client = python_client
+
+    response = await client.post(
+        "/api/conversations",
+        headers=_auth(token),
+        json={
+            "initial_message": {
+                "client_message_id": "python-supervisor-disabled",
+                "content": "Use Python to calculate the sum of 1, 2, and 3 for me.",
+            }
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    python_result = body["messages"][1]["metadata"]["python_result"]
+
+    assert python_result["status"] == "succeeded"
+    assert python_client.calls != []
+    assert planner.calls != []
+
+    rows = list(
+        (
+            await db_session.execute(
+                select(ToolExecution).where(ToolExecution.conversation_id == UUID(body["id"]))
+            )
+        ).scalars()
+    )
+    assert len(rows) == 1
+    assert rows[0].status == "succeeded"
+
+    await db_session.rollback()
+    setting = await db_session.scalar(
+        select(AgentRuntimeSetting).where(AgentRuntimeSetting.key == "trusted_supervisor_agent")
+    )
+    assert setting is None
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_vietnamese_sum_prompt_returns_python_stdout_in_assistant_message(
+    app,
+    client,
+    db_session,
+    settings,
+) -> None:
+    _, token = await _create_user_token(
+        db_session,
+        settings,
+        email="python-vietnamese-sum@example.test",
+    )
+    planner = StaticPythonPlanner(PythonToolPlan(code="print(sum(range(1, 3601)))"))
+    python_client = RecordingPythonClient(
+        PythonExecutionResponse(
+            result=_success_result(
+                execution_id=UUID("00000000-0000-0000-0000-000000000010"),
+                profile_name=PythonExecutionProfile.basic,
+                stdout_excerpt="6481800",
+            ),
+            snapshot_blob=b'{"version":1,"binding_names":[],"pickle_b64":"gAR9lC4="}',
+        )
+    )
+    app.state.python_planner = planner
+    app.state.python_client = python_client
+    summary_adapter = RecordingSummaryAdapter("Tổng từ 1 đến 3600 là 6481800.")
+    app.state.chat_adapter = summary_adapter
+
+    response = await client.post(
+        "/api/conversations",
+        headers=_auth(token),
+        json={
+            "initial_message": {
+                "client_message_id": "python-vietnamese-sum",
+                "content": "Tính tổng từ 1 đến 3600",
+            }
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assistant = body["messages"][1]
+
+    assert assistant["content"] == "Tổng từ 1 đến 3600 là 6481800."
+    assert "Reviewed Python execution completed successfully." not in assistant["content"]
+    assert assistant["metadata"]["tool_name"] == "python"
+    assert assistant["metadata"]["report_writer"]["summarized"] is True
+    assert assistant["metadata"]["report_writer"]["provider_request_id"] == "summary-1"
+    assert len(summary_adapter.calls) == 1
+    assert "CodeSandboxAgent" in summary_adapter.calls[0][0].content
+    assert "6481800" in summary_adapter.calls[0][0].content
+    assert python_client.calls != []
+    assert planner.calls != []
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_search_plus_python_prompt_routes_to_search_without_touching_planner_or_supervisor(
+    app,
+    client,
+    db_session,
+    settings,
+) -> None:
+    _, token = await _create_user_token(
+        db_session,
+        settings,
+        email="python-search-first@example.test",
+    )
     planner = StaticPythonPlanner(PythonToolPlan(code="print('should not plan')"))
     python_client = RecordingPythonClient(
         PythonExecutionResponse(
@@ -186,6 +338,13 @@ async def test_search_plus_python_prompt_is_denied_without_touching_planner_or_s
     )
     app.state.python_planner = planner
     app.state.python_client = python_client
+    search_worker = RecordingSearchWorker(grounded_result())
+    app.state.search_ready = True
+    app.state.search_worker = search_worker
+    summary_adapter = RecordingSummaryAdapter(
+        "Kết quả tìm kiếm cho thấy dữ liệu đã được xác thực [1]."
+    )
+    app.state.chat_adapter = summary_adapter
 
     response = await client.post(
         "/api/conversations",
@@ -200,10 +359,19 @@ async def test_search_plus_python_prompt_is_denied_without_touching_planner_or_s
 
     assert response.status_code == 201
     body = response.json()
-    python_result = body["messages"][1]["metadata"]["python_result"]
+    assistant = body["messages"][1]
+    metadata = body["messages"][1]["metadata"]
 
-    assert python_result["status"] == "denied"
-    assert python_result["denial_reason"] == "search_required"
+    assert assistant["content"] == "Kết quả tìm kiếm cho thấy dữ liệu đã được xác thực [1]."
+    assert metadata["tool_name"] == "google_search"
+    assert metadata["tool_status"] == "succeeded"
+    assert metadata["search"]["state"] == "grounded"
+    assert metadata["report_writer"]["summarized"] is True
+    assert metadata["report_writer"]["provider_request_id"] == "summary-1"
+    assert len(summary_adapter.calls) == 1
+    assert "WebSearchAgent" in summary_adapter.calls[0][0].content
+    assert "Kết quả tìm kiếm đã được xác thực [1]." in summary_adapter.calls[0][0].content
+    assert search_worker.calls == 1
     assert python_client.calls == []
     assert planner.calls == []
 
@@ -215,7 +383,67 @@ async def test_search_plus_python_prompt_is_denied_without_touching_planner_or_s
         ).scalars()
     )
     assert len(rows) == 1
-    assert rows[0].status == "denied"
+    assert rows[0].tool_name == "google_search"
+    assert rows[0].status == "succeeded"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_missing_grounding_search_summary_stays_focused_on_reviewed_output(
+    app,
+    client,
+    db_session,
+    settings,
+) -> None:
+    _, token = await _create_user_token(
+        db_session,
+        settings,
+        email="search-missing-grounding-summary@example.test",
+    )
+    search_worker = RecordingSearchWorker(
+        grounded_result().model_copy(
+            update={
+                "state": "missing_grounding",
+                "answer_markdown": "Argentina 3-0 Algeria",
+                "google_grounded": False,
+                "sources": [],
+                "citations": [],
+                "suggestions": None,
+                "output_summary": "missing_grounding",
+            }
+        )
+    )
+    app.state.search_ready = True
+    app.state.search_worker = search_worker
+    summary_adapter = RecordingSummaryAdapter("Argentina 3-0 Algeria")
+    app.state.chat_adapter = summary_adapter
+
+    response = await client.post(
+        "/api/conversations",
+        headers=_auth(token),
+        json={
+            "initial_message": {
+                "client_message_id": "search-missing-grounding-summary",
+                "content": "Tỉ số World Cup Argentina và Algeria hôm nay là bao nhiêu",
+            }
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assistant = body["messages"][1]
+    metadata = assistant["metadata"]
+
+    assert assistant["content"] == "Argentina 3-0 Algeria"
+    assert metadata["tool_name"] == "google_search"
+    assert metadata["search"]["state"] == "missing_grounding"
+    assert metadata["report_writer"]["summarized"] is True
+    assert len(summary_adapter.calls) == 1
+    summary_prompt = summary_adapter.calls[0][0].content
+    assert "Argentina 3-0 Algeria" in summary_prompt
+    assert "missing_grounding" not in summary_prompt
+    assert "google_grounded" not in summary_prompt
+    assert "sources:" not in summary_prompt
 
 
 @pytest.mark.integration
@@ -251,7 +479,8 @@ async def test_backend_owns_profile_selection_and_only_elevates_narrowly(
     plan: PythonToolPlan,
     expected_profile: PythonExecutionProfile,
 ) -> None:
-    _, token = await _create_user_token(db_session, settings, email=f"profile-{expected_profile.value}@example.test")
+    owner_id, token = await _create_user_token(db_session, settings, email=f"profile-{expected_profile.value}@example.test")
+    await _enable_trusted_supervisor(db_session, user_id=owner_id)
     planner = StaticPythonPlanner(plan)
     python_client = RecordingPythonClient(
         PythonExecutionResponse(

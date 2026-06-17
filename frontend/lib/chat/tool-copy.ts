@@ -21,7 +21,10 @@ export type PythonLimitName =
   | "file_size"
   | "output_size";
 
-export type PythonDeniedReason = "missing_permission" | "search_required" | "policy_denied";
+export type PythonDeniedReason =
+  | "missing_permission"
+  | "search_required"
+  | "policy_denied";
 
 export type PythonPolicyErrorCode = "blocked_import" | "disallowed_behavior";
 
@@ -29,37 +32,37 @@ export type PythonInfraFailureReason = "worker_start_failed" | "worker_unavailab
 
 export type ToolTone = "neutral" | "success" | "warning" | "danger";
 
-const DURATION_FORMATTER = new Intl.NumberFormat("vi-VN", {
+const DURATION_FORMATTER = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,
 });
 
-const SIZE_FORMATTER = new Intl.NumberFormat("vi-VN", {
+const SIZE_FORMATTER = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,
 });
 
-export const PYTHON_EYEBROW = "Python giới hạn";
-export const DETAILS_LABEL_CLOSED = "Xem chi tiết thực thi";
-export const DETAILS_LABEL_OPEN = "Ẩn chi tiết thực thi";
-export const ARTIFACT_SECTION_LABEL = "Tệp đầu ra";
+export const PYTHON_EYEBROW = "Limited Python";
+export const DETAILS_LABEL_CLOSED = "View execution details";
+export const DETAILS_LABEL_OPEN = "Hide execution details";
+export const ARTIFACT_SECTION_LABEL = "Output files";
 
 export function pythonStatusLabel(status: PythonExecutionStatus): string {
   switch (status) {
     case "accepted":
-      return "Đã nhận lệnh";
+      return "Accepted";
     case "running":
-      return "Đang thực thi";
+      return "Running";
     case "succeeded":
-      return "Hoàn tất";
+      return "Completed";
     case "failed":
-      return "Lỗi mã Python";
+      return "Python failed";
     case "denied":
-      return "Bị từ chối";
+      return "Denied";
     case "policy_error":
-      return "Lỗi chính sách";
+      return "Policy error";
     case "limit_reached":
-      return "Vượt giới hạn";
+      return "Limit reached";
     case "infra_failure":
-      return "Không thể chạy";
+      return "Could not run";
   }
 }
 
@@ -90,19 +93,19 @@ export function pythonProfileLabel(profileName: PythonExecutionProfile | null | 
 export function pythonLimitLabel(limitName: PythonLimitName): string {
   switch (limitName) {
     case "wall_time":
-      return "thời gian chạy";
+      return "wall time";
     case "cpu":
       return "CPU";
     case "memory":
-      return "bộ nhớ";
+      return "memory";
     case "pid_count":
-      return "PID";
+      return "PID count";
     case "process_count":
-      return "số tiến trình";
+      return "process count";
     case "file_size":
-      return "kích thước tệp";
+      return "file size";
     case "output_size":
-      return "kích thước đầu ra";
+      return "output size";
   }
 }
 
@@ -113,40 +116,40 @@ export function pythonArtifactTypeLabel(artifactType: PythonArtifactType): strin
 export function pythonDeniedTitle(reason: PythonDeniedReason): string {
   switch (reason) {
     case "missing_permission":
-      return "Tài khoản này chưa có quyền dùng Python giới hạn.";
+      return "This account is not allowed to use limited Python.";
     case "search_required":
-      return "Yêu cầu này cần thêm dữ liệu trước khi chạy Python.";
+      return "This request needs additional data before Python can run.";
     case "policy_denied":
-      return "Yêu cầu bị chặn trước khi thực thi.";
+      return "The request was blocked before execution.";
   }
 }
 
 export function pythonDeniedBody(reason: PythonDeniedReason): string {
   switch (reason) {
     case "missing_permission":
-      return "Chỉ quản trị viên mới có thể cấp quyền `tool:python` cho tài khoản này.";
+      return "Only an administrator can grant the `tool:python` permission to this account.";
     case "search_required":
-      return "Yêu cầu này cần cả dữ liệu tìm kiếm và Python. Ở phiên bản hiện tại, hệ thống chỉ cho phép một công cụ trong mỗi lượt.";
+      return "This request needs both search data and Python. In the current version, the system still allows only one tool per turn.";
     case "policy_denied":
-      return "Nội dung yêu cầu không phù hợp với chính sách an toàn của môi trường Python giới hạn.";
+      return "The request content does not satisfy the safety policy for the limited Python environment.";
   }
 }
 
 export function pythonPolicyTitle(code: PythonPolicyErrorCode): string {
   switch (code) {
     case "blocked_import":
-      return "Import này không được phép trong môi trường Python giới hạn.";
+      return "This import is not allowed in the limited Python environment.";
     case "disallowed_behavior":
-      return "Đoạn mã này yêu cầu hành vi không được phép.";
+      return "This code requested behavior that is not allowed.";
   }
 }
 
 export function pythonPolicyBody(code: PythonPolicyErrorCode): string {
   switch (code) {
     case "blocked_import":
-      return "Hãy dùng các gói đã được duyệt sẵn hoặc đổi sang cách xử lý không cần import bị chặn.";
+      return "Use approved built-in packages or switch to an approach that does not need the blocked import.";
     case "disallowed_behavior":
-      return "Môi trường này không cho phép cài gói, gọi lệnh ngoài, hay truy cập bề mặt hệ thống chưa được duyệt.";
+      return "This environment does not allow package installation, external commands, or low-level system access.";
   }
 }
 
@@ -155,12 +158,12 @@ export function pythonInfraBody(
   retryable: boolean,
 ): string {
   if (retryable && reason === "worker_start_failed") {
-    return "Worker khởi động không thành công. Bạn có thể thử lại khi hạ tầng sẵn sàng.";
+    return "The worker could not start successfully. You can try again when the infrastructure is ready.";
   }
   if (reason === "worker_unavailable") {
-    return "Hạ tầng Python tạm thời chưa sẵn sàng. Hãy thử lại sau.";
+    return "The Python infrastructure is temporarily unavailable. Please try again later.";
   }
-  return "Hệ thống đã dừng an toàn trước khi có thể trả kết quả thực thi.";
+  return "The system stopped safely before it could return execution output.";
 }
 
 export function formatDurationLabel(durationMs: number | null | undefined): string | null {
@@ -171,9 +174,9 @@ export function formatDurationLabel(durationMs: number | null | undefined): stri
     return `${durationMs} ms`;
   }
   if (durationMs < 60_000) {
-    return `${DURATION_FORMATTER.format(durationMs / 1000)} giây`;
+    return `${DURATION_FORMATTER.format(durationMs / 1000)} s`;
   }
-  return `${DURATION_FORMATTER.format(durationMs / 60_000)} phút`;
+  return `${DURATION_FORMATTER.format(durationMs / 60_000)} min`;
 }
 
 export function formatFileSize(sizeBytes: number): string {

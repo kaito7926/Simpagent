@@ -21,7 +21,23 @@ RUNTIME_IMAGE = os.getenv("SIMPAGENT_SANDBOX_RUNTIME_IMAGE", "simpagent-python-r
 DOCKER_BIN = os.getenv("SIMPAGENT_SANDBOX_DOCKER_BIN", "docker")
 CAPABILITY_AUDIENCE = "sandbox-worker"
 CAPABILITY_TYPE = "tool-capability+jwt"
-CAPABILITY_SECRET = os.getenv("SIMPAGENT_SANDBOX_CAPABILITY_SECRET", "sandbox-dev-secret")
+CAPABILITY_SECRET_FILE = os.getenv("SIMPAGENT_SANDBOX_CAPABILITY_SECRET_FILE")
+
+
+def _read_secret_file(path: str | None) -> str | None:
+    if not path:
+        return None
+    candidate = Path(path)
+    if not candidate.exists():
+        return None
+    return candidate.read_text(encoding="utf-8").strip()
+
+
+CAPABILITY_SECRET = (
+    os.getenv("SIMPAGENT_SANDBOX_CAPABILITY_SECRET")
+    or _read_secret_file(CAPABILITY_SECRET_FILE)
+    or "sandbox-dev-secret"
+)
 CAPABILITY_TTL_SECONDS = 60
 MAX_CODE_CHARS = 16_000
 MAX_REQUEST_BYTES = 96 * 1024
@@ -523,12 +539,22 @@ def execute_request(request: ExecutionRequest) -> dict[str, Any]:
 
 
 def _health_payload() -> dict[str, Any]:
+    docker_socket_present = Path("/var/run/docker.sock").exists()
+    try:
+        docker_control_ready = _run_docker_command(
+            [DOCKER_BIN, "version"],
+            check=False,
+            timeout=3,
+        ).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        docker_control_ready = False
     return {
-        "status": HEALTH_STATUS,
+        "status": HEALTH_STATUS if docker_control_ready else "runtime_unavailable",
         "mode": "trusted_supervisor",
         "runtime_image": RUNTIME_IMAGE,
         "profiles": [asdict(profile) for profile in PROFILES.values()],
-        "docker_socket_present": Path("/var/run/docker.sock").exists(),
+        "docker_socket_present": docker_socket_present,
+        "docker_control_ready": docker_control_ready,
         "seccomp_profile_name": SECCOMP_PROFILE_NAME,
         "seccomp_profile_path": str(SECCOMP_PROFILE_PATH) if SECCOMP_PROFILE_PATH is not None else None,
     }

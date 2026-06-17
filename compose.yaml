@@ -25,7 +25,7 @@ services:
       SIMPAGENT_APP_ENV: development
       SIMPAGENT_DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/simpagent
       SIMPAGENT_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8000
-      SIMPAGENT_COOKIE_SECURE: false
+      SIMPAGENT_COOKIE_SECURE: true
       SIMPAGENT_COOKIE_SAMESITE: strict
       SIMPAGENT_DEMO_SEED_ENABLED: false
       SIMPAGENT_PROVIDER_CHECK_TIMEOUT_SECONDS: 2
@@ -92,7 +92,7 @@ services:
       SIMPAGENT_JWT_PUBLIC_KEY_FILE: /run/secrets/jwt_public_key
       SIMPAGENT_REFRESH_HMAC_KEY_FILE: /run/secrets/refresh_hmac_key
       SIMPAGENT_CSRF_HMAC_KEY_FILE: /run/secrets/csrf_hmac_key
-      SIMPAGENT_COOKIE_SECURE: false
+      SIMPAGENT_COOKIE_SECURE: true
       SIMPAGENT_COOKIE_SAMESITE: strict
       SIMPAGENT_DEMO_SEED_ENABLED: true
       SIMPAGENT_DEMO_USER_EMAIL: demo.user@simpagent.test
@@ -100,24 +100,38 @@ services:
       SIMPAGENT_DEMO_ADMIN_EMAIL: demo.admin@simpagent.test
       SIMPAGENT_DEMO_ADMIN_PASSWORD: ThayDoiMatKhauDemoAdmin123
       SIMPAGENT_PROVIDER_CHECK_TIMEOUT_SECONDS: ${PROVIDER_CHECK_TIMEOUT_SECONDS:-2}
+      SIMPAGENT_REPO_ROOT: /workspace/repo
+      SIMPAGENT_PUBLIC_APP_ORIGIN: ${SIMPAGENT_PUBLIC_APP_ORIGIN:-http://localhost:8000}
+      SIMPAGENT_PUBLIC_API_ORIGIN: ${SIMPAGENT_PUBLIC_API_ORIGIN:-http://localhost:8000}
+      SIMPAGENT_TRUSTED_PROXY_CIDRS: ${SIMPAGENT_TRUSTED_PROXY_CIDRS:-127.0.0.1/32}
       SIMPAGENT_LLM_API_BASE: ${LLM_API_BASE:-https://api.example.test/v1}
+      SIMPAGENT_LLM_API_KEY: ${LLM_API_KEY:-}
       SIMPAGENT_LLM_API_KEY_FILE: ${LLM_API_KEY_FILE:-/run/secrets/llm_api_key}
       SIMPAGENT_LLM_MODEL: ${LLM_MODEL:-fake-model}
       SIMPAGENT_LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
       SIMPAGENT_LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-1}
       SIMPAGENT_GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       SIMPAGENT_GOOGLE_API_KEY_FILE: ${GOOGLE_API_KEY_FILE:-}
+      SIMPAGENT_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      SIMPAGENT_GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      SIMPAGENT_GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      SIMPAGENT_GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      SIMPAGENT_GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      SIMPAGENT_GITHUB_REDIRECT_URI: ${GITHUB_REDIRECT_URI:-}
       SIMPAGENT_SEARCH_MODEL: ${SEARCH_MODEL:-gemini-2.5-flash}
       SIMPAGENT_GUARDRAIL_SAFETY_ENABLED_DEFAULT: ${GUARDRAIL_SAFETY_ENABLED_DEFAULT:-true}
       SIMPAGENT_PYTHON_SUPERVISOR_BASE_URL: http://sandbox:8080
       SIMPAGENT_PYTHON_SUPERVISOR_REQUEST_TIMEOUT_SECONDS: 30
-      SIMPAGENT_PYTHON_CAPABILITY_SECRET: sandbox-dev-secret
+      SIMPAGENT_PYTHON_CAPABILITY_SECRET_FILE: /run/secrets/python_capability_secret
       SIMPAGENT_PYTHON_CAPABILITY_TTL_SECONDS: 60
       SIMPAGENT_PYTHON_SESSION_TTL_SECONDS: 900
       SIMPAGENT_PYTHON_ARTIFACT_STORAGE_DIR: /tmp/simpagent-python-artifacts
     volumes:
       - dev-secrets:/run/secrets
       - ./sandbox:/workspace/sandbox:ro
+      - ./.env.example:/workspace/repo/.env.example:ro
+      - ./compose.yaml:/workspace/repo/compose.yaml:ro
+      - ./README.md:/workspace/repo/README.md:ro
       - python-artifacts:/tmp/simpagent-python-artifacts
       - backend-logs:/var/log/simpagent/backend
     healthcheck:
@@ -127,6 +141,53 @@ services:
       retries: 20
     networks:
       - private
+      - egress
+
+  backend-small-production:
+    profiles: ["small-production"]
+    build:
+      context: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      SIMPAGENT_APP_ENV: production
+      SIMPAGENT_LOG_LEVEL: ${SIMPAGENT_LOG_LEVEL:-INFO}
+      SIMPAGENT_DATABASE_URL_FILE: ${SIMPAGENT_DATABASE_URL_FILE:-/run/secrets/database_url}
+      SIMPAGENT_ALLOWED_ORIGINS: ${SIMPAGENT_ALLOWED_ORIGINS:-https://app.example.test}
+      SIMPAGENT_PUBLIC_APP_ORIGIN: ${SIMPAGENT_PUBLIC_APP_ORIGIN:-https://app.example.test}
+      SIMPAGENT_PUBLIC_API_ORIGIN: ${SIMPAGENT_PUBLIC_API_ORIGIN:-https://api.example.test}
+      SIMPAGENT_TRUSTED_PROXY_CIDRS: ${SIMPAGENT_TRUSTED_PROXY_CIDRS:-173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22}
+      SIMPAGENT_COOKIE_SECURE: true
+      SIMPAGENT_COOKIE_SAMESITE: strict
+      SIMPAGENT_DEMO_SEED_ENABLED: false
+      SIMPAGENT_JWT_PRIVATE_KEY_FILE: ${SIMPAGENT_JWT_PRIVATE_KEY_FILE:-/run/secrets/jwt_private_key}
+      SIMPAGENT_JWT_PUBLIC_KEY_FILE: ${SIMPAGENT_JWT_PUBLIC_KEY_FILE:-/run/secrets/jwt_public_key}
+      SIMPAGENT_REFRESH_HMAC_KEY_FILE: ${SIMPAGENT_REFRESH_HMAC_KEY_FILE:-/run/secrets/refresh_hmac_key}
+      SIMPAGENT_CSRF_HMAC_KEY_FILE: ${SIMPAGENT_CSRF_HMAC_KEY_FILE:-/run/secrets/csrf_hmac_key}
+      SIMPAGENT_LLM_API_BASE: ${SIMPAGENT_LLM_API_BASE:-https://api.example.test/v1}
+      SIMPAGENT_LLM_API_KEY_FILE: ${SIMPAGENT_LLM_API_KEY_FILE:-/run/secrets/llm_api_key}
+      SIMPAGENT_GOOGLE_API_KEY_FILE: ${SIMPAGENT_GOOGLE_API_KEY_FILE:-/run/secrets/google_api_key}
+      SIMPAGENT_GOOGLE_CLIENT_ID: ${SIMPAGENT_GOOGLE_CLIENT_ID:-}
+      SIMPAGENT_GOOGLE_CLIENT_SECRET: ${SIMPAGENT_GOOGLE_CLIENT_SECRET:-}
+      SIMPAGENT_GOOGLE_REDIRECT_URI: ${SIMPAGENT_GOOGLE_REDIRECT_URI:-https://api.example.test/api/auth/oauth/google/callback}
+      SIMPAGENT_GITHUB_CLIENT_ID: ${SIMPAGENT_GITHUB_CLIENT_ID:-}
+      SIMPAGENT_GITHUB_CLIENT_SECRET: ${SIMPAGENT_GITHUB_CLIENT_SECRET:-}
+      SIMPAGENT_GITHUB_REDIRECT_URI: ${SIMPAGENT_GITHUB_REDIRECT_URI:-https://api.example.test/api/auth/oauth/github/callback}
+      SIMPAGENT_SEARCH_MODEL: ${SIMPAGENT_SEARCH_MODEL:-gemini-2.5-flash}
+      SIMPAGENT_PYTHON_SUPERVISOR_BASE_URL: http://sandbox:8080
+      SIMPAGENT_PYTHON_CAPABILITY_SECRET_FILE: ${SIMPAGENT_PYTHON_CAPABILITY_SECRET_FILE:-/run/secrets/python_capability_secret}
+      SIMPAGENT_CLOUDFLARE_EDGE_OPTIONAL: ${SIMPAGENT_CLOUDFLARE_EDGE_OPTIONAL:-true}
+      SIMPAGENT_CLOUDFLARE_TUNNEL_HOSTNAME: ${SIMPAGENT_CLOUDFLARE_TUNNEL_HOSTNAME:-api.example.test}
+      SIMPAGENT_CLOUDFLARE_SOURCE_IP_HEADER: CF-Connecting-IP
+    volumes:
+      - dev-secrets:/run/secrets:ro
+      - ./sandbox:/workspace/sandbox:ro
+    networks:
+      - private
+      - egress
 
   frontend:
     build:
@@ -241,10 +302,14 @@ services:
   sandbox:
     build:
       context: ./sandbox
+    depends_on:
+      init-dev-secrets:
+        condition: service_completed_successfully
     environment:
       SIMPAGENT_SANDBOX_RUNTIME_IMAGE: simpagent-python-runtime:local
-      SIMPAGENT_SANDBOX_CAPABILITY_SECRET: sandbox-dev-secret
+      SIMPAGENT_SANDBOX_CAPABILITY_SECRET_FILE: /run/secrets/python_capability_secret
     volumes:
+      - dev-secrets:/run/secrets:ro
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - private
@@ -262,3 +327,4 @@ networks:
   private:
     internal: true
   public:
+  egress:

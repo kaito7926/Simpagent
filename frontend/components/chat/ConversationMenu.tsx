@@ -1,6 +1,10 @@
 import React from "react";
 import { MoreVertical, Trash2 } from "lucide-react";
 
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+import { ActionButton } from "@/components/account-access/ActionButton";
+
 type ConversationMenuProps = {
   conversationTitle: string | null;
   open: boolean;
@@ -24,21 +28,19 @@ export function ConversationMenu({
 
   return (
     <div className="conversation-menu">
-      <button
-        className="conversation-menu-trigger"
-        type="button"
-        aria-label={`Open actions for ${title}`}
-        aria-expanded={open}
-        onClick={(event) => {
-          event.stopPropagation();
-          onOpenChange(!open);
-        }}
-      >
-        <MoreVertical aria-hidden="true" size={17} strokeWidth={1.75} />
-        <span className="visually-hidden">Delete conversation</span>
-      </button>
-      {open ? (
-        <div className="conversation-menu-popover" role="menu">
+      <DropdownMenu onOpenChange={onOpenChange} open={open}>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="conversation-menu-trigger"
+            type="button"
+            aria-label={`Open actions for ${title}`}
+            aria-expanded={open}
+          >
+            <MoreVertical aria-hidden="true" size={17} strokeWidth={1.75} />
+            <span className="visually-hidden">Delete conversation</span>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="conversation-menu-popover">
           {confirming ? (
             <div className="delete-confirmation" role="alertdialog" aria-label="Delete conversation">
               <p className="delete-confirmation-title">Delete conversation</p>
@@ -46,47 +48,38 @@ export function ConversationMenu({
                 This removes the conversation from your sidebar now. You can undo for a short time.
               </p>
               <div className="delete-confirmation-actions">
-                <button
+                <ActionButton
                   className="menu-delete-action"
                   type="button"
                   disabled={deleting}
-                  onClick={(event) => {
-                    event.stopPropagation();
+                  variant="secondary"
+                  onClick={() => {
                     void onDelete();
                   }}
                 >
                   <Trash2 aria-hidden="true" size={15} strokeWidth={1.75} />
                   <span>Delete conversation</span>
-                </button>
-                <button
-                  className="menu-keep-action"
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onKeep();
-                  }}
-                >
+                </ActionButton>
+                <ActionButton className="menu-keep-action" type="button" variant="quiet" onClick={onKeep}>
                   Keep conversation
-                </button>
+                </ActionButton>
               </div>
             </div>
           ) : (
-            <button
+            <ActionButton
               className="menu-delete-action"
               type="button"
-              role="menuitem"
+              fullWidth
+              variant="quiet"
               disabled={deleting}
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpenChange(true);
-              }}
+              onClick={() => onOpenChange(true)}
             >
               <Trash2 aria-hidden="true" size={15} strokeWidth={1.75} />
               <span>Delete conversation</span>
-            </button>
+            </ActionButton>
           )}
-        </div>
-      ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
