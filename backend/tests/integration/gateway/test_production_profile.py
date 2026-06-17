@@ -104,14 +104,14 @@ def test_compose_exposes_small_production_profile_and_proxy_environment() -> Non
     assert "8444:8444" not in contents
 
 
-def test_compose_sandbox_boundary_uses_secret_file_and_no_host_docker_socket() -> None:
+def test_compose_sandbox_boundary_uses_secret_file_and_trusted_runtime_control() -> None:
     contents = COMPOSE_FILE.read_text(encoding="utf-8")
 
-    assert "/var/run/docker.sock" not in contents
     assert "SIMPAGENT_PYTHON_CAPABILITY_SECRET_FILE: /run/secrets/python_capability_secret" in contents
     assert "SIMPAGENT_SANDBOX_CAPABILITY_SECRET_FILE: /run/secrets/python_capability_secret" in contents
     assert "SIMPAGENT_PYTHON_CAPABILITY_SECRET: sandbox-dev-secret" not in contents
     assert "SIMPAGENT_SANDBOX_CAPABILITY_SECRET: sandbox-dev-secret" not in contents
+    assert "/var/run/docker.sock:/var/run/docker.sock" in contents
 
 
 @pytest.mark.asyncio

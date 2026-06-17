@@ -338,6 +338,12 @@ def _version() -> int:
     return 0
 
 
+def _daemon_version(client) -> int:
+    payload = client.api.version()
+    sys.stdout.write(json.dumps(payload))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     if not args:
@@ -365,6 +371,8 @@ def main(argv: list[str] | None = None) -> int:
             return _logs(client, args)
         if command == "cp":
             return _cp(client, args)
+        if command == "version":
+            return _daemon_version(client)
         if command == "image" and args[:1] == ["inspect"]:
             return _image_inspect(client, args[1:])
         raise CliError(f"Unsupported docker command {command!r}.")

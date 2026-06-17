@@ -358,7 +358,7 @@ class ChatCoordinator:
                 user_prompt=prompt,
                 reviewed_output=normalized.answer_markdown,
                 trace=trace,
-                extra_context=_search_summary_context(normalized),
+                extra_context=None,
             )
         trace.add("ReportWriterAgent", "write", "completed", normalized.state)
         return _search_assistant_turn(
@@ -756,6 +756,8 @@ def _agent_summary_prompt(
             "or internal policy details."
         ),
         "- Keep the answer concise and directly useful.",
+        "- Answer the user's question directly; do not explain review process or confidence unless the reviewed output itself says so.",
+        "- Do not mention internal states like grounded, missing_grounding, google_grounded, citations availability, or sources unless they appear in the reviewed output.",
         "",
         "USER_PROMPT_START",
         user_prompt,
@@ -791,19 +793,4 @@ def _python_summary_context(result: PythonExecutionResult) -> str:
             f"artifacts: {len(result.artifacts)}",
         )
         if part is not None
-    )
-
-
-def _search_summary_context(result: SearchWorkerResult) -> str:
-    sources = [
-        f"[{source.index}] {source.title} ({source.domain})"
-        for source in result.sources[:5]
-    ]
-    return "\n".join(
-        [
-            f"state: {result.state}",
-            f"google_grounded: {result.google_grounded}",
-            "sources:",
-            *(sources or ["none"]),
-        ]
     )

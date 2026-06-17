@@ -80,15 +80,15 @@ class GitHubOAuthProvider:
             redirect_uri=request.redirect_uri,
             timeout=self.timeout_seconds,
         ) as client:
-            token = await client.fetch_token(
+            await client.fetch_token(
                 GITHUB_TOKEN_URL,
                 code=request.code,
                 grant_type="authorization_code",
             )
-            user_response = await client.get(GITHUB_USER_URL, token=token)
+            user_response = await client.get(GITHUB_USER_URL)
             user_response.raise_for_status()
             user_payload: dict[str, Any] = user_response.json()
-            email_response = await client.get(GITHUB_EMAILS_URL, token=token)
+            email_response = await client.get(GITHUB_EMAILS_URL)
             email_response.raise_for_status()
             emails_payload = email_response.json()
 

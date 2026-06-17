@@ -11,7 +11,6 @@ import {
   getSecurityEvents,
   getToolExecutions,
   setGuardrailSafetyEnabled,
-  setTrustedSupervisorEnabled,
 } from "@/lib/admin-api";
 import type {
   AdminMetricsResponse,
@@ -52,7 +51,6 @@ import { StatePanel } from "@/components/admin/StatePanel";
 
 type AdminOrchestrationSettings = {
   guardrailSafetyEnabled: boolean;
-  trustedSupervisorEnabled: boolean;
 };
 
 type ChatWorkspaceProps = {
@@ -248,7 +246,7 @@ const ADMIN_VIEW_META: Record<
   },
   orchestration: {
     title: "Orchestration",
-    description: "Review the trusted supervisor boundary for controlled Python turns.",
+    description: "Review the current safety controls for guarded tool orchestration.",
   },
   settings: {
     title: "Settings",
@@ -334,7 +332,7 @@ function OverviewView(props: {
         </div>
         <p className="body-copy">
           Metrics are loaded from the backend admin evidence contract and stay limited to bounded aggregate counts.
-          Guardrail safety is {props.adminSettings?.guardrailSafetyEnabled ? "enabled" : "disabled"} and trusted supervisor is {props.adminSettings?.trustedSupervisorEnabled ? "enabled" : "disabled"}.
+          Guardrail safety is {props.adminSettings?.guardrailSafetyEnabled ? "enabled" : "disabled"}.
         </p>
       </Card>
     </div>
@@ -364,6 +362,8 @@ function UsersView(props: {
         emptyTitle="No users match the current filter."
         rows={rows}
         page={props.page?.page}
+        desktopMinWidth={1280}
+        importantFields={["Email", "Role", "Status"]}
         onSelectRow={props.onSelectRow}
       />
       <EvidenceDetailDrawer
@@ -445,6 +445,8 @@ function ToolExecutionsView(props: {
         emptyTitle="No evidence matches the current filter."
         rows={rows}
         page={props.page?.page}
+        desktopMinWidth={1760}
+        importantFields={["Tool", "Status", "Input summary", "Output summary"]}
         onSelectRow={props.onSelectRow}
       />
       <EvidenceDetailDrawer
@@ -498,6 +500,8 @@ function GatewayEvidenceView(props: {
         emptyTitle="No evidence matches the current filter."
         rows={rows}
         page={props.page?.page}
+        desktopMinWidth={1280}
+        importantFields={["Type", "Route", "Plugin", "Status codes"]}
         onSelectRow={props.onSelectRow}
       />
       <EvidenceDetailDrawer
@@ -537,11 +541,6 @@ function OrchestrationView(props: {
             <span className="scope-label">Guardrail safety</span>
             <BadgeLikeStatus enabled={props.adminSettings?.guardrailSafetyEnabled ?? false} />
             <span className="scope-code">One layer of safety checks before tool orchestration.</span>
-          </div>
-          <div className="scope-list-item">
-            <span className="scope-label">Trusted supervisor Agent</span>
-            <BadgeLikeStatus enabled={props.adminSettings?.trustedSupervisorEnabled ?? false} />
-            <span className="scope-code">Supervision layer for Python turns that depend on policy review.</span>
           </div>
         </div>
         <div className="admin-card-actions">
@@ -738,7 +737,6 @@ export function ChatWorkspace({
           });
           setAdminSettings({
             guardrailSafetyEnabled: orchestrationResponse.guardrail_safety_enabled,
-            trustedSupervisorEnabled: orchestrationResponse.trusted_supervisor_enabled,
           });
           setAdminError(null);
         }
@@ -991,29 +989,6 @@ export function ChatWorkspace({
     }
   }
 
-  async function updateTrustedSupervisor(enabled: boolean) {
-    if (!adminCanWrite) {
-      return;
-    }
-    setAdminBusy(true);
-    setAdminError(null);
-    try {
-      const response = await setTrustedSupervisorEnabled(controller, enabled);
-      setAdminSettings({
-        guardrailSafetyEnabled: response.guardrail_safety_enabled,
-        trustedSupervisorEnabled: response.trusted_supervisor_enabled,
-      });
-    } catch (error) {
-      setAdminError(
-        error instanceof ApiError
-          ? error.message
-          : "Can't update trusted supervisor setting right now.",
-      );
-    } finally {
-      setAdminBusy(false);
-    }
-  }
-
   async function updateGuardrailSafety(enabled: boolean) {
     if (!adminCanWrite) {
       return;
@@ -1024,7 +999,6 @@ export function ChatWorkspace({
       const response = await setGuardrailSafetyEnabled(controller, enabled);
       setAdminSettings({
         guardrailSafetyEnabled: response.guardrail_safety_enabled,
-        trustedSupervisorEnabled: response.trusted_supervisor_enabled,
       });
     } catch (error) {
       setAdminError(
@@ -1131,7 +1105,6 @@ export function ChatWorkspace({
             adminError={adminError}
             searchEnabled={searchEnabled}
             onGuardrailSafetyToggle={(enabled) => void updateGuardrailSafety(enabled)}
-            onTrustedSupervisorToggle={(enabled) => void updateTrustedSupervisor(enabled)}
           />
         );
       case "chat":
@@ -1196,8 +1169,8 @@ export function ChatWorkspace({
           />
         ) : (
           <div className="flex flex-col h-full bg-white dark:bg-zinc-900">
-            <header className="border-b border-zinc-200/60 px-6 py-8 dark:border-zinc-800">
-              <div className="max-w-3xl mx-auto w-full">
+            <header className="border-b border-zinc-200/60 px-4 py-8 dark:border-zinc-800 sm:px-6 lg:px-8">
+              <div className="mx-auto w-full max-w-[1440px]">
                 <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-2">Administration</p>
                 <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
                   {ADMIN_VIEW_META[workspaceView as Exclude<AppWorkspaceView, "chat">].title}
@@ -1207,8 +1180,8 @@ export function ChatWorkspace({
                 </p>
               </div>
             </header>
-            <ScrollArea className="flex-1 px-6 py-6">
-              <div className="max-w-3xl mx-auto w-full">
+            <ScrollArea className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+              <div className="mx-auto w-full max-w-[1440px]">
                 {renderWorkspaceView()}
               </div>
             </ScrollArea>

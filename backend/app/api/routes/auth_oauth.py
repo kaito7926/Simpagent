@@ -96,7 +96,7 @@ def _set_auth_cookies(response: Response, *, settings: Settings, refresh_token: 
 
 
 def _frontend_session_url(settings: Settings, *, status_value: str) -> str:
-    base = settings.allowed_origins[0].rstrip("/")
+    base = (settings.public_app_origin or settings.allowed_origins[0]).rstrip("/")
     return f"{base}/?{urlencode({'oauth': status_value})}"
 
 

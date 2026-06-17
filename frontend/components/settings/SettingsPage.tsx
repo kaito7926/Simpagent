@@ -14,7 +14,6 @@ type SettingsPageProps = {
   currentUser: CurrentUser;
   adminSettings: {
     guardrailSafetyEnabled: boolean;
-    trustedSupervisorEnabled: boolean;
   } | null;
   adminCanWrite: boolean;
   adminBusy: boolean;
@@ -23,11 +22,10 @@ type SettingsPageProps = {
   initialSection?: SettingsSectionId;
   initialConfirmingSetting?: OrchestrationSettingId | null;
   onGuardrailSafetyToggle: (enabled: boolean) => void;
-  onTrustedSupervisorToggle: (enabled: boolean) => void;
 };
 
 type SettingsSectionId = "profile" | "roles" | "tools" | "readiness";
-type OrchestrationSettingId = "guardrail" | "trusted-supervisor";
+type OrchestrationSettingId = "guardrail";
 
 const settingsNavigation: Array<{
   id: SettingsSectionId;
@@ -51,7 +49,6 @@ export function SettingsPage({
   initialConfirmingSetting = null,
   onGuardrailSafetyToggle,
   searchEnabled,
-  onTrustedSupervisorToggle,
 }: SettingsPageProps) {
   const [activeSection, setActiveSection] = React.useState<SettingsSectionId>(initialSection);
   const [confirmingSetting, setConfirmingSetting] = React.useState<OrchestrationSettingId | null>(
@@ -82,7 +79,6 @@ export function SettingsPage({
             currentUser={currentUser}
             onConfirmingSettingChange={setConfirmingSetting}
             onGuardrailSafetyToggle={onGuardrailSafetyToggle}
-            onTrustedSupervisorToggle={onTrustedSupervisorToggle}
             searchEnabled={searchEnabled}
           />
         );
@@ -206,13 +202,11 @@ function ToolsSection({
   confirmingSetting,
   onConfirmingSettingChange,
   onGuardrailSafetyToggle,
-  onTrustedSupervisorToggle,
   searchEnabled,
 }: {
   currentUser: CurrentUser;
   adminSettings: {
     guardrailSafetyEnabled: boolean;
-    trustedSupervisorEnabled: boolean;
   } | null;
   adminCanWrite: boolean;
   adminBusy: boolean;
@@ -220,7 +214,6 @@ function ToolsSection({
   confirmingSetting: OrchestrationSettingId | null;
   onConfirmingSettingChange: (setting: OrchestrationSettingId | null) => void;
   onGuardrailSafetyToggle: (enabled: boolean) => void;
-  onTrustedSupervisorToggle: (enabled: boolean) => void;
   searchEnabled: boolean;
 }) {
   const pythonEnabled = currentUser.scopes.includes("tool:python");
@@ -291,26 +284,6 @@ function ToolsSection({
               onConfirmDisable={() => {
                 onConfirmingSettingChange(null);
                 onGuardrailSafetyToggle(false);
-              }}
-            />
-            <OrchestrationSettingCard
-              id="trusted-supervisor"
-              title="Trusted supervisor Agent"
-              description="Validates Python activity against orchestration safety policy."
-              enabled={adminSettings?.trustedSupervisorEnabled ?? false}
-              canWrite={adminCanWrite}
-              busy={adminBusy}
-              loaded={adminSettings !== null}
-              confirming={confirmingSetting === "trusted-supervisor"}
-              disableTitle="Disable trusted supervisor Agent?"
-              disableBody="Python turns that depend on this supervision layer will be denied until it is enabled again."
-              disableConfirm="Disable trusted supervisor"
-              onEnable={() => onTrustedSupervisorToggle(true)}
-              onRequestDisable={() => onConfirmingSettingChange("trusted-supervisor")}
-              onCancelDisable={() => onConfirmingSettingChange(null)}
-              onConfirmDisable={() => {
-                onConfirmingSettingChange(null);
-                onTrustedSupervisorToggle(false);
               }}
             />
             {!adminCanWrite ? (

@@ -389,6 +389,65 @@ async def test_search_plus_python_prompt_routes_to_search_without_touching_plann
 
 @pytest.mark.integration
 @pytest.mark.asyncio
+async def test_missing_grounding_search_summary_stays_focused_on_reviewed_output(
+    app,
+    client,
+    db_session,
+    settings,
+) -> None:
+    _, token = await _create_user_token(
+        db_session,
+        settings,
+        email="search-missing-grounding-summary@example.test",
+    )
+    search_worker = RecordingSearchWorker(
+        grounded_result().model_copy(
+            update={
+                "state": "missing_grounding",
+                "answer_markdown": "Argentina 3-0 Algeria",
+                "google_grounded": False,
+                "sources": [],
+                "citations": [],
+                "suggestions": None,
+                "output_summary": "missing_grounding",
+            }
+        )
+    )
+    app.state.search_ready = True
+    app.state.search_worker = search_worker
+    summary_adapter = RecordingSummaryAdapter("Argentina 3-0 Algeria")
+    app.state.chat_adapter = summary_adapter
+
+    response = await client.post(
+        "/api/conversations",
+        headers=_auth(token),
+        json={
+            "initial_message": {
+                "client_message_id": "search-missing-grounding-summary",
+                "content": "Tỉ số World Cup Argentina và Algeria hôm nay là bao nhiêu",
+            }
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assistant = body["messages"][1]
+    metadata = assistant["metadata"]
+
+    assert assistant["content"] == "Argentina 3-0 Algeria"
+    assert metadata["tool_name"] == "google_search"
+    assert metadata["search"]["state"] == "missing_grounding"
+    assert metadata["report_writer"]["summarized"] is True
+    assert len(summary_adapter.calls) == 1
+    summary_prompt = summary_adapter.calls[0][0].content
+    assert "Argentina 3-0 Algeria" in summary_prompt
+    assert "missing_grounding" not in summary_prompt
+    assert "google_grounded" not in summary_prompt
+    assert "sources:" not in summary_prompt
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("content", "plan", "expected_profile"),
     [

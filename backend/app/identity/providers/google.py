@@ -80,12 +80,12 @@ class GoogleOAuthProvider:
             redirect_uri=request.redirect_uri,
             timeout=self.timeout_seconds,
         ) as client:
-            token = await client.fetch_token(
+            await client.fetch_token(
                 GOOGLE_TOKEN_URL,
                 code=request.code,
                 grant_type="authorization_code",
             )
-            response = await client.get(GOOGLE_USERINFO_URL, token=token)
+            response = await client.get(GOOGLE_USERINFO_URL)
             response.raise_for_status()
             payload: dict[str, Any] = response.json()
 

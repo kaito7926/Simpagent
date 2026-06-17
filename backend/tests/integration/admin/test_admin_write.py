@@ -218,7 +218,6 @@ async def test_admin_can_read_and_toggle_guardrail_safety_agent(client, db_sessi
     assert read_response.status_code == 200
     assert read_response.json() == {
         "guardrail_safety_enabled": True,
-        "trusted_supervisor_enabled": False,
     }
 
     denied_response = await client.patch(
@@ -240,7 +239,6 @@ async def test_admin_can_read_and_toggle_guardrail_safety_agent(client, db_sessi
     assert write_response.status_code == 200
     assert write_response.json() == {
         "guardrail_safety_enabled": False,
-        "trusted_supervisor_enabled": False,
     }
 
     await db_session.rollback()
@@ -303,10 +301,7 @@ async def test_overview_and_orchestration_enforce_read_write_split_and_record_de
         headers={"Authorization": f"Bearer {reader_token}"},
     )
     assert orchestration_response.status_code == 200
-    assert set(orchestration_response.json()) == {
-        "guardrail_safety_enabled",
-        "trusted_supervisor_enabled",
-    }
+    assert set(orchestration_response.json()) == {"guardrail_safety_enabled"}
 
     denied_metrics_response = await client.get(
         "/api/admin/metrics",
@@ -339,17 +334,6 @@ async def test_overview_and_orchestration_enforce_read_write_split_and_record_de
     assert denied_guardrail_write.status_code == 403
     assert denied_guardrail_write.json()["error"]["code"] == "admin_scope_required"
 
-    allowed_trusted_supervisor_write = await client.patch(
-        "/api/admin/orchestration/trusted-supervisor",
-        headers={
-            "Authorization": f"Bearer {writer_token}",
-            "X-Correlation-Id": "corr-admin-trusted-supervisor-write-allowed",
-        },
-        json={"enabled": True},
-    )
-    assert allowed_trusted_supervisor_write.status_code == 200
-    assert allowed_trusted_supervisor_write.json()["trusted_supervisor_enabled"] is True
-
     await db_session.rollback()
     denial_events = (
         await db_session.execute(
@@ -371,57 +355,3 @@ async def test_overview_and_orchestration_enforce_read_write_split_and_record_de
     }
     assert all(event.event_type == "admin_access_denied" for event in denial_events)
     assert all("token" not in str(event.event_metadata).lower() for event in denial_events)
-
-
-async def test_admin_can_toggle_trusted_supervisor_agent(client, db_session, settings) -> None:
-    admin_reader = await create_user(
-        db_session,
-        email="trusted-supervisor-reader@example.test",
-        scopes=["admin:read"],
-        role="admin",
-    )
-    admin_writer = await create_user(
-        db_session,
-        email="trusted-supervisor-writer@example.test",
-        scopes=["admin:write"],
-        role="admin",
-    )
-    await db_session.commit()
-
-    reader_token = issue_token(user=admin_reader, scopes=["admin:read"], settings=settings)
-    writer_token = issue_token(user=admin_writer, scopes=["admin:write"], settings=settings)
-
-    read_response = await client.get(
-        "/api/admin/orchestration",
-        headers={"Authorization": f"Bearer {reader_token}"},
-    )
-    assert read_response.status_code == 200
-    assert read_response.json()["trusted_supervisor_enabled"] is False
-
-    write_response = await client.patch(
-        "/api/admin/orchestration/trusted-supervisor",
-        headers={
-            "Authorization": f"Bearer {writer_token}",
-            "X-Correlation-Id": "corr-admin-trusted-supervisor-on",
-        },
-        json={"enabled": True},
-    )
-    assert write_response.status_code == 200
-    assert write_response.json() == {
-        "guardrail_safety_enabled": True,
-        "trusted_supervisor_enabled": True,
-    }
-
-    await db_session.rollback()
-    setting = await db_session.scalar(
-        select(AgentRuntimeSetting).where(AgentRuntimeSetting.key == "trusted_supervisor_agent")
-    )
-    assert setting is not None
-    assert setting.enabled is True
-
-    event = (
-        await db_session.execute(
-            select(SecurityEvent).where(SecurityEvent.correlation_id == "corr-admin-trusted-supervisor-on")
-        )
-    ).scalar_one()
-    assert event.event_type == "trusted_supervisor_toggled"

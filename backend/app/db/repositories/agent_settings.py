@@ -9,7 +9,6 @@ from app.models.domain import AgentRuntimeSetting
 
 
 GUARDRAIL_SETTING_KEY = "guardrail_safety_agent"
-TRUSTED_SUPERVISOR_SETTING_KEY = "trusted_supervisor_agent"
 
 
 class AgentRuntimeSettingsRepository:
@@ -19,9 +18,6 @@ class AgentRuntimeSettingsRepository:
     async def is_guardrail_enabled(self, *, default: bool) -> bool:
         return await self._is_enabled(key=GUARDRAIL_SETTING_KEY, default=default)
 
-    async def is_trusted_supervisor_enabled(self, *, default: bool) -> bool:
-        return await self._is_enabled(key=TRUSTED_SUPERVISOR_SETTING_KEY, default=default)
-
     async def set_guardrail_enabled(
         self,
         *,
@@ -30,18 +26,6 @@ class AgentRuntimeSettingsRepository:
     ) -> AgentRuntimeSetting:
         return await self._set_enabled(
             key=GUARDRAIL_SETTING_KEY,
-            enabled=enabled,
-            updated_by_user_id=updated_by_user_id,
-        )
-
-    async def set_trusted_supervisor_enabled(
-        self,
-        *,
-        enabled: bool,
-        updated_by_user_id: UUID,
-    ) -> AgentRuntimeSetting:
-        return await self._set_enabled(
-            key=TRUSTED_SUPERVISOR_SETTING_KEY,
             enabled=enabled,
             updated_by_user_id=updated_by_user_id,
         )

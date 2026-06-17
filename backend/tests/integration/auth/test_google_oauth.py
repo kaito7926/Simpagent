@@ -31,6 +31,7 @@ def google_settings(settings):
             "google_client_id": "google-client-id",
             "google_client_secret": "google-client-secret",
             "google_redirect_uri": "http://testserver/api/auth/oauth/google/callback",
+            "public_app_origin": "http://testserver",
         }
     )
 
@@ -73,6 +74,7 @@ async def test_google_callback_provisions_verified_new_user_and_sets_first_party
         response = await _oauth_roundtrip(client)
 
     assert response.status_code in {302, 303, 307}
+    assert response.headers["location"] == "http://testserver/?oauth=success"
     assert "access_token" not in response.headers["location"]
     assert REFRESH_COOKIE_NAME in response.cookies
     assert CSRF_COOKIE_NAME in response.cookies

@@ -104,7 +104,6 @@ export type AdminMetricsResponse = {
 
 export type OrchestrationSettingsResponse = {
   guardrail_safety_enabled: boolean;
-  trusted_supervisor_enabled: boolean;
 };
 
 export type AdminPageRequest = {
@@ -207,23 +206,6 @@ export async function setGuardrailSafetyEnabled(
 ): Promise<OrchestrationSettingsResponse> {
   return controller.authorizedJson<OrchestrationSettingsResponse>(
     "/api/admin/orchestration/guardrail",
-    {
-      method: "PATCH",
-      cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ enabled }),
-    },
-  );
-}
-
-export async function setTrustedSupervisorEnabled(
-  controller: AuthSessionController,
-  enabled: boolean,
-): Promise<OrchestrationSettingsResponse> {
-  return controller.authorizedJson<OrchestrationSettingsResponse>(
-    "/api/admin/orchestration/trusted-supervisor",
     {
       method: "PATCH",
       cache: "no-store",

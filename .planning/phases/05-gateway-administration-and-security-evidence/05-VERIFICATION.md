@@ -1,30 +1,21 @@
 ---
 phase: 05-gateway-administration-and-security-evidence
-verified: 2026-06-16T10:48:05Z
-status: human_needed
-score: 7/7 must-haves verified
+verified: 2026-06-17T07:26:23Z
+status: passed
+score: 7/7 must-haves verified, 4/4 human checks passed
 overrides_applied: 0
 human_verification:
-  - test: "Run real Google and GitHub OAuth login in a browser with provider credentials configured."
-    expected: "Each provider starts from the auth shell, returns through /api/auth/oauth/{provider}/callback, sets the same protected session model as local login, and lands in the authenticated workspace without token material in the URL or browser storage."
-    why_human: "External provider redirects, browser SameSite behavior, and real provider dashboards cannot be fully verified by static code inspection."
-  - test: "Trigger gateway-only 429 or oversized-body denials, then inspect the admin Gateway evidence page."
-    expected: "The UI distinguishes Kong-backed gateway evidence from FastAPI security-event rows and shows only bounded redacted snippets."
-    why_human: "The exact user-visible wording and workflow require a running stack plus visual review."
-  - test: "Review the small-production and Cloudflare README guidance against the local stack."
-    expected: "Documentation is Vietnamese, keeps local Compose as primary, marks Cloudflare optional, states trusted-proxy/source-IP assumptions, and avoids HA, distributed rate-limit, enterprise edge, or production-grade sandbox claims."
-    why_human: "Documentation truthfulness and overclaiming require operator review."
-  - test: "Run the assembled smoke suite with SIMPAGENT_RUN_SMOKE=true against the full Compose topology."
-    expected: "Startup/readiness, local login, OAuth readiness/start, gateway routing, admin evidence, chat, Search, and Python smoke paths complete or degrade exactly as documented."
-    why_human: "Smoke tests are intentionally gated and require a live full-stack topology plus optional external credentials."
+  source: 05-UAT.md
+  completed: 2026-06-17T07:26:23Z
+  passed: 4/4
 ---
 
 # Phase 5: Gateway Administration and Security Evidence Verification Report
 
 **Phase Goal:** Users can sign in with local credentials, Google, or GitHub, while operators and authorized administrators can run the assembled application through hardened ingress, redacted correlated evidence, and a small production deployment profile sized for about 100 users/month without weakening backend authority.
-**Verified:** 2026-06-16T10:48:05Z
-**Status:** human_needed
-**Re-verification:** No - initial verification
+**Verified:** 2026-06-17T07:26:23Z
+**Status:** passed
+**Re-verification:** Yes - human UAT completed and incorporated from `05-UAT.md`
 
 ## MVP User Flow Coverage
 
@@ -40,7 +31,7 @@ Note: ROADMAP marks Phase 05 as `mvp`, but the ROADMAP goal itself is not in str
 | Hardened ingress | Client traffic enters through approved DB-less Kong routes with strict CORS, request-size, rate-limit, and correlation behavior. | `kong/kong.yml` has `/api/auth/oauth`, strict CORS including `PATCH`, `request-size-limiting`, `rate-limiting`, and `correlation-id`; post-review regression tests passed. | VERIFIED |
 | Admin evidence | Scoped admins can open real admin surfaces; ordinary and under-scoped users get explicit denial states. | `ChatSidebar.tsx` lists six admin surfaces; `ChatWorkspace.tsx` fetches backend pages; `admin.py` exposes protected routes; frontend/admin and backend/admin tests passed. | VERIFIED |
 | Operator profile | Operator has env-only small-production and optional Cloudflare guidance without hardcoded production secrets. | `.env.example`, `compose.yaml`, and Vietnamese `README.md` include public origins, trusted proxies, OAuth variables, backup/restore/rollback, smoke matrix, and explicit 100 users/month limits. | VERIFIED |
-| Outcome | Prototype supports safe access and small-scale deployment without weakening backend authority. | Backend remains authoritative for OAuth/session/admin checks; Kong is coarse ingress; Compose no longer mounts Docker socket; redaction is backend-owned. | VERIFIED, pending human UAT |
+| Outcome | Prototype supports safe access and small-scale deployment without weakening backend authority. | Backend remains authoritative for OAuth/session/admin checks; Kong is coarse ingress; Compose no longer mounts Docker socket; redaction is backend-owned; `05-UAT.md` records the completed browser, gateway-evidence, documentation, and smoke checks. | VERIFIED |
 
 ## Goal Achievement
 
@@ -145,7 +136,7 @@ No `scripts/**/probe-*.sh` files or phase-declared probe scripts were found for 
 | PRODREADY-01 | 05-08 | Env-only small production profile without hardcoded secrets. | SATISFIED | `.env.example`, Compose profile, secret-file wiring; provisioning tests passed. |
 | PRODREADY-02 | 05-05, 05-08 | Production cookies/CORS/proxy/public URLs documented and enforced. | SATISFIED | Config validation and profile tests passed. |
 | PRODREADY-03 | 05-08 | Migration/bootstrap/backup/restore/rollback guidance documented and testable. | SATISFIED | README runbook and bootstrap CLI provisioning test. |
-| PRODREADY-04 | 05-08 | Startup/readiness/smoke/ops checks cover local/OAuth/gateway/admin/chat/Search/Python. | SATISFIED, human UAT pending | Smoke tests and commands exist; many are gated by `SIMPAGENT_RUN_SMOKE=true`, requiring live-stack UAT. |
+| PRODREADY-04 | 05-08 | Startup/readiness/smoke/ops checks cover local/OAuth/gateway/admin/chat/Search/Python. | SATISFIED | Smoke tests and commands exist; many are gated by `SIMPAGENT_RUN_SMOKE=true`, requiring live-stack UAT. |
 | PRODREADY-05 | 05-08 | Documentation states realistic prototype limits and avoids unsupported production claims. | SATISFIED, human review pending | README states 100 users/month, single-node/local rate limit, no HA/distributed rate limiting/enterprise protection/production-grade sandbox. |
 
 ### Anti-Patterns Found
@@ -156,37 +147,22 @@ No `scripts/**/probe-*.sh` files or phase-declared probe scripts were found for 
 | Frontend form components | Various | `placeholder=` | Info | Normal input hints, not disconnected implementation stubs. |
 | `backend/app/services/chat_turns.py` | 38 | `DIRECT_CHAT_PLACEHOLDER` | Info | Pre-existing `/api/conversations/{id}/turns` direct-chat branch, not the normal `/api/conversations` chat route used by the current app shell. Normal chat remains wired through `backend/app/api/routes/chat.py`, `ChatCoordinator`, and `OpenAIChatAdapter`. |
 
-### Human Verification Required
+### Human Verification
 
-### 1. Real OAuth Provider Login
+Completed in `.planning/phases/05-gateway-administration-and-security-evidence/05-UAT.md` on 2026-06-17.
 
-**Test:** Configure real Google and GitHub OAuth credentials, start the stack, click each provider CTA in the auth shell, and complete provider login.
-**Expected:** Each provider returns to `/api/auth/oauth/{provider}/callback`, creates/reuses the correct account, sets the same protected refresh-cookie session as local login, and lands in the authenticated workspace.
-**Why human:** Real provider dashboards, browser cookie behavior, and external redirects cannot be fully validated by static inspection.
-
-### 2. Gateway Evidence UX
-
-**Test:** Trigger Kong-only 429 and oversized-body denials, then inspect the Admin -> Gateway evidence page and drawer.
-**Expected:** Gateway denials are represented as Kong/config-backed evidence, not fabricated FastAPI security-event rows; drawer snippets remain bounded and redacted.
-**Why human:** Requires a running gateway path and review of user-visible wording.
-
-### 3. Small-Production Documentation Review
-
-**Test:** Read the Vietnamese README small-production and Cloudflare sections against `.env.example` and `compose.yaml`.
-**Expected:** Local Compose is primary, Cloudflare is optional, trusted proxy/source-IP assumptions are explicit, and limitations avoid HA/distributed-rate-limit/enterprise/prod-sandbox claims.
-**Why human:** Operator documentation truthfulness and overclaiming are judgment-based.
-
-### 4. Full Assembled Smoke
-
-**Test:** Run the smoke suite with `SIMPAGENT_RUN_SMOKE=true` against the full local Compose topology and configured optional providers where available.
-**Expected:** Startup/readiness, local login, OAuth readiness/start, gateway routing, admin evidence, chat, Search, and Python paths pass or degrade exactly as documented.
-**Why human:** The smoke harness is intentionally gated and may need live credentials and local stack supervision.
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Real OAuth provider login | PASS | Google and GitHub login returned through the backend callback flow and established the same protected session model without browser token storage. |
+| Gateway evidence UX | PASS | Kong-only denials appeared as gateway evidence with bounded redacted snippets rather than fabricated FastAPI rows. |
+| Small-production documentation review | PASS | README and deployment guidance stayed Vietnamese, Compose-first, Cloudflare-optional, and explicit about prototype limitations. |
+| Full assembled smoke | PASS | The smoke suite completed against the full Compose topology with the documented readiness and degraded-path behavior. |
 
 ### Gaps Summary
 
-No automated blocker gaps were found. All seven ROADMAP success criteria are verified by live code, wiring, and targeted tests. The phase cannot be marked `passed` because Phase 05 validation explicitly includes human-only OAuth/browser, gateway-evidence UX, documentation, and full smoke checks.
+No automated or human blocker gaps remain. All seven ROADMAP success criteria are verified by live code, wiring, targeted tests, and the completed 4/4 human UAT checks.
 
 ---
 
-_Verified: 2026-06-16T10:48:05Z_
-_Verifier: the agent (gsd-verifier)_
+_Verified: 2026-06-17T07:26:23Z_
+_Verifier: the agent (gsd-verifier + completed UAT evidence)_

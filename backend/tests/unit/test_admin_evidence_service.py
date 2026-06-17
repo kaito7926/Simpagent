@@ -135,35 +135,16 @@ class FakeAsyncSession:
 @dataclass
 class FakeAgentSettingsRepository:
     guardrail_enabled: bool | None = True
-    trusted_supervisor_enabled: bool | None = False
     writes: list[dict] = field(default_factory=list)
 
     async def is_guardrail_enabled(self, *, default: bool) -> bool:
         return self.guardrail_enabled if self.guardrail_enabled is not None else default
-
-    async def is_trusted_supervisor_enabled(self, *, default: bool) -> bool:
-        return (
-            self.trusted_supervisor_enabled
-            if self.trusted_supervisor_enabled is not None
-            else default
-        )
 
     async def set_guardrail_enabled(self, *, enabled: bool, updated_by_user_id):
         self.guardrail_enabled = enabled
         self.writes.append(
             {
                 "setting": "guardrail",
-                "enabled": enabled,
-                "updated_by_user_id": updated_by_user_id,
-            }
-        )
-        return type("Setting", (), {"enabled": enabled})()
-
-    async def set_trusted_supervisor_enabled(self, *, enabled: bool, updated_by_user_id):
-        self.trusted_supervisor_enabled = enabled
-        self.writes.append(
-            {
-                "setting": "trusted_supervisor",
                 "enabled": enabled,
                 "updated_by_user_id": updated_by_user_id,
             }
@@ -338,18 +319,15 @@ async def test_admin_read_can_view_orchestration_settings() -> None:
         security_events=FakeSecurityEventSink(),
         agent_settings=FakeAgentSettingsRepository(
             guardrail_enabled=False,
-            trusted_supervisor_enabled=True,
         ),
     )
 
     result = await service.get_orchestration_settings(
         principal=_principal(role="admin", scopes=("admin:read",)),
         default_guardrail_enabled=True,
-        default_trusted_supervisor_enabled=False,
     )
 
     assert result.guardrail_safety_enabled is False
-    assert result.trusted_supervisor_enabled is True
 
 
 @pytest.mark.asyncio
@@ -358,7 +336,6 @@ async def test_admin_write_can_toggle_guardrail_safety_agent() -> None:
     sink = FakeSecurityEventSink()
     agent_settings = FakeAgentSettingsRepository(
         guardrail_enabled=True,
-        trusted_supervisor_enabled=False,
     )
     principal = _principal(role="admin", scopes=("admin:write",))
     service = AdminEvidenceService(
@@ -376,7 +353,6 @@ async def test_admin_write_can_toggle_guardrail_safety_agent() -> None:
     )
 
     assert result.guardrail_safety_enabled is False
-    assert result.trusted_supervisor_enabled is False
     assert agent_settings.writes == [
         {
             "setting": "guardrail",
@@ -388,47 +364,6 @@ async def test_admin_write_can_toggle_guardrail_safety_agent() -> None:
     assert sink.calls[0]["metadata"] == {
         "resource": "orchestration",
         "guardrail_safety_enabled": False,
-    }
-    assert session.commit_calls == 1
-
-
-@pytest.mark.asyncio
-async def test_admin_write_can_toggle_trusted_supervisor_agent() -> None:
-    session = FakeAsyncSession()
-    sink = FakeSecurityEventSink()
-    agent_settings = FakeAgentSettingsRepository(
-        guardrail_enabled=True,
-        trusted_supervisor_enabled=False,
-    )
-    principal = _principal(role="admin", scopes=("admin:write",))
-    service = AdminEvidenceService(
-        session,
-        correlation_id="corr-admin-trusted-supervisor-toggle",
-        now=datetime.now(UTC),
-        repository=FakeAdminRepository(),
-        security_events=sink,
-        agent_settings=agent_settings,
-    )
-
-    result = await service.set_trusted_supervisor_enabled(
-        principal=principal,
-        enabled=True,
-        default_guardrail_enabled=True,
-    )
-
-    assert result.guardrail_safety_enabled is True
-    assert result.trusted_supervisor_enabled is True
-    assert agent_settings.writes == [
-        {
-            "setting": "trusted_supervisor",
-            "enabled": True,
-            "updated_by_user_id": principal.user_id,
-        }
-    ]
-    assert sink.calls[0]["event_type"] == "trusted_supervisor_toggled"
-    assert sink.calls[0]["metadata"] == {
-        "resource": "orchestration",
-        "trusted_supervisor_enabled": True,
     }
     assert session.commit_calls == 1
 

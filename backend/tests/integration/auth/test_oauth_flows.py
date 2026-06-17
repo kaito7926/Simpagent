@@ -17,6 +17,7 @@ def google_settings(settings):
             "google_client_id": "google-client-id",
             "google_client_secret": "google-client-secret",
             "google_redirect_uri": "http://testserver/api/auth/oauth/google/callback",
+            "public_app_origin": "http://testserver",
         }
     )
 
@@ -42,8 +43,23 @@ async def _count_rows(db_session, model) -> int:
 
 
 @pytest.mark.asyncio
-async def test_google_start_rejects_unconfigured_provider_without_secret_leak(client) -> None:
-    response = await client.get("/api/auth/oauth/google/start")
+async def test_google_start_rejects_unconfigured_provider_without_secret_leak(settings, session_factory) -> None:
+    app = create_app(
+        settings=settings.model_copy(
+            update={
+                "google_client_id": None,
+                "google_client_secret": None,
+                "google_redirect_uri": None,
+            }
+        ),
+        session_factory=session_factory,
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+        follow_redirects=False,
+    ) as client:
+        response = await client.get("/api/auth/oauth/google/start")
 
     assert response.status_code == 503
     payload = response.json()

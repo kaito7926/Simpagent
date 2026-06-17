@@ -539,12 +539,22 @@ def execute_request(request: ExecutionRequest) -> dict[str, Any]:
 
 
 def _health_payload() -> dict[str, Any]:
+    docker_socket_present = Path("/var/run/docker.sock").exists()
+    try:
+        docker_control_ready = _run_docker_command(
+            [DOCKER_BIN, "version"],
+            check=False,
+            timeout=3,
+        ).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        docker_control_ready = False
     return {
-        "status": HEALTH_STATUS,
+        "status": HEALTH_STATUS if docker_control_ready else "runtime_unavailable",
         "mode": "trusted_supervisor",
         "runtime_image": RUNTIME_IMAGE,
         "profiles": [asdict(profile) for profile in PROFILES.values()],
-        "docker_socket_present": Path("/var/run/docker.sock").exists(),
+        "docker_socket_present": docker_socket_present,
+        "docker_control_ready": docker_control_ready,
         "seccomp_profile_name": SECCOMP_PROFILE_NAME,
         "seccomp_profile_path": str(SECCOMP_PROFILE_PATH) if SECCOMP_PROFILE_PATH is not None else None,
     }

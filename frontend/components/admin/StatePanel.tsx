@@ -30,10 +30,10 @@ function tone(state: StatePanelState): "secondary" | "warning" | "danger" | "out
 
 export function StatePanel({ state, title, body, referenceCode }: StatePanelProps) {
   return (
-    <Card className="rounded-[20px]">
+    <Card className="admin-card">
       <CardHeader>
-        <div className="flex items-start justify-between gap-3">
-          <div>
+        <div className="topbar-row">
+          <div className="admin-card-copy">
             <CardTitle>{title}</CardTitle>
             <CardDescription>{body}</CardDescription>
           </div>

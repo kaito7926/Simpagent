@@ -24,8 +24,7 @@ export type PythonLimitName =
 export type PythonDeniedReason =
   | "missing_permission"
   | "search_required"
-  | "policy_denied"
-  | "trusted_supervisor_disabled";
+  | "policy_denied";
 
 export type PythonPolicyErrorCode = "blocked_import" | "disallowed_behavior";
 
@@ -120,8 +119,6 @@ export function pythonDeniedTitle(reason: PythonDeniedReason): string {
       return "This account is not allowed to use limited Python.";
     case "search_required":
       return "This request needs additional data before Python can run.";
-    case "trusted_supervisor_disabled":
-      return "The trusted supervisor Agent is currently disabled.";
     case "policy_denied":
       return "The request was blocked before execution.";
   }
@@ -133,8 +130,6 @@ export function pythonDeniedBody(reason: PythonDeniedReason): string {
       return "Only an administrator can grant the `tool:python` permission to this account.";
     case "search_required":
       return "This request needs both search data and Python. In the current version, the system still allows only one tool per turn.";
-    case "trusted_supervisor_disabled":
-      return "An administrator disabled the trusted supervisor Agent, so this Python turn cannot run.";
     case "policy_denied":
       return "The request content does not satisfy the safety policy for the limited Python environment.";
   }

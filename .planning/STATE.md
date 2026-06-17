@@ -121,6 +121,11 @@ Recent decisions affecting current work:
 | 260615-pzk | Fix frontend codeblock rendering, replace SimpAgent logos with provided AuroraGuard mark, and center signed-out message on sign-in | 2026-06-15 | uncommitted | [260615-pzk-fix-frontend-codeblock-rendering-replace](./quick/260615-pzk-fix-frontend-codeblock-rendering-replace/) |
 | 260615-qbg | Change logo circle background to white | 2026-06-15 | uncommitted | [260615-qbg-change-logo-circle-background-to-white](./quick/260615-qbg-change-logo-circle-background-to-white/) |
 | 260615-qgv | Clip logo overflow inside white circular container | 2026-06-15 | uncommitted | [260615-qgv-clip-logo-overflow-inside-white-circular](./quick/260615-qgv-clip-logo-overflow-inside-white-circular/) |
+| 260617-deh | Improve Administration and Settings UI layout/text containment, add Google/GitHub OAuth icons, and switch to a Vietnamese-friendly font | 2026-06-17 | uncommitted | [260617-deh-improve-administration-and-settings-ui-l](./quick/260617-deh-improve-administration-and-settings-ui-l/) |
+| 260617-ese | Enlarge Administration users and gateway evidence tables and highlight important columns | 2026-06-17 | uncommitted | [260617-ese-enlarge-administration-users-and-gateway](./quick/260617-ese-enlarge-administration-users-and-gateway/) |
+| 260617-gsv | Fix Administration evidence table horizontal clipping by using available workspace width | 2026-06-17 | uncommitted | [260617-gsv-fix-administration-evidence-table-horizo](./quick/260617-gsv-fix-administration-evidence-table-horizo/) |
+| 260617-ic5 | Add visible horizontal scrollbar for Administration evidence tables | 2026-06-17 | uncommitted | [260617-ic5-add-visible-horizontal-scrollbar-for-adm](./quick/260617-ic5-add-visible-horizontal-scrollbar-for-adm/) |
+| 260617-ij4 | Make Administration evidence table horizontal mouse wheel scrolling work in Chrome | 2026-06-17 | uncommitted | [260617-ij4-make-administration-evidence-table-horiz](./quick/260617-ij4-make-administration-evidence-table-horiz/) |
 
 ## Deferred Items
 

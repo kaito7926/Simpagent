@@ -25,7 +25,7 @@ services:
       SIMPAGENT_APP_ENV: development
       SIMPAGENT_DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/simpagent
       SIMPAGENT_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8000
-      SIMPAGENT_COOKIE_SECURE: false
+      SIMPAGENT_COOKIE_SECURE: true
       SIMPAGENT_COOKIE_SAMESITE: strict
       SIMPAGENT_DEMO_SEED_ENABLED: false
       SIMPAGENT_PROVIDER_CHECK_TIMEOUT_SECONDS: 2
@@ -92,7 +92,7 @@ services:
       SIMPAGENT_JWT_PUBLIC_KEY_FILE: /run/secrets/jwt_public_key
       SIMPAGENT_REFRESH_HMAC_KEY_FILE: /run/secrets/refresh_hmac_key
       SIMPAGENT_CSRF_HMAC_KEY_FILE: /run/secrets/csrf_hmac_key
-      SIMPAGENT_COOKIE_SECURE: false
+      SIMPAGENT_COOKIE_SECURE: true
       SIMPAGENT_COOKIE_SAMESITE: strict
       SIMPAGENT_DEMO_SEED_ENABLED: true
       SIMPAGENT_DEMO_USER_EMAIL: demo.user@simpagent.test
@@ -101,7 +101,7 @@ services:
       SIMPAGENT_DEMO_ADMIN_PASSWORD: ThayDoiMatKhauDemoAdmin123
       SIMPAGENT_PROVIDER_CHECK_TIMEOUT_SECONDS: ${PROVIDER_CHECK_TIMEOUT_SECONDS:-2}
       SIMPAGENT_REPO_ROOT: /workspace/repo
-      SIMPAGENT_PUBLIC_APP_ORIGIN: ${SIMPAGENT_PUBLIC_APP_ORIGIN:-http://localhost:3000}
+      SIMPAGENT_PUBLIC_APP_ORIGIN: ${SIMPAGENT_PUBLIC_APP_ORIGIN:-http://localhost:8000}
       SIMPAGENT_PUBLIC_API_ORIGIN: ${SIMPAGENT_PUBLIC_API_ORIGIN:-http://localhost:8000}
       SIMPAGENT_TRUSTED_PROXY_CIDRS: ${SIMPAGENT_TRUSTED_PROXY_CIDRS:-127.0.0.1/32}
       SIMPAGENT_LLM_API_BASE: ${LLM_API_BASE:-https://api.example.test/v1}
@@ -310,6 +310,7 @@ services:
       SIMPAGENT_SANDBOX_CAPABILITY_SECRET_FILE: /run/secrets/python_capability_secret
     volumes:
       - dev-secrets:/run/secrets:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - private
 

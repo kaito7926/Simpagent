@@ -5,6 +5,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import * as adminApi from "@/lib/admin-api";
 import { AuthSessionController } from "@/lib/auth-session";
+import {
+  calculateEvidenceTableDragScrollLeft,
+  calculateEvidenceTableHorizontalWheelUpdate,
+  calculateEvidenceTableScrollbarThumb,
+} from "@/components/admin/EvidenceTable";
 import { ChatSidebar, type ChatNavigationProps } from "@/components/chat/ChatSidebar";
 import { ChatWorkspace } from "@/components/chat/ChatWorkspace";
 import { SettingsPage } from "@/components/settings/SettingsPage";
@@ -116,7 +121,6 @@ void test("admin API wrappers call backend metrics and orchestration endpoints t
       }
       return {
         guardrail_safety_enabled: false,
-        trusted_supervisor_enabled: true,
       };
     },
   } as unknown as AuthSessionController;
@@ -129,7 +133,6 @@ void test("admin API wrappers call backend metrics and orchestration endpoints t
   assert.equal(typeof adminApi.getOrchestrationSettings, "function");
   assert.equal(typeof adminApi.updateUserAccess, "function");
   assert.equal(typeof adminApi.setGuardrailSafetyEnabled, "function");
-  assert.equal(typeof adminApi.setTrustedSupervisorEnabled, "function");
 
   await adminApi.getAdminMetrics(controller);
   await adminApi.getAdminUsers(controller, { limit: 25, offset: 0 });
@@ -139,7 +142,6 @@ void test("admin API wrappers call backend metrics and orchestration endpoints t
   await adminApi.getOrchestrationSettings(controller);
   await adminApi.updateUserAccess(controller, "user-1", { role: "admin" });
   await adminApi.setGuardrailSafetyEnabled(controller, false);
-  await adminApi.setTrustedSupervisorEnabled(controller, true);
 
   assert.deepEqual(calls, [
     { url: "/api/admin/metrics", method: "GET", body: null },
@@ -150,7 +152,6 @@ void test("admin API wrappers call backend metrics and orchestration endpoints t
     { url: "/api/admin/orchestration", method: "GET", body: null },
     { url: "/api/admin/users/user-1", method: "PATCH", body: { role: "admin" } },
     { url: "/api/admin/orchestration/guardrail", method: "PATCH", body: { enabled: false } },
-    { url: "/api/admin/orchestration/trusted-supervisor", method: "PATCH", body: { enabled: true } },
   ]);
 });
 
@@ -194,7 +195,6 @@ void test("workspace overview renders backend-backed aggregate metrics without r
         status: 200,
         body: {
           guardrail_safety_enabled: true,
-          trusted_supervisor_enabled: false,
         },
       });
     }
@@ -218,13 +218,12 @@ void test("workspace overview renders backend-backed aggregate metrics without r
   assert.doesNotMatch(html, /raw prompt|password|not connected|unavailable/i);
 });
 
-void test("orchestration settings show guardrail and trusted-supervisor confirmation copy before destructive disables", () => {
+void test("orchestration settings show guardrail confirmation copy before destructive disables", () => {
   const guardrailHtml = renderToStaticMarkup(
     React.createElement(SettingsPage, {
       currentUser: adminUser,
       adminSettings: {
         guardrailSafetyEnabled: true,
-        trustedSupervisorEnabled: true,
       },
       adminCanWrite: true,
       adminBusy: false,
@@ -233,34 +232,132 @@ void test("orchestration settings show guardrail and trusted-supervisor confirma
       initialConfirmingSetting: "guardrail",
       searchEnabled: true,
       onGuardrailSafetyToggle: () => undefined,
-      onTrustedSupervisorToggle: () => undefined,
-    }),
-  );
-
-  const supervisorHtml = renderToStaticMarkup(
-    React.createElement(SettingsPage, {
-      currentUser: adminUser,
-      adminSettings: {
-        guardrailSafetyEnabled: true,
-        trustedSupervisorEnabled: true,
-      },
-      adminCanWrite: true,
-      adminBusy: false,
-      adminError: null,
-      initialSection: "tools",
-      initialConfirmingSetting: "trusted-supervisor",
-      searchEnabled: true,
-      onGuardrailSafetyToggle: () => undefined,
-      onTrustedSupervisorToggle: () => undefined,
     }),
   );
 
   assert.match(guardrailHtml, /Guardrail safety/);
-  assert.match(guardrailHtml, /Trusted supervisor Agent/);
   assert.match(guardrailHtml, /Disable guardrail safety\?/);
   assert.match(guardrailHtml, /You are removing one layer of safety checks before tool orchestration\./);
-  assert.match(supervisorHtml, /Disable trusted supervisor Agent\?/);
-  assert.match(supervisorHtml, /Python turns that depend on this supervision layer will be denied until it is enabled again\./);
+});
+
+void test("evidence table wheel input is converted into bounded horizontal scroll updates", () => {
+  assert.deepEqual(
+    calculateEvidenceTableHorizontalWheelUpdate({
+      currentScrollLeft: 0,
+      deltaX: 0,
+      deltaY: 120,
+      maxScrollLeft: 500,
+    }),
+    { nextScrollLeft: 120, shouldPreventDefault: true },
+  );
+
+  assert.deepEqual(
+    calculateEvidenceTableHorizontalWheelUpdate({
+      currentScrollLeft: 120,
+      deltaX: -50,
+      deltaY: 0,
+      maxScrollLeft: 500,
+    }),
+    { nextScrollLeft: 70, shouldPreventDefault: true },
+  );
+
+  assert.deepEqual(
+    calculateEvidenceTableHorizontalWheelUpdate({
+      currentScrollLeft: 460,
+      deltaMode: 1,
+      deltaX: 0,
+      deltaY: 3,
+      maxScrollLeft: 500,
+    }),
+    { nextScrollLeft: 500, shouldPreventDefault: true },
+  );
+
+  assert.deepEqual(
+    calculateEvidenceTableHorizontalWheelUpdate({
+      currentScrollLeft: 500,
+      deltaX: 0,
+      deltaY: 120,
+      maxScrollLeft: 500,
+    }),
+    { nextScrollLeft: 500, shouldPreventDefault: false },
+  );
+
+  assert.deepEqual(
+    calculateEvidenceTableHorizontalWheelUpdate({
+      currentScrollLeft: 0,
+      deltaX: 0,
+      deltaY: 120,
+      maxScrollLeft: 0,
+    }),
+    { nextScrollLeft: 0, shouldPreventDefault: false },
+  );
+});
+
+void test("evidence table custom scrollbar thumb mirrors horizontal scroll position", () => {
+  assert.deepEqual(
+    calculateEvidenceTableScrollbarThumb({
+      contentWidth: 1600,
+      scrollLeft: 0,
+      trackWidth: 800,
+      viewportWidth: 800,
+    }),
+    { hidden: false, leftPx: 0, widthPx: 400 },
+  );
+
+  assert.deepEqual(
+    calculateEvidenceTableScrollbarThumb({
+      contentWidth: 1600,
+      scrollLeft: 400,
+      trackWidth: 800,
+      viewportWidth: 800,
+    }),
+    { hidden: false, leftPx: 200, widthPx: 400 },
+  );
+
+  assert.deepEqual(
+    calculateEvidenceTableScrollbarThumb({
+      contentWidth: 800,
+      scrollLeft: 0,
+      trackWidth: 800,
+      viewportWidth: 800,
+    }),
+    { hidden: true, leftPx: 0, widthPx: 800 },
+  );
+});
+
+void test("evidence table custom scrollbar drag maps pointer movement to scrollLeft", () => {
+  assert.equal(
+    calculateEvidenceTableDragScrollLeft({
+      initialScrollLeft: 0,
+      maxScrollLeft: 800,
+      pointerDeltaX: 200,
+      thumbWidth: 400,
+      trackWidth: 800,
+    }),
+    400,
+  );
+
+  assert.equal(
+    calculateEvidenceTableDragScrollLeft({
+      initialScrollLeft: 760,
+      maxScrollLeft: 800,
+      pointerDeltaX: 200,
+      thumbWidth: 400,
+      trackWidth: 800,
+    }),
+    800,
+  );
+
+  assert.equal(
+    calculateEvidenceTableDragScrollLeft({
+      initialScrollLeft: 40,
+      maxScrollLeft: 800,
+      pointerDeltaX: -200,
+      thumbWidth: 400,
+      trackWidth: 800,
+    }),
+    0,
+  );
 });
 
 void test("admin evidence primitives render rows, explicit states, and sanitized drawer snippets", async () => {
@@ -309,7 +406,7 @@ void test("admin evidence primitives render rows, explicit states, and sanitized
   assert.match(tableHtml, /Security events/);
   assert.match(tableHtml, /admin_access_denied/);
   assert.match(tableHtml, /corr-denied-1/);
-  assert.match(tableHtml, /Xem chi tiết/);
+  assert.match(tableHtml, /Details/);
 
   const drawerHtml = renderToStaticMarkup(
     React.createElement(EvidenceDetailDrawer, {
@@ -419,6 +516,12 @@ void test("workspace renders backend-backed users, event, tool, and gateway evid
     },
   };
 
+  const horizontalTableWidths = {
+    users: "1280px",
+    "tool-executions": "1760px",
+    "gateway-evidence": "1280px",
+  } as const;
+
   for (const [view, expected] of [
     ["users", "member@simpagent.test"],
     ["security-events", "admin_access_denied"],
@@ -436,7 +539,16 @@ void test("workspace renders backend-backed users, event, tool, and gateway evid
       }),
     );
     assert.match(html, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-    assert.match(html, /Xem chi tiết/);
+    assert.match(html, /Details/);
+    if (view in horizontalTableWidths) {
+      const width = horizontalTableWidths[view as keyof typeof horizontalTableWidths];
+      assert.match(html, /evidence-table-scroll/);
+      assert.match(html, /evidence-table-scroll-content/);
+      assert.match(html, /evidence-table-drag-scrollbar/);
+      assert.match(html, /role="scrollbar"/);
+      assert.match(html, new RegExp(`min-width:${width}`));
+      assert.match(html, new RegExp(`width:${width}`));
+    }
     assert.doesNotMatch(html, /unavailable|not connected|fake telemetry|Available from backend admin endpoints/i);
   }
 });

@@ -31,6 +31,7 @@ def github_settings(settings):
             "github_client_id": "github-client-id",
             "github_client_secret": "github-client-secret",
             "github_redirect_uri": "http://testserver/api/auth/oauth/github/callback",
+            "public_app_origin": "http://testserver",
         }
     )
 
@@ -57,8 +58,23 @@ async def _oauth_roundtrip(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_github_start_rejects_unconfigured_provider_without_secret_leak(client) -> None:
-    response = await client.get("/api/auth/oauth/github/start")
+async def test_github_start_rejects_unconfigured_provider_without_secret_leak(settings, session_factory) -> None:
+    app = create_app(
+        settings=settings.model_copy(
+            update={
+                "github_client_id": None,
+                "github_client_secret": None,
+                "github_redirect_uri": None,
+            }
+        ),
+        session_factory=session_factory,
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+        follow_redirects=False,
+    ) as client:
+        response = await client.get("/api/auth/oauth/github/start")
 
     assert response.status_code == 503
     payload = response.json()
@@ -102,6 +118,7 @@ async def test_github_callback_provisions_verified_new_user_and_sets_first_party
         response = await _oauth_roundtrip(client)
 
     assert response.status_code in {302, 303, 307}
+    assert response.headers["location"] == "http://testserver/?oauth=success"
     assert "access_token" not in response.headers["location"]
     assert REFRESH_COOKIE_NAME in response.cookies
     assert CSRF_COOKIE_NAME in response.cookies

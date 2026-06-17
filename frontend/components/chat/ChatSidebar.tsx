@@ -21,10 +21,6 @@ import type { ConversationSummary } from "@/lib/chat-types";
 
 import { ConversationMenu } from "./ConversationMenu";
 
-export type AdminOrchestrationSettings = {
-  trustedSupervisorEnabled: boolean;
-};
-
 export type AppWorkspaceView =
   | "chat"
   | "overview"

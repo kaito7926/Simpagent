@@ -35,10 +35,10 @@ export function EvidenceDetailDrawer({
   return (
     <aside
       aria-modal="true"
-      className="flex h-full w-full max-w-md flex-col gap-4 overflow-y-auto rounded-[20px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_24px_100px_rgba(15,23,42,0.16)]"
+      className="flex h-full w-full max-w-md min-w-0 flex-col gap-4 overflow-y-auto rounded-[20px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_24px_100px_rgba(15,23,42,0.16)]"
       role="dialog"
     >
-      <div className="flex flex-col gap-2 text-left">
+      <div className="admin-card-copy text-left">
         <h2 className="text-lg font-semibold">{title}</h2>
         <p className="text-sm text-[var(--muted-foreground)]">{description}</p>
         <button className="sr-only" onClick={() => onOpenChange(false)} type="button">
@@ -48,9 +48,9 @@ export function EvidenceDetailDrawer({
 
       {row ? (
         <div className="space-y-5">
-          <div className="rounded-2xl border border-[var(--border)] p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
+          <div className="scope-list-item">
+            <div className="topbar-row">
+              <div className="admin-card-copy">
                 <p className="font-semibold">{row.primary}</p>
                 <p className="mt-1 text-sm text-[var(--muted-foreground)]">{row.secondary}</p>
               </div>
@@ -67,7 +67,7 @@ export function EvidenceDetailDrawer({
             <h3 className="text-sm font-semibold">Allowed fields</h3>
             <dl className="mt-3 space-y-3">
               {Object.entries(row.fields).map(([key, value]) => (
-                <div className="rounded-2xl bg-[var(--muted)] px-3 py-2" key={key}>
+                <div className="min-w-0 rounded-2xl bg-[var(--muted)] px-3 py-2" key={key}>
                   <dt className="text-xs font-semibold text-[var(--muted-foreground)]">{key}</dt>
                   <dd className="mt-1 break-words text-sm">{bounded(value)}</dd>
                 </div>
@@ -82,8 +82,8 @@ export function EvidenceDetailDrawer({
             {row.snippets && row.snippets.length > 0 ? (
               <div className="mt-3 space-y-3">
                 {row.snippets.map((snippet, index) => (
-                  <div className="rounded-2xl border border-[var(--border)] p-3" key={`${snippet.kind}-${index}`}>
-                    <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 rounded-2xl border border-[var(--border)] p-3" key={`${snippet.kind}-${index}`}>
+                    <div className="topbar-row">
                       <Badge variant="outline">{snippet.kind}</Badge>
                       {snippet.truncated ? <span className="text-xs text-[var(--muted-foreground)]">Truncated</span> : null}
                     </div>
