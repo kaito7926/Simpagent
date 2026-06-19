@@ -1,0 +1,124 @@
+# Small-production override for the existing local Compose topology.
+# Usage:
+#   cp .env.production.example .env.production
+#   docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml config -q
+#   docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml up -d --build
+#
+# Operator expectations:
+# - Put real secret files in ./secrets-prod (never commit them).
+# - Adjust the example domains below to your real HTTPS public origins.
+# - Update kong/kong.prod.yml so its CORS origin matches SIMPAGENT_ALLOWED_ORIGINS.
+
+services:
+  migrate:
+    environment: !override
+      SIMPAGENT_APP_ENV: production
+      SIMPAGENT_DATABASE_URL_FILE: ${SIMPAGENT_DATABASE_URL_FILE:-/run/secrets/database_url}
+      SIMPAGENT_ALLOWED_ORIGINS: ${SIMPAGENT_ALLOWED_ORIGINS:-https://app.example.test}
+      SIMPAGENT_COOKIE_SECURE: true
+      SIMPAGENT_COOKIE_SAMESITE: strict
+      SIMPAGENT_DEMO_SEED_ENABLED: false
+      SIMPAGENT_PROVIDER_CHECK_TIMEOUT_SECONDS: ${SIMPAGENT_PROVIDER_CHECK_TIMEOUT_SECONDS:-2}
+    volumes: !override
+      - ./secrets-prod:/run/secrets:ro
+
+  init-dev-secrets:
+    profiles: ["local-development"]
+
+  seed-demo:
+    profiles: ["local-development"]
+
+  backend:
+    depends_on: !override
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment: !override
+      SIMPAGENT_APP_ENV: production
+      SIMPAGENT_LOG_LEVEL: ${SIMPAGENT_LOG_LEVEL:-INFO}
+      SIMPAGENT_LOG_FILE_PATH: /var/log/simpagent/backend/backend.log
+      SIMPAGENT_DATABASE_URL_FILE: ${SIMPAGENT_DATABASE_URL_FILE:-/run/secrets/database_url}
+      SIMPAGENT_ALLOWED_ORIGINS: ${SIMPAGENT_ALLOWED_ORIGINS:-https://app.example.test}
+      SIMPAGENT_PUBLIC_APP_ORIGIN: ${SIMPAGENT_PUBLIC_APP_ORIGIN:-https://app.example.test}
+      SIMPAGENT_PUBLIC_API_ORIGIN: ${SIMPAGENT_PUBLIC_API_ORIGIN:-https://api.example.test}
+      SIMPAGENT_TRUSTED_PROXY_CIDRS: ${SIMPAGENT_TRUSTED_PROXY_CIDRS:-173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22}
+      SIMPAGENT_JWT_ISSUER: ${SIMPAGENT_JWT_ISSUER:-simpagent.example.test}
+      SIMPAGENT_JWT_AUDIENCE: ${SIMPAGENT_JWT_AUDIENCE:-simpagent-api}
+      SIMPAGENT_JWT_ACTIVE_KID: ${SIMPAGENT_JWT_ACTIVE_KID:-prod-kid}
+      SIMPAGENT_JWT_PRIVATE_KEY_FILE: ${SIMPAGENT_JWT_PRIVATE_KEY_FILE:-/run/secrets/jwt_private_key}
+      SIMPAGENT_JWT_PUBLIC_KEY_FILE: ${SIMPAGENT_JWT_PUBLIC_KEY_FILE:-/run/secrets/jwt_public_key}
+      SIMPAGENT_REFRESH_HMAC_KEY_FILE: ${SIMPAGENT_REFRESH_HMAC_KEY_FILE:-/run/secrets/refresh_hmac_key}
+      SIMPAGENT_CSRF_HMAC_KEY_FILE: ${SIMPAGENT_CSRF_HMAC_KEY_FILE:-/run/secrets/csrf_hmac_key}
+      SIMPAGENT_COOKIE_SECURE: true
+      SIMPAGENT_COOKIE_SAMESITE: strict
+      SIMPAGENT_DEMO_SEED_ENABLED: false
+      SIMPAGENT_PROVIDER_CHECK_TIMEOUT_SECONDS: ${SIMPAGENT_PROVIDER_CHECK_TIMEOUT_SECONDS:-2}
+      SIMPAGENT_REPO_ROOT: /workspace/repo
+      SIMPAGENT_LLM_API_BASE: ${SIMPAGENT_LLM_API_BASE:-https://api.example.test/v1}
+      SIMPAGENT_LLM_API_KEY: ${SIMPAGENT_LLM_API_KEY:-}
+      SIMPAGENT_LLM_API_KEY_FILE: ${SIMPAGENT_LLM_API_KEY_FILE:-/run/secrets/llm_api_key}
+      SIMPAGENT_LLM_MODEL: ${SIMPAGENT_LLM_MODEL:-}
+      SIMPAGENT_LLM_TIMEOUT_SECONDS: ${SIMPAGENT_LLM_TIMEOUT_SECONDS:-30}
+      SIMPAGENT_LLM_MAX_RETRIES: ${SIMPAGENT_LLM_MAX_RETRIES:-1}
+      SIMPAGENT_GOOGLE_API_KEY: ${SIMPAGENT_GOOGLE_API_KEY:-}
+      SIMPAGENT_GOOGLE_API_KEY_FILE: ${SIMPAGENT_GOOGLE_API_KEY_FILE:-/run/secrets/google_api_key}
+      SIMPAGENT_GOOGLE_CLIENT_ID: ${SIMPAGENT_GOOGLE_CLIENT_ID:-}
+      SIMPAGENT_GOOGLE_CLIENT_SECRET: ${SIMPAGENT_GOOGLE_CLIENT_SECRET:-}
+      SIMPAGENT_GOOGLE_REDIRECT_URI: ${SIMPAGENT_GOOGLE_REDIRECT_URI:-https://api.example.test/api/auth/oauth/google/callback}
+      SIMPAGENT_GITHUB_CLIENT_ID: ${SIMPAGENT_GITHUB_CLIENT_ID:-}
+      SIMPAGENT_GITHUB_CLIENT_SECRET: ${SIMPAGENT_GITHUB_CLIENT_SECRET:-}
+      SIMPAGENT_GITHUB_REDIRECT_URI: ${SIMPAGENT_GITHUB_REDIRECT_URI:-https://api.example.test/api/auth/oauth/github/callback}
+      SIMPAGENT_SEARCH_MODEL: ${SIMPAGENT_SEARCH_MODEL:-gemini-2.5-flash}
+      SIMPAGENT_GUARDRAIL_SAFETY_ENABLED_DEFAULT: ${SIMPAGENT_GUARDRAIL_SAFETY_ENABLED_DEFAULT:-true}
+      SIMPAGENT_PYTHON_SUPERVISOR_BASE_URL: http://sandbox:8080
+      SIMPAGENT_PYTHON_SUPERVISOR_REQUEST_TIMEOUT_SECONDS: ${SIMPAGENT_PYTHON_SUPERVISOR_REQUEST_TIMEOUT_SECONDS:-30}
+      SIMPAGENT_PYTHON_CAPABILITY_SECRET_FILE: ${SIMPAGENT_PYTHON_CAPABILITY_SECRET_FILE:-/run/secrets/python_capability_secret}
+      SIMPAGENT_PYTHON_CAPABILITY_TTL_SECONDS: ${SIMPAGENT_PYTHON_CAPABILITY_TTL_SECONDS:-60}
+      SIMPAGENT_PYTHON_SESSION_TTL_SECONDS: ${SIMPAGENT_PYTHON_SESSION_TTL_SECONDS:-900}
+      SIMPAGENT_PYTHON_ARTIFACT_STORAGE_DIR: /tmp/simpagent-python-artifacts
+      SIMPAGENT_CLOUDFLARE_EDGE_OPTIONAL: ${SIMPAGENT_CLOUDFLARE_EDGE_OPTIONAL:-true}
+      SIMPAGENT_CLOUDFLARE_TUNNEL_HOSTNAME: ${SIMPAGENT_CLOUDFLARE_TUNNEL_HOSTNAME:-api.example.test}
+      SIMPAGENT_CLOUDFLARE_SOURCE_IP_HEADER: ${SIMPAGENT_CLOUDFLARE_SOURCE_IP_HEADER:-CF-Connecting-IP}
+    volumes: !override
+      - ./secrets-prod:/run/secrets:ro
+      - ./sandbox:/workspace/sandbox:ro
+      - ./.env.example:/workspace/repo/.env.example:ro
+      - ./compose.yaml:/workspace/repo/compose.yaml:ro
+      - ./compose.prod.yaml:/workspace/repo/compose.prod.yaml:ro
+      - ./README.md:/workspace/repo/README.md:ro
+      - ./kong:/workspace/repo/kong:ro
+      - python-artifacts:/tmp/simpagent-python-artifacts
+      - backend-logs:/var/log/simpagent/backend
+    ports: !reset []
+
+  frontend:
+    environment: !override
+      NEXT_TELEMETRY_DISABLED: 1
+      NODE_ENV: production
+      SIMPAGENT_APP_ENV: production
+      SIMPAGENT_DEMO_SEED_ENABLED: false
+    command:
+      - /bin/sh
+      - -lc
+      - npm run build && npm run start -- --hostname 0.0.0.0 --port 3000
+
+  kong:
+    volumes: !override
+      - ./kong/kong.prod.yml:/etc/kong/kong.yml:ro
+      - kong-logs:/var/log/simpagent/kong
+
+  loki:
+    profiles: ["observability"]
+
+  promtail:
+    profiles: ["observability"]
+
+  grafana:
+    profiles: ["observability"]
+
+  sandbox:
+    depends_on: !override {}
+    volumes: !override
+      - ./secrets-prod:/run/secrets:ro
+      - /var/run/docker.sock:/var/run/docker.sock

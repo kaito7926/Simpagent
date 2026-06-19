@@ -82,21 +82,89 @@ Mật khẩu mẫu nằm trong `.env.example` và chỉ dùng để demo cục b
 
 ## Hồ sơ vận hành Phase 5 cho small-production
 
-Hồ sơ `small-production` trong `compose.yaml` là mẫu cấu hình cho triển khai nhỏ, không phải cam kết production đầy đủ. Mục tiêu là giúp operator nhìn rõ các biến môi trường, secret file, origin công khai, cookie secure, OAuth redirect và trusted proxy khi chạy prototype khoảng 100 người dùng/tháng.
+Repo hiện có hai mức tài liệu production nhỏ:
 
-Ví dụ kiểm tra cấu hình:
+1. `small-production` profile trong `compose.yaml` là mẫu tham chiếu môi trường-only để kiểm tra các biến production tối thiểu.
+2. `compose.prod.yaml` + `.env.production.example` là override hoàn chỉnh hơn để operator chạy topology production nhỏ trên chính các service `backend`, `frontend`, `kong`, `postgres`, và `sandbox` hiện có.
+
+Cả hai chỉ nhắm đến prototype single-node khoảng 100 người dùng/tháng, không phải production-grade đầy đủ.
+
+### Kiểm tra profile tham chiếu trong `compose.yaml`
 
 ```bash
 docker compose --profile small-production config -q
 ```
 
+### Runbook cho `compose.prod.yaml`
+
+1. Tạo file môi trường production từ mẫu:
+
+```bash
+cp .env.production.example .env.production
+```
+
+2. Chỉnh các giá trị public origin và trusted proxy trong `.env.production`:
+
+- `SIMPAGENT_ALLOWED_ORIGINS=https://app.example.test`
+- `SIMPAGENT_PUBLIC_APP_ORIGIN=https://app.example.test`
+- `SIMPAGENT_PUBLIC_API_ORIGIN=https://api.example.test`
+- `SIMPAGENT_TRUSTED_PROXY_CIDRS=...` theo đúng edge/load balancer thật sự tin cậy
+
+3. Tạo thư mục secret thật `./secrets-prod/` rồi đặt tối thiểu các file sau:
+
+- `database_url`
+- `jwt_private_key`
+- `jwt_public_key`
+- `refresh_hmac_key`
+- `csrf_hmac_key`
+- `python_capability_secret`
+
+Nếu dùng provider thật, thêm:
+
+- `llm_api_key`
+- `google_api_key`
+
+4. Kiểm tra cấu hình gộp:
+
+```bash
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml config -q
+```
+
+5. Khởi động topology production nhỏ:
+
+```bash
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml up -d --build
+```
+
+6. Nếu cần observability, bật thêm profile:
+
+```bash
+docker compose --env-file .env.production --profile observability -f compose.yaml -f compose.prod.yaml up -d --build
+```
+
+7. Smoke/health sau khi stack lên:
+
+```bash
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml ps
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml logs -f kong backend frontend
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml exec kong curl -fsS http://127.0.0.1:8000/health
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml exec backend curl -fsS http://127.0.0.1:8000/ready
+```
+
+8. Bootstrap admin đầu tiên:
+
+```bash
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml run --rm backend python -m app.cli.bootstrap_admin --email admin@example.com
+```
+
 Các nguyên tắc bắt buộc:
 
-- `docker compose up --build` vẫn là đường local chính.
+- `docker compose up --build` vẫn là đường local chính; `compose.prod.yaml` dành cho operator muốn bám topology production nhỏ mà không sửa `compose.yaml` gốc.
 - `SIMPAGENT_APP_ENV=production` yêu cầu HTTPS origin chính xác, `SIMPAGENT_COOKIE_SECURE=true`, `SIMPAGENT_DEMO_SEED_ENABLED=false`, file secret cho database/JWT/refresh/CSRF/Python capability, và `SIMPAGENT_TRUSTED_PROXY_CIDRS`.
 - `SIMPAGENT_PUBLIC_APP_ORIGIN` là origin frontend người dùng mở trong trình duyệt; với local Compose qua Kong nên đặt `http://localhost:8000`, còn triển khai production dùng origin HTTPS public của app. `SIMPAGENT_PUBLIC_API_ORIGIN` là origin API/Kong public dùng cho OAuth callback.
 - Local Compose hiện bật `SIMPAGENT_COOKIE_SECURE=true` để giữ contract `__Host-` cookie và cho browser chấp nhận refresh/CSRF cookie trên `localhost` qua cổng 8000. Nếu browser mục tiêu không chấp nhận Secure localhost cookies, cần chuyển sang local TLS thay vì tắt Secure.
 - OAuth redirect nên trỏ về backend-owned callback: `/api/auth/oauth/google/callback` và `/api/auth/oauth/github/callback`.
+- `kong/kong.prod.yml` phải dùng origin CORS khớp với `SIMPAGENT_ALLOWED_ORIGINS` trong `.env.production`.
 - Kong chỉ là lớp ingress coarse-grained. FastAPI vẫn tự validate token, role, scope, ownership và tool policy.
 - Kong Admin API, PostgreSQL, sandbox control plane và search worker không được expose ra host/public internet.
 
@@ -118,15 +186,24 @@ Khuyến nghị vận hành:
 
 ### Migration, bootstrap admin, backup, restore, rollback
 
-Các lệnh dưới đây là runbook operator. Thay biến/secret theo môi trường thật trước khi chạy.
+Các lệnh dưới đây là runbook operator. Thay biến/secret theo môi trường thật trước khi chạy. Với topology local/dev, dùng lệnh gốc. Với production override, thêm `--env-file .env.production -f compose.yaml -f compose.prod.yaml`.
 
 ```bash
+# Local/dev
 docker compose run --rm backend alembic upgrade head
 docker compose run --rm backend python -m app.cli.bootstrap_admin --email admin@example.com
 docker compose exec postgres pg_dump -U postgres -d simpagent -Fc -f /tmp/simpagent.dump
 docker compose cp postgres:/tmp/simpagent.dump ./backups/simpagent.dump
 docker compose cp ./backups/simpagent.dump postgres:/tmp/simpagent.dump
 docker compose exec postgres pg_restore -U postgres -d simpagent --clean --if-exists /tmp/simpagent.dump
+
+# Production override
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml run --rm migrate
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml run --rm backend python -m app.cli.bootstrap_admin --email admin@example.com
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml exec postgres pg_dump -U postgres -d simpagent -Fc -f /tmp/simpagent.dump
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml cp postgres:/tmp/simpagent.dump ./backups/simpagent.dump
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml cp ./backups/simpagent.dump postgres:/tmp/simpagent.dump
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml exec postgres pg_restore -U postgres -d simpagent --clean --if-exists /tmp/simpagent.dump
 ```
 
 Rollback thực tế của prototype là rollback theo Git commit/tag, khôi phục database từ backup gần nhất, chạy lại migration phù hợp, rồi kiểm tra smoke. Không tự ý sửa tay schema production nếu chưa có migration tương ứng.
@@ -185,8 +262,13 @@ docker compose run --rm frontend npm run typecheck
 ### Smoke test topology đầy đủ
 
 ```bash
+# Local/dev
 docker compose up --build --wait
 docker compose run --rm -e SIMPAGENT_RUN_SMOKE=true backend python -m pytest -q tests/smoke
+
+# Production override
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml up -d --build
+docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml run --rm -e SIMPAGENT_RUN_SMOKE=true backend python -m pytest -q tests/smoke
 ```
 
 Nếu muốn ép smoke search ở trạng thái grounded hoặc degraded cụ thể, đặt thêm `SIMPAGENT_EXPECT_SEARCH_STATE`.

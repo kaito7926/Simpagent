@@ -134,6 +134,9 @@ services:
       - ./README.md:/workspace/repo/README.md:ro
       - python-artifacts:/tmp/simpagent-python-artifacts
       - backend-logs:/var/log/simpagent/backend
+    # Expose backend Swagger/OpenAPI directly on localhost:4000 while the container keeps listening on 8000.
+    ports: # Added for direct host access to backend docs.
+      - "4000:8000" # Host port 4000 -> backend container port 8000.
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
       interval: 10s
