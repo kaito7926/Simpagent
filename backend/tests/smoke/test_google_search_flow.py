@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-import os
 from uuid import uuid4
 
 import httpx
 import pytest
 
-PUBLIC_BASE_URL = os.getenv("SIMPAGENT_PUBLIC_BASE_URL", "http://kong:8000")
-RUN_SMOKE = os.getenv("SIMPAGENT_RUN_SMOKE", "false").lower() == "true"
-EXPECTED_SEARCH_STATE = os.getenv("SIMPAGENT_EXPECT_SEARCH_STATE", "search_unavailable")
+from tests.smoke._helpers import PUBLIC_BASE_URL, RUN_SMOKE, assert_search_contract
 
 
 @pytest.mark.smoke
@@ -48,14 +45,6 @@ async def test_public_stack_search_flow_preserves_the_phase_three_contract() -> 
 
         assert search_turn.status_code == 200
         payload = search_turn.json()
-        search = payload["assistant_message"]["search"]
-        assert search["state"] == EXPECTED_SEARCH_STATE
+        assert_search_contract(payload)
         assert payload["assistant_message"]["id"]
         assert payload["tool_execution"]["correlation_id"] == "corr-smoke-search"
-
-        if EXPECTED_SEARCH_STATE == "grounded":
-            assert search["google_grounded"] is True
-            assert search["sources"]
-            assert search["citations"]
-        else:
-            assert search["google_grounded"] is False

@@ -51,6 +51,7 @@ services:
       - name: backend-chat-turns
         paths:
           - ~/api/conversations/[^/]+/(messages|turns)(/[^/]+/retry)?$
+          - ~/api/conversations/[^/]+/undo-delete$
           - ~/api/conversations$
           - ~/api/conversations/[^/]+$
         strip_path: false

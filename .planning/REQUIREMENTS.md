@@ -125,22 +125,22 @@
 
 ### Verification and Documentation
 
-- [ ] **TEST-01**: Automated tests cover registration, login, refresh rotation, invalid and expired tokens, logout, and refresh-token replay.
-- [ ] **TEST-02**: Automated two-user tests prove BOLA protection for every conversation and message read/write/delete route.
-- [ ] **TEST-03**: Automated tests prove users cannot call admin APIs or tools without the required role and scopes.
-- [ ] **TEST-04**: Automated chat tests cover conversation creation, message sending, history ordering, idempotency, and provider failure behavior.
-- [ ] **TEST-05**: Automated search tests cover scope enforcement, grounding contract handling, timeout, missing grounding, and prompt-injection attempts.
-- [ ] **TEST-06**: Automated sandbox tests cover timeout, network denial, memory/CPU/PID limits, host-file denial, output limits, cleanup, and escape attempts.
-- [ ] **TEST-07**: Attack scripts under `security-tests/` demonstrate BOLA denial, brute-force limiting, token replay response, SSRF denial, prompt/tool abuse control, and sandbox escape denial against the Compose topology.
-- [ ] **TEST-08**: Repository includes practical Semgrep, Snyk-compatible dependency, Burp Suite, AWVS, and DAST guidance plus a security finding report template.
-- [ ] **TEST-09**: Security tests assert database, network, process, and provider side effects rather than relying only on response wording or model refusals.
-- [ ] **TEST-10**: Canary-secret tests verify that success and failure logs, audit records, and API responses do not leak protected values.
-- [ ] **DOCS-01**: Vietnamese `README.md` explains project purpose, prerequisites, environment, startup, testing, demo setup, API docs, security features, and known limitations.
-- [ ] **DOCS-02**: Vietnamese architecture documentation includes Mermaid component, trust-boundary, request-flow, and network-flow diagrams.
-- [ ] **DOCS-03**: Vietnamese security documentation explains local auth versus OIDC readiness, JWT lifecycle, refresh replay, RBAC/scopes, BOLA controls, tool policy, grounding, sandbox isolation, logging, and audit.
-- [ ] **DOCS-04**: Vietnamese testing documentation explains unit/integration tests, attack simulations, SAST, dependency scanning, container scanning, Burp, AWVS, and DAST.
-- [ ] **DOCS-05**: Vietnamese runbook covers brute force, token replay, BOLA, prompt injection, sandbox abuse, SSRF, provider outages, and secret exposure response.
-- [ ] **DOCS-06**: Documentation states prototype limitations, external provider data flows, Google grounding retention constraints, Windows/Docker sandbox limitations, and features not implemented.
+- [x] **TEST-01**: Automated tests cover registration, login, refresh rotation, invalid and expired tokens, logout, and refresh-token replay.
+- [x] **TEST-02**: Automated two-user tests prove BOLA protection for every conversation and message read/write/delete route.
+- [x] **TEST-03**: Automated tests prove users cannot call admin APIs or tools without the required role and scopes.
+- [x] **TEST-04**: Automated chat tests cover conversation creation, message sending, history ordering, idempotency, and provider failure behavior.
+- [x] **TEST-05**: Automated search tests cover scope enforcement, grounding contract handling, timeout, missing grounding, and prompt-injection attempts.
+- [x] **TEST-06**: Automated sandbox tests cover timeout, network denial, memory/CPU/PID limits, host-file denial, output limits, cleanup, and escape attempts.
+- [x] **TEST-07**: Attack scripts under `security-tests/` demonstrate BOLA denial, brute-force limiting, token replay response, SSRF denial, prompt/tool abuse control, and sandbox escape denial against the Compose topology.
+- [x] **TEST-08**: Repository includes practical Semgrep, Snyk-compatible dependency, Burp Suite, AWVS, and DAST guidance plus a security finding report template.
+- [x] **TEST-09**: Security tests assert database, network, process, and provider side effects rather than relying only on response wording or model refusals.
+- [x] **TEST-10**: Canary-secret tests verify that success and failure logs, audit records, and API responses do not leak protected values.
+- [x] **DOCS-01**: Vietnamese `README.md` explains project purpose, prerequisites, environment, startup, testing, demo setup, API docs, security features, and known limitations.
+- [x] **DOCS-02**: Vietnamese architecture documentation includes Mermaid component, trust-boundary, request-flow, and network-flow diagrams.
+- [x] **DOCS-03**: Vietnamese security documentation explains local auth versus OIDC readiness, JWT lifecycle, refresh replay, RBAC/scopes, BOLA controls, tool policy, grounding, sandbox isolation, logging, and audit.
+- [x] **DOCS-04**: Vietnamese testing documentation explains unit/integration tests, attack simulations, SAST, dependency scanning, container scanning, Burp, AWVS, and DAST.
+- [x] **DOCS-05**: Vietnamese runbook covers brute force, token replay, BOLA, prompt injection, sandbox abuse, SSRF, provider outages, and secret exposure response.
+- [x] **DOCS-06**: Documentation states prototype limitations, external provider data flows, Google grounding retention constraints, Windows/Docker sandbox limitations, and features not implemented.
 
 ## User Stories
 
@@ -299,22 +299,22 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | PRODREADY-03 | Phase 5 | Complete |
 | PRODREADY-04 | Phase 5 | Complete |
 | PRODREADY-05 | Phase 5 | Complete |
-| TEST-01 | Phase 6 | Pending |
-| TEST-02 | Phase 6 | Pending |
-| TEST-03 | Phase 6 | Pending |
-| TEST-04 | Phase 6 | Pending |
-| TEST-05 | Phase 6 | Pending |
-| TEST-06 | Phase 6 | Pending |
-| TEST-07 | Phase 6 | Pending |
-| TEST-08 | Phase 6 | Pending |
-| TEST-09 | Phase 6 | Pending |
-| TEST-10 | Phase 6 | Pending |
-| DOCS-01 | Phase 6 | Pending |
-| DOCS-02 | Phase 6 | Pending |
-| DOCS-03 | Phase 6 | Pending |
-| DOCS-04 | Phase 6 | Pending |
-| DOCS-05 | Phase 6 | Pending |
-| DOCS-06 | Phase 6 | Pending |
+| TEST-01 | Phase 6 | Complete |
+| TEST-02 | Phase 6 | Complete |
+| TEST-03 | Phase 6 | Complete |
+| TEST-04 | Phase 6 | Complete |
+| TEST-05 | Phase 6 | Complete |
+| TEST-06 | Phase 6 | Complete |
+| TEST-07 | Phase 6 | Complete |
+| TEST-08 | Phase 6 | Complete |
+| TEST-09 | Phase 6 | Complete |
+| TEST-10 | Phase 6 | Complete |
+| DOCS-01 | Phase 6 | Complete |
+| DOCS-02 | Phase 6 | Complete |
+| DOCS-03 | Phase 6 | Complete |
+| DOCS-04 | Phase 6 | Complete |
+| DOCS-05 | Phase 6 | Complete |
+| DOCS-06 | Phase 6 | Complete |
 
 **Coverage:**
 
@@ -333,4 +333,4 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 
 ---
 *Requirements defined: 2026-06-08*
-*Last updated: 2026-06-13 after Phase 04 ship metadata sync*
+*Last updated: 2026-06-19 after Phase 06 verification closeout*

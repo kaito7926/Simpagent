@@ -15,7 +15,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     const surface = presentPythonToolResult(message.result);
 
     return (
-      <div className="flex gap-3 justify-start">
+      <div className="flex gap-3 justify-start" data-message-kind={message.kind}>
         <div className="mt-0.5 grid h-7 w-7 place-items-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-sm dark:from-zinc-200 dark:to-zinc-300 dark:text-zinc-900 shrink-0">
           <Asterisk className="h-4 w-4" />
         </div>
@@ -34,7 +34,10 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.kind === "user";
 
   return (
-    <div className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}>
+    <div
+      className={cn("flex gap-3", isUser ? "justify-end" : "justify-start")}
+      data-message-kind={message.kind}
+    >
       {!isUser && (
         <div className="mt-0.5 grid h-7 w-7 place-items-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-sm dark:from-zinc-200 dark:to-zinc-300 dark:text-zinc-900 shrink-0">
           <Asterisk className="h-4 w-4" />

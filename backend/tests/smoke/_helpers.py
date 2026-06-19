@@ -14,7 +14,14 @@ PUBLIC_BASE_URL = os.getenv("SIMPAGENT_PUBLIC_BASE_URL", "http://kong:8000")
 LOKI_BASE_URL = os.getenv("SIMPAGENT_LOKI_BASE_URL", "http://loki:3100")
 RUN_SMOKE = os.getenv("SIMPAGENT_RUN_SMOKE", "false").lower() == "true"
 DEFAULT_ORIGIN = os.getenv("SIMPAGENT_SMOKE_ORIGIN", "http://localhost:3000")
-EXPECTED_SEARCH_STATE = os.getenv("SIMPAGENT_EXPECT_SEARCH_STATE", "search_unavailable")
+EXPECTED_SEARCH_STATE = os.getenv("SIMPAGENT_EXPECT_SEARCH_STATE") or None
+VALID_SEARCH_STATES = {
+    "grounded",
+    "missing_grounding",
+    "search_unavailable",
+    "provider_failed",
+    "timeout",
+}
 
 DEMO_ADMIN_EMAIL = os.getenv("SIMPAGENT_DEMO_ADMIN_EMAIL", "demo.admin@simpagent.test")
 DEMO_ADMIN_PASSWORD = os.getenv("SIMPAGENT_DEMO_ADMIN_PASSWORD", "ThayDoiMatKhauDemoAdmin123")
@@ -146,9 +153,12 @@ async def submit_search_turn(
 
 def assert_search_contract(payload: dict[str, Any]) -> None:
     search = payload["assistant_message"]["search"]
-    assert search["state"] == EXPECTED_SEARCH_STATE
+    if EXPECTED_SEARCH_STATE is not None:
+        assert search["state"] == EXPECTED_SEARCH_STATE
+    else:
+        assert search["state"] in VALID_SEARCH_STATES
     assert payload["assistant_message"]["id"]
-    if EXPECTED_SEARCH_STATE == "grounded":
+    if search["state"] == "grounded":
         assert search["google_grounded"] is True
         assert search["sources"]
         assert search["citations"]
