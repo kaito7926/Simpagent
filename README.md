@@ -50,7 +50,7 @@ Lưu ý:
 - Secret production thật phải đi qua file secret hoặc biến môi trường riêng, không commit vào repo.
 - Với LLM provider cho local development, backend hỗ trợ cả `LLM_API_KEY` trực tiếp từ `.env`/environment và `LLM_API_KEY_FILE`; nếu cả hai cùng được set thì giá trị biến môi trường được ưu tiên.
 - Tương tự, Google Gemini / Search worker hỗ trợ cả `GOOGLE_API_KEY` trực tiếp từ `.env`/environment và `GOOGLE_API_KEY_FILE`; nếu cả hai cùng được set thì giá trị biến môi trường được ưu tiên.
-- OAuth Google/GitHub dùng các biến `SIMPAGENT_GOOGLE_CLIENT_ID`, `SIMPAGENT_GOOGLE_CLIENT_SECRET`, `SIMPAGENT_GOOGLE_REDIRECT_URI`, `SIMPAGENT_GITHUB_CLIENT_ID`, `SIMPAGENT_GITHUB_CLIENT_SECRET`, và `SIMPAGENT_GITHUB_REDIRECT_URI`. Secret thật không được ghi vào README, `.env.example`, log, hoặc prompt gửi model.
+- OAuth Google/GitHub ở backend vẫn đọc các biến `SIMPAGENT_GOOGLE_CLIENT_ID`, `SIMPAGENT_GOOGLE_CLIENT_SECRET`, `SIMPAGENT_GOOGLE_REDIRECT_URI`, `SIMPAGENT_GITHUB_CLIENT_ID`, `SIMPAGENT_GITHUB_CLIENT_SECRET`, và `SIMPAGENT_GITHUB_REDIRECT_URI`; tuy nhiên `.env`/`.env.production` trong repo hiện dùng host-env key không prefix như `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_REDIRECT_URI`, rồi compose sẽ map sang `SIMPAGENT_*` trong container. Secret thật không được ghi vào README, `.env.example`, log, hoặc prompt gửi model.
 
 ### 3. Khởi động toàn hệ thống
 
@@ -105,10 +105,10 @@ cp .env.production.example .env.production
 
 2. Chỉnh các giá trị public origin và trusted proxy trong `.env.production`:
 
-- `SIMPAGENT_ALLOWED_ORIGINS=https://app.example.test`
-- `SIMPAGENT_PUBLIC_APP_ORIGIN=https://app.example.test`
-- `SIMPAGENT_PUBLIC_API_ORIGIN=https://api.example.test`
-- `SIMPAGENT_TRUSTED_PROXY_CIDRS=...` theo đúng edge/load balancer thật sự tin cậy
+- `ALLOWED_ORIGINS=https://app.example.test`
+- `PUBLIC_APP_ORIGIN=https://app.example.test`
+- `PUBLIC_API_ORIGIN=https://api.example.test`
+- `TRUSTED_PROXY_CIDRS=...` theo đúng edge/load balancer thật sự tin cậy
 
 3. Tạo thư mục secret thật `./secrets-prod/` rồi đặt tối thiểu các file sau:
 
@@ -160,11 +160,11 @@ docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml r
 Các nguyên tắc bắt buộc:
 
 - `docker compose up --build` vẫn là đường local chính; `compose.prod.yaml` dành cho operator muốn bám topology production nhỏ mà không sửa `compose.yaml` gốc.
-- `SIMPAGENT_APP_ENV=production` yêu cầu HTTPS origin chính xác, `SIMPAGENT_COOKIE_SECURE=true`, `SIMPAGENT_DEMO_SEED_ENABLED=false`, file secret cho database/JWT/refresh/CSRF/Python capability, và `SIMPAGENT_TRUSTED_PROXY_CIDRS`.
-- `SIMPAGENT_PUBLIC_APP_ORIGIN` là origin frontend người dùng mở trong trình duyệt; với local Compose qua Kong nên đặt `http://localhost:8000`, còn triển khai production dùng origin HTTPS public của app. `SIMPAGENT_PUBLIC_API_ORIGIN` là origin API/Kong public dùng cho OAuth callback.
+- `.env.production` trong runbook mới dùng các key host-env không prefix như `APP_ENV=production`, `COOKIE_SECURE=true`, `DEMO_SEED_ENABLED=false`, `ALLOWED_ORIGINS`, `PUBLIC_APP_ORIGIN`, `PUBLIC_API_ORIGIN`, `TRUSTED_PROXY_CIDRS`, rồi `compose.prod.yaml` sẽ map chúng sang `SIMPAGENT_*` trong container.
+- `PUBLIC_APP_ORIGIN` là origin frontend người dùng mở trong trình duyệt; với local Compose qua Kong nên đặt `http://localhost:8000`, còn triển khai production dùng origin HTTPS public của app. `PUBLIC_API_ORIGIN` là origin API/Kong public dùng cho OAuth callback.
 - Local Compose hiện bật `SIMPAGENT_COOKIE_SECURE=true` để giữ contract `__Host-` cookie và cho browser chấp nhận refresh/CSRF cookie trên `localhost` qua cổng 8000. Nếu browser mục tiêu không chấp nhận Secure localhost cookies, cần chuyển sang local TLS thay vì tắt Secure.
 - OAuth redirect nên trỏ về backend-owned callback: `/api/auth/oauth/google/callback` và `/api/auth/oauth/github/callback`.
-- `kong/kong.prod.yml` phải dùng origin CORS khớp với `SIMPAGENT_ALLOWED_ORIGINS` trong `.env.production`.
+- `kong/kong.prod.yml` phải dùng origin CORS khớp với `ALLOWED_ORIGINS` trong `.env.production`.
 - Kong chỉ là lớp ingress coarse-grained. FastAPI vẫn tự validate token, role, scope, ownership và tool policy.
 - Kong Admin API, PostgreSQL, sandbox control plane và search worker không được expose ra host/public internet.
 
@@ -180,7 +180,7 @@ Khuyến nghị vận hành:
 
 - Cloudflare Tunnel có thể đưa traffic từ hostname public về Kong proxy `:8000`; không expose Kong Admin API.
 - DNS/TLS nên terminate ở Cloudflare và hop từ Tunnel tới Kong nằm trong mạng operator kiểm soát.
-- `SIMPAGENT_TRUSTED_PROXY_CIDRS` chỉ nên chứa dải proxy thật sự được tin cậy. Header nguồn IP như `CF-Connecting-IP` chỉ đáng tin khi request đến từ Cloudflare/Tunnel đã kiểm soát.
+- `TRUSTED_PROXY_CIDRS` trong `.env.production` chỉ nên chứa dải proxy thật sự được tin cậy. Khi container khởi động, compose sẽ map nó sang `SIMPAGENT_TRUSTED_PROXY_CIDRS`. Header nguồn IP như `CF-Connecting-IP` chỉ đáng tin khi request đến từ Cloudflare/Tunnel đã kiểm soát.
 - WAF managed rules, Bot Fight Mode và Turnstile là lớp giảm abuse tùy chọn; app vẫn phải tự có auth, CSRF, rate limit, gateway limit và authorization.
 - Free-plan WAF/Bot features có giới hạn về rule, visibility và tuning. Tài liệu này không tuyên bố enterprise edge protection, HA, distributed rate limiting, hay sandbox production-grade.
 
