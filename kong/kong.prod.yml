@@ -85,7 +85,7 @@ plugins:
     route: backend-auth-register
     config: &strict_cors
       origins:
-        - https://app.example.test
+        - https://simpagent.example.com
       credentials: true
       methods:
         - GET

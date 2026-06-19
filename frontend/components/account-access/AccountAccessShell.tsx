@@ -29,12 +29,14 @@ type FormFields = {
   email: string;
   password: string;
   confirmPassword: string;
+  inviteCode: string;
 };
 
 type FormErrors = {
   email: string | null;
   password: string | null;
   confirmPassword: string | null;
+  inviteCode: string | null;
 };
 
 const SCOPE_LABELS: Record<string, string> = {
@@ -69,7 +71,7 @@ function normalizePasswordForClient(value: string): string {
 }
 
 function buildEmptyErrors(): FormErrors {
-  return { email: null, password: null, confirmPassword: null };
+  return { email: null, password: null, confirmPassword: null, inviteCode: null };
 }
 
 function labelForState(state: SessionState): string {
@@ -141,6 +143,7 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
     email: "",
     password: "",
     confirmPassword: "",
+    inviteCode: "",
   });
   const [formErrors, setFormErrors] = useState<FormErrors>(buildEmptyErrors());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -340,6 +343,7 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
       const nextState = await controller.register({
         email: formFields.email,
         password: formFields.password,
+        inviteCode: formFields.inviteCode,
       });
       setViewModel(nextState);
       clearPasswords();
@@ -399,6 +403,7 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
         email: demoConfig.userEmail,
         password: demoConfig.userPassword,
         confirmPassword: "",
+        inviteCode: "",
       });
       setAnnouncement("Standard user demo account filled.");
     } else {
@@ -406,6 +411,7 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
         email: demoConfig.adminEmail,
         password: demoConfig.adminPassword,
         confirmPassword: "",
+        inviteCode: "",
       });
       setAnnouncement("Administrator demo account filled.");
     }
@@ -548,6 +554,22 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
           className="flex h-11 w-full rounded-md bg-white border border-gray-300 px-3 py-2 text-foreground placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
         />
         {formErrors.confirmPassword && <p className="text-sm text-destructive">{formErrors.confirmPassword}</p>}
+      </div>
+      <div className="space-y-2.5">
+        <label htmlFor="register-invite-code" className="text-sm font-medium text-foreground">
+          Invite code
+        </label>
+        <input
+          id="register-invite-code"
+          type="password"
+          autoComplete="one-time-code"
+          placeholder="Required for public deployment"
+          value={formFields.inviteCode}
+          disabled={disabled}
+          onChange={(event) => setFormFields((current) => ({ ...current, inviteCode: event.target.value }))}
+          className="flex h-11 w-full rounded-md bg-white border border-gray-300 px-3 py-2 text-foreground placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
+        />
+        {formErrors.inviteCode && <p className="text-sm text-destructive">{formErrors.inviteCode}</p>}
       </div>
       <button
         type="submit"

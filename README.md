@@ -6,6 +6,7 @@ SimpAgent là prototype chatbot SaaS có định hướng an toàn. Repo này gh
 
 - [Kiến trúc](docs/architecture.vi.md)
 - [Bảo mật](docs/security.vi.md)
+- [Deploy internet nhỏ](docs/deploy-production.vi.md)
 - [Kiểm thử](docs/testing.vi.md)
 - [Runbook](docs/runbook.vi.md)
 - [Giới hạn](docs/limitations.vi.md)
@@ -94,6 +95,8 @@ docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml c
 docker compose --env-file .env.production -f compose.yaml -f compose.prod.yaml up -d --build
 ```
 
+Chi tiết từng bước, cách tạo `secrets-prod/`, bootstrap admin, kiểm tra CORS/health, và rollback nằm ở [Deploy internet nhỏ](docs/deploy-production.vi.md).
+
 Trước khi chạy, chỉnh tối thiểu trong `.env.production`:
 
 - `ALLOWED_ORIGINS`
@@ -103,11 +106,13 @@ Trước khi chạy, chỉnh tối thiểu trong `.env.production`:
 
 Tạo `./secrets-prod/` và đặt tối thiểu:
 
+- `postgres_password`
 - `database_url`
 - `jwt_private_key`
 - `jwt_public_key`
 - `refresh_hmac_key`
 - `csrf_hmac_key`
+- `registration_invite_code`
 - `python_capability_secret`
 
 Nếu dùng provider thật, thêm:

@@ -14,7 +14,7 @@ from app.schemas.auth import CurrentUserResponse, LoginRequest, RegisterAccepted
 from app.security.csrf import CsrfValidationError
 from app.security.refresh_tokens import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME
 from app.services.authentication import AuthenticationFailed, AuthenticationService
-from app.services.registration import RegistrationService
+from app.services.registration import RegistrationInviteRejected, RegistrationService
 from app.services.sessions import RefreshStatus, SessionsService
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -65,11 +65,18 @@ async def register(
         await service.register(
             email=str(payload.email),
             password=payload.password,
+            invite_code=payload.invite_code,
             origin=request.headers.get("origin"),
             settings=get_settings(request),
         )
     except CsrfValidationError as exc:
         raise ApiError(status_code=403, code="origin_rejected", message="The request origin is not allowed.") from exc
+    except RegistrationInviteRejected as exc:
+        raise ApiError(
+            status_code=403,
+            code="registration_invite_required",
+            message="A valid registration invite code is required.",
+        ) from exc
     return RegisterAcceptedResponse()
 
 

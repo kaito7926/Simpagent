@@ -92,6 +92,7 @@ export type ShellViewModel = {
 export type RegisterPayload = {
   email: string;
   password: string;
+  inviteCode?: string;
 };
 
 export type LoginPayload = {
@@ -263,7 +264,11 @@ export class AuthSessionController {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          email: payload.email,
+          password: payload.password,
+          invite_code: payload.inviteCode?.trim() || null,
+        }),
       },
       this.fetchImpl,
     );

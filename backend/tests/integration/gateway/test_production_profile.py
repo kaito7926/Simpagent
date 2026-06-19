@@ -25,6 +25,7 @@ def _base_settings(**overrides):
         "jwt_public_key_file": "/run/secrets/jwt_public_key",
         "refresh_hmac_key_file": "/run/secrets/refresh_hmac_key",
         "csrf_hmac_key_file": "/run/secrets/csrf_hmac_key",
+        "registration_invite_code": "invite-prod-test",
         "python_capability_secret_file": "/run/secrets/python_capability_secret",
         "public_app_origin": "https://app.example.test",
         "public_api_origin": "https://api.example.test",

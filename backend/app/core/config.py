@@ -138,6 +138,8 @@ class Settings(BaseSettings):
     refresh_hmac_key_file: str | None = None
     csrf_hmac_key: SecretStr | None = None
     csrf_hmac_key_file: str | None = None
+    registration_invite_code: SecretStr | None = None
+    registration_invite_code_file: str | None = None
 
     access_token_ttl_seconds: int = 600
     refresh_idle_ttl_seconds: int = 7 * 24 * 60 * 60
@@ -281,6 +283,8 @@ class Settings(BaseSettings):
                 raise ValueError("Production requires JWT key files.")
             if not self.refresh_hmac_key_file or not self.csrf_hmac_key_file:
                 raise ValueError("Production requires refresh and CSRF key files.")
+            if not _resolve_secret_value(self.registration_invite_code, self.registration_invite_code_file):
+                raise ValueError("Production requires a registration invite code.")
             if not self.python_capability_secret and not self.python_capability_secret_file:
                 raise ValueError("Production requires a Python capability secret.")
             for candidate in (self.llm_api_base,):
@@ -331,6 +335,10 @@ class Settings(BaseSettings):
         if not value:
             raise ValueError("CSRF HMAC key is required.")
         return value.encode("utf-8")
+
+    @property
+    def registration_invite_code_value(self) -> str | None:
+        return _resolve_secret_value(self.registration_invite_code, self.registration_invite_code_file)
 
     @property
     def llm_api_key_value(self) -> str | None:

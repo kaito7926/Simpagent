@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
@@ -18,7 +20,24 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def _read_secret_file(path: str | None) -> str | None:
+    if not path:
+        return None
+    candidate = Path(path)
+    if not candidate.exists():
+        return None
+    return candidate.read_text(encoding="utf-8").strip()
+
+
 def _database_url() -> str:
+    for env_name in ("SIMPAGENT_DATABASE_URL", "DATABASE_URL"):
+        value = os.getenv(env_name)
+        if value:
+            return value
+    for env_name in ("SIMPAGENT_DATABASE_URL_FILE", "DATABASE_URL_FILE"):
+        value = _read_secret_file(os.getenv(env_name))
+        if value:
+            return value
     try:
         return Settings().resolved_database_url
     except Exception:

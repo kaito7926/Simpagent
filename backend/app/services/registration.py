@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,14 +17,32 @@ class RegistrationOutcome:
     normalized_email: str
 
 
+class RegistrationInviteRejected(ValueError):
+    pass
+
+
 class RegistrationService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.accounts = AccountsRepository(session)
         self.linker = AccountLinker(session)
 
-    async def register(self, *, email: str, password: str, origin: str | None, settings) -> RegistrationOutcome:
+    async def register(
+        self,
+        *,
+        email: str,
+        password: str,
+        invite_code: str | None,
+        origin: str | None,
+        settings,
+    ) -> RegistrationOutcome:
         require_allowed_origin(origin, settings)
+        expected_invite_code = settings.registration_invite_code_value
+        if expected_invite_code and not hmac.compare_digest(
+            (invite_code or "").strip().encode("utf-8"),
+            expected_invite_code.encode("utf-8"),
+        ):
+            raise RegistrationInviteRejected("Invalid registration invite code")
         normalized_email, email_key = normalize_email(email)
         password_hash = hash_password(password, email_hint=normalized_email)
         created = False

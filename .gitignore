@@ -1,4 +1,7 @@
 .env
+.env.production
+.env.production.local
+secrets-prod/
 __pycache__/
 *.py[cod]
 .pytest_cache/
