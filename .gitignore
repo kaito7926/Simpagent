@@ -11,3 +11,4 @@ seed.spec.ts
 .claude/*
 .env.1
 .env.2
+security-tests/output/

@@ -4,7 +4,7 @@
 
 This roadmap delivers the prototype as dependency-ordered vertical slices: establish a runnable security and identity foundation, ship private direct chat, add policy-controlled Google Search, add isolated Python execution, harden the assembled gateway and evidence surfaces, then prove the complete system through adversarial verification and Vietnamese delivery documentation.
 
-**Integrated slice note:** PR #2 ships Phase 4 as an integrated tooling slice. Phase 3 still needs dedicated plans and refreshed verification artifacts before it can be marked complete in strict dependency order.
+**Integrated slice note:** PR #2 ships Phase 4 as an integrated tooling slice. Phase 3 still carries historical planning/verification debt and is intentionally not treated as a clean dependency-order completion in the status tables below.
 
 ## Phases
 
@@ -17,8 +17,8 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 - [x] **Phase 2: Private Direct Chat** - Users can use a safe browser chat experience with owner-only conversation history.
 - [ ] **Phase 3: Policy-Controlled Google Search** - Authorized users can receive grounded search answers through a bounded coordinator.
 - [x] **Phase 4: Isolated Python Execution** - Authorized users can run bounded Python without host, secret, or network access.
-- [x] **Phase 5: Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence** - The assembled application supports local, Google, and GitHub login, hardened ingress, redacted observability, protected admin evidence, and a small production deployment profile. (completed 2026-06-16)
-- [ ] **Phase 6: Adversarial Verification and Vietnamese Delivery** - Evaluators can verify the claimed controls and operate the documented prototype.
+- [x] **Phase 5: Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence** - The assembled application supports local, Google, and GitHub login, hardened ingress, redacted observability, protected admin evidence, and a small production deployment profile. (verified 2026-06-17)
+- [x] **Phase 6: Adversarial Verification and Vietnamese Delivery** - Evaluators can verify the claimed controls and operate the documented prototype.
 
 ## Phase Details
 
@@ -96,7 +96,8 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   4. Model output can propose but cannot authorize a tool; execution rechecks scope and policy and uses a short-lived audience-bound capability instead of the user's bearer token.
   5. Search and Python remain separate typed credential boundaries, every tool decision has a persisted correlated state, and untrusted prompts or search content cannot change policy, expose secrets, fetch internal URLs, or trigger arbitrary actions.
 
-**Plans:** TBD
+**Plans:** 4/4 plan artifacts present
+**Historical note:** `03-VERIFICATION.md` is still the stale gaps-found snapshot, so Phase 3 remains visibly out of sync even though later phases and Phase 6 verify shipped search behavior.
 **UI hint:** yes
 
 ### Phase 4: Isolated Python Execution
@@ -170,7 +171,21 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   4. Evaluator has practical SAST, dependency, container, Burp, AWVS, and DAST guidance plus a finding template and canary-secret evidence showing protected values do not leak.
   5. Vietnamese setup, architecture, trust-boundary, security, testing, incident-response, external-data-flow, and limitation documentation matches the implemented system and avoids unsupported production claims.
 
-**Plans:** TBD
+**Plans:** 5/5 plans complete
+**Wave 1**
+
+- [x] 06-01-PLAN.md - Consolidate the final automated verification matrix and close remaining proof gaps.
+- [x] 06-02-PLAN.md - Build the black-box adversarial attack suite under `security-tests/`.
+
+**Wave 2** *(blocked on Wave 1 completion where referenced)*
+
+- [x] 06-03-PLAN.md - Add scanner guidance, evidence templates, and evaluator report conventions.
+- [x] 06-04-PLAN.md - Deliver the Vietnamese README, architecture, and security documentation set.
+
+**Wave 3** *(blocked on Wave 1-2 completion where referenced)*
+
+- [x] 06-05-PLAN.md - Deliver Vietnamese testing/runbook/limitations docs and the final Phase 6 verification closeout.
+**Verification note:** `06-VERIFICATION.md` passed on 2026-06-19 after a clean matrix rerun and a passing 6-scenario attack suite.
 **UI hint:** no
 
 ## Progress
@@ -184,7 +199,7 @@ Note: PR #2 ships the Phase 4 Python slice before Phase 3 planning metadata was 
 |-------|----------------|--------|-----------|
 | 1. Secure Platform and Account Access | 8/8 | Complete | 2026-06-10 |
 | 2. Private Direct Chat | 7/7 | Complete | 2026-06-12 |
-| 3. Policy-Controlled Google Search | 0/TBD | Artifact closeout pending | - |
+| 3. Policy-Controlled Google Search | 4/4 | Historical debt visible | - |
 | 4. Isolated Python Execution | 5/5 | Shipped (PR #2) | 2026-06-13 |
-| 5. Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 8/8 | Complete   | 2026-06-16 |
-| 6. Adversarial Verification and Vietnamese Delivery | 0/TBD | Not started | - |
+| 5. Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 8/8 | Complete | 2026-06-17 |
+| 6. Adversarial Verification and Vietnamese Delivery | 5/5 | Complete | 2026-06-19 |

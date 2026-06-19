@@ -757,7 +757,7 @@ def _agent_summary_prompt(
         ),
         "- Keep the answer concise and directly useful.",
         "- Answer the user's question directly; do not explain review process or confidence unless the reviewed output itself says so.",
-        "- Do not mention internal states like grounded, missing_grounding, google_grounded, citations availability, or sources unless they appear in the reviewed output.",
+        "- Do not mention internal tool-state labels, hidden metadata fields, citation availability, or source arrays unless they appear in the reviewed output.",
         "",
         "USER_PROMPT_START",
         user_prompt,

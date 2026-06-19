@@ -98,10 +98,8 @@ void test("missing-grounding turns show a tentative note without badge, citation
     suggestions,
   });
 
-  assert.match(
-    markup,
-    /This answer may still be useful, but clear verified grounding was not available\./,
-  );
+  assert.match(markup, /assistant-note/);
+  assert.match(markup, /This answer does not have fully verified sources yet\./);
   assert.equal(markup.includes("Google-grounded"), false);
   assert.equal(markup.includes("Sources"), false);
   assert.equal(markup.includes("Suggested follow-up searches"), false);
