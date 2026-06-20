@@ -90,7 +90,7 @@ See `.planning/quick/` for the completed quick-task history from 2026-06-14 thro
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
-| 260620-klg | Soạn brief nội dung và thiết kế slide thuyết trình phân tích bảo mật dự án SimpAgent | 2026-06-20 | pending | [260620-klg](./quick/260620-klg-so-n-brief-n-i-dung-v-thi-t-k-slide-thuy/) |
+| 260620-klg | Soạn brief nội dung và thiết kế slide thuyết trình phân tích bảo mật dự án SimpAgent | 2026-06-20 | 8fd7d05 | [260620-klg](./quick/260620-klg-so-n-brief-n-i-dung-v-thi-t-k-slide-thuy/) |
 
 ## Deferred Items
 
