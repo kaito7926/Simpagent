@@ -2,7 +2,7 @@
 
 ## 1. Mục tiêu bàn giao
 
-Tạo bộ slide **12 trang, thời lượng 10-12 phút**, phục vụ bảo vệ đồ án đại học. Bài trình bày cần chứng minh ba ý:
+Tạo bộ slide **13 trang, thời lượng 12-14 phút**, phục vụ bảo vệ đồ án đại học. Bài trình bày cần chứng minh ba ý:
 
 1. SimpAgent giải quyết một bài toán thật: chatbot có agent tools nhưng vẫn giữ ranh giới tenant, quyền hạn, mạng và thực thi mã.
 2. Kiến trúc dùng nhiều lớp phòng thủ; Kong và lớp edge chỉ là tuyến đầu, FastAPI mới là nơi quyết định quyền cuối cùng.
@@ -70,7 +70,55 @@ FastAPI + Kong logs -> Promtail -> Loki -> Grafana
 
 ---
 
-### Slide 4 - Defense in Depth: ai chịu trách nhiệm gì?
+### Slide 4 - Luồng giao tiếp và xử lý an toàn giữa các container
+
+**Trust boundaries bắt buộc phải thể hiện:**
+
+```text
+PUBLIC
+Browser --HTTPS--> nginx/reverse proxy --HTTP nội bộ--> Kong :8000
+                                                   |
+PRIVATE network (internal: true)                   |
+   Kong --------> Frontend :3000                   |
+   Kong --------> FastAPI :8000 <------------------'
+                       |----> PostgreSQL :5432
+                       |----> Sandbox supervisor :8080
+                       `----> Promtail/Loki (log đã redact)
+
+EGRESS network
+   FastAPI ----TLS----> OpenAI-compatible / Google APIs
+
+ISOLATED RUNTIME
+   Sandbox supervisor --signed capability--> Python worker
+   Python worker: network=none, non-root, read-only rootfs,
+                  cap_drop=ALL, no-new-privileges, CPU/RAM/PID/time limits
+```
+
+**Luồng logic xử lý an toàn:**
+
+1. **Ingress:** Kong nhận request, áp dụng route allowlist, CORS, giới hạn body/rate và gắn correlation ID.
+2. **Authenticate/authorize:** FastAPI validate schema, JWT, trạng thái tài khoản, role, scope và ownership; dữ liệu sai hoặc thiếu quyền bị fail-closed.
+3. **Business transaction:** SQLAlchemy thao tác PostgreSQL qua repository/transaction; chỉ backend có quyền truy cập dữ liệu nghiệp vụ.
+4. **Agent decision:** Guardrail kiểm tra prompt; coordinator chỉ chọn `direct_chat`, `google_search` hoặc `python` trong allowlist.
+5. **Tool invocation:** Backend cấp capability ngắn hạn, ký và ràng buộc với execution/profile/code hash; sandbox xác minh trước khi tạo worker.
+6. **Safe output:** Kết quả bị giới hạn kích thước, normalize/redact trước khi lưu hoặc trả về; log không chứa token, cookie hay API key.
+
+**Network controls hiện có:**
+
+- `private` đặt `internal: true`; database, sandbox và observability không có public application port.
+- Production bỏ host port trực tiếp của FastAPI; Kong Admin API chỉ listen `127.0.0.1:8001` trong container.
+- Chỉ backend nối thêm mạng `egress` để gọi provider; Python worker dùng `network=none`.
+- Service gọi nhau bằng Docker DNS và cổng nội bộ, không hardcode IP container.
+
+**Giới hạn phải nói rõ:** Docker `private` tạo network segmentation, **không đồng nghĩa mã hóa traffic container-to-container**. Với multi-host hoặc môi trường ít tin cậy, cần mTLS/TLS nội bộ, network policy/firewall, credential riêng từng service và secret rotation.
+
+**Visual:** Ba vùng màu `PUBLIC`, `PRIVATE`, `EGRESS` và một hộp `NETWORK=NONE`; animate request từ ingress tới kết quả, mỗi bước hiện control tương ứng.
+
+**Lời nói:** “An toàn không chỉ nằm ở kết nối, mà ở cả chuỗi xử lý: request được lọc, xác thực, cấp quyền tối thiểu, thực thi trong boundary riêng và chỉ trả dữ liệu đã kiểm soát.”
+
+---
+
+### Slide 5 - Defense in Depth: ai chịu trách nhiệm gì?
 
 | Lớp | Control chính | Không được thay thế |
 |---|---|---|
@@ -86,7 +134,7 @@ FastAPI + Kong logs -> Promtail -> Loki -> Grafana
 
 ---
 
-### Slide 5 - Risk 1: Relay và Replay Attack
+### Slide 6 - Risk 1: Relay và Replay Attack
 
 **Phân biệt rõ thuật ngữ:**
 
@@ -106,9 +154,9 @@ FastAPI + Kong logs -> Promtail -> Loki -> Grafana
 
 ---
 
-### Slide 6 - Risk 2: Account Takeover
+### Slide 7 - Risk 2: Account Takeover và XSS
 
-**Attack paths:** Credential stuffing, password reuse, phishing/relay, đánh cắp session, OAuth misconfiguration.
+**Attack paths:** Credential stuffing, password reuse, phishing/relay, đánh cắp session, OAuth misconfiguration và XSS chạy mã trong origin của ứng dụng.
 
 **Control hiện có:**
 
@@ -118,16 +166,27 @@ FastAPI + Kong logs -> Promtail -> Loki -> Grafana
 - Google/GitHub OAuth fail-closed khi thiếu cấu hình
 - Security events, correlation ID và admin evidence đã redact
 
+**Ứng dụng chống XSS như thế nào:**
+
+- React escape text theo mặc định; model/user content không được render thành raw HTML.
+- Markdown chủ động escape HTML tag, không dùng `rehype-raw` hoặc `dangerouslySetInnerHTML`.
+- Link chỉ cho phép `http:`, `https:`, `mailto:`; chặn `javascript:`, `data:` và relative link không duyệt.
+- Link ngoài mở với `rel="noopener noreferrer"`; code block chỉ hiển thị text, không thực thi.
+- Access token chỉ giữ trong memory, không ghi `localStorage`/`sessionStorage`; refresh token nằm trong cookie `HttpOnly`.
+- CSP, HSTS, `nosniff`, `frame-ancestors 'none'` và `X-Frame-Options: DENY` giảm injection/clickjacking impact.
+
 **Điểm yếu cần nói thẳng:**
 
 - Chưa có MFA/WebAuthn, email verification, password reset, session/device management
 - Phát hiện bất thường chủ yếu dựa vào log/evidence, chưa có risk engine
+- CSP hiện còn `script-src 'unsafe-inline'`; cần nonce/hash hoặc strict CSP và Trusted Types để tăng khả năng chặn XSS.
+- `HttpOnly` ngăn JavaScript đọc refresh cookie nhưng XSS cùng origin vẫn có thể gửi request như nạn nhân và đọc access token trong memory. Vì vậy output encoding và không render raw HTML là control chính.
 
-**Roadmap:** WebAuthn/MFA → session dashboard + revoke-all → breach-password check → anomaly alerting.
+**Roadmap:** strict CSP nonce/hash + Trusted Types → WebAuthn/MFA → session dashboard + revoke-all → dependency scanning/anomaly alerting.
 
 ---
 
-### Slide 7 - Risk 3: Bypass Rate Limit
+### Slide 8 - Risk 3: Bypass Rate Limit
 
 **Cách bypass có thể xảy ra:**
 
@@ -153,7 +212,7 @@ FastAPI + Kong logs -> Promtail -> Loki -> Grafana
 
 ---
 
-### Slide 8 - AI Agent và Tool Isolation
+### Slide 9 - AI Agent và Tool Isolation
 
 **Flow:** Guardrail → Coordinator allowlist → scope check → capability token ngắn hạn → tool boundary → normalized result.
 
@@ -174,12 +233,14 @@ FastAPI + Kong logs -> Promtail -> Loki -> Grafana
 
 ---
 
-### Slide 9 - Điểm mạnh và điểm yếu của dự án
+### Slide 10 - Điểm mạnh và điểm yếu của dự án
 
 **Điểm mạnh:**
 
 - Authorization nhiều lớp: role + scope + ownership + tool capability
+- Network segmentation rõ: public/private/egress; Python runtime không có network
 - Refresh rotation/replay detection và CSRF/Origin protection có test âm
+- Markdown/React rendering fail-safe, token không lưu trong browser storage bền vững
 - Sandbox tách khỏi backend, no-network và có resource policy
 - Gateway config theo route; log có correlation ID xuyên suốt
 - Evidence có thể chạy lại: unit/integration/security/smoke + attack scripts
@@ -193,12 +254,13 @@ FastAPI + Kong logs -> Promtail -> Loki -> Grafana
 - Sandbox Docker chưa đủ cho hostile multi-tenant production
 - Phụ thuộc LLM/Google/OAuth provider, chi phí và availability bên ngoài
 - Cloudflare là kiến trúc đề xuất, chưa có evidence runtime từ domain demo
+- Internal Docker traffic chưa có mTLS; CSP vẫn còn `'unsafe-inline'`
 
 **Visual:** Ma trận 2 cột “Đã chứng minh” và “Cần nâng cấp”, không dùng SWOT bốn ô quá nhiều chữ.
 
 ---
 
-### Slide 10 - Kịch bản demonstration
+### Slide 11 - Kịch bản demonstration
 
 **Demo happy path, 2-3 phút:**
 
@@ -214,12 +276,13 @@ FastAPI + Kong logs -> Promtail -> Loki -> Grafana
 2. Replay refresh token cũ → revoke family + event `refresh_reuse`.
 3. Gửi nhiều login request vào stack test/local → nhận `429` từ Kong.
 4. Thử Python gọi network/process cấm → policy từ chối trước side effect.
+5. Gửi Markdown chứa `<script>`, `onerror` hoặc link `javascript:` → UI chỉ hiển thị inert text, không thực thi.
 
 **Fallback:** Chuẩn bị video 90 giây và ảnh chụp evidence; không chạy destructive test trên domain public.
 
 ---
 
-### Slide 11 - Demonstration result và bằng chứng
+### Slide 12 - Demonstration result và bằng chứng
 
 **Kết quả có thể khẳng định:**
 
@@ -239,7 +302,7 @@ FastAPI + Kong logs -> Promtail -> Loki -> Grafana
 
 ---
 
-### Slide 12 - Kết luận và roadmap
+### Slide 13 - Kết luận và roadmap
 
 **Kết luận:**
 
@@ -277,16 +340,18 @@ FastAPI + Kong logs -> Promtail -> Loki -> Grafana
 ## 4. Prompt copy-paste cho AI Agent tạo slide
 
 ```text
-Hãy tạo một deck PowerPoint 12 slide, 16:9, bằng tiếng Việt dựa đúng vào brief này.
+Hãy tạo một deck PowerPoint 13 slide, 16:9, bằng tiếng Việt dựa đúng vào brief này.
 
 Đối tượng: giảng viên chấm đồ án CNTT/an toàn thông tin.
-Thời lượng: 10-12 phút.
-Mục tiêu: phân tích điểm mạnh, điểm yếu, ba rủi ro Relay/Replay Attack, Account Takeover, Bypass Rate Limit; giải thích kiến trúc Kong + FastAPI + sandbox; trình bày Cloudflare như lớp edge đề xuất; và hướng dẫn demo tại https://chat.kaitovu.site.
+Thời lượng: 12-14 phút.
+Mục tiêu: phân tích điểm mạnh, điểm yếu, ba rủi ro Relay/Replay Attack, Account Takeover/XSS, Bypass Rate Limit; giải thích kiến trúc Kong + FastAPI + sandbox, luồng giao tiếp an toàn giữa Docker containers; trình bày Cloudflare như lớp edge đề xuất; và hướng dẫn demo tại https://chat.kaitovu.site.
 
 Yêu cầu nội dung:
 - Giữ đúng tên SimpAgent và các claim kỹ thuật trong brief.
 - Phân biệt relay attack với refresh-token replay.
 - Nhấn mạnh Kong chỉ lọc coarse-grained; FastAPI là authorization authority cuối cùng.
+- Thể hiện rõ bốn vùng PUBLIC, PRIVATE, EGRESS và NETWORK=NONE; không gọi Docker private network là mã hóa nội bộ.
+- Giải thích XSS prevention bằng React escaping, safe Markdown URL, không raw HTML, memory-only access token và HttpOnly refresh cookie; nêu rõ giới hạn CSP `unsafe-inline`.
 - Không tuyên bố Cloudflare đang hoạt động trên domain demo; dùng nhãn OPTIONAL EDGE / PROPOSED.
 - Không tuyên bố 232 tests đã pass; chỉ nói repo định nghĩa 232 test functions nếu không có kết quả chạy mới.
 - Nêu thẳng limitation: single-node, local rate-limit counter, chưa MFA/WebAuthn, Docker sandbox chưa production-grade hostile multi-tenant.
@@ -303,7 +368,7 @@ Yêu cầu thiết kế:
 Đầu ra:
 1. File PPTX có thể chỉnh sửa.
 2. PDF export.
-3. Danh sách nguồn ở speaker notes của slide 11.
+3. Danh sách nguồn ở speaker notes của slide 12.
 4. Tất cả sơ đồ là shape/vector, không raster hóa chữ.
 ```
 
@@ -326,4 +391,3 @@ Yêu cầu thiết kế:
 - `docs/testing.vi.md`
 - `kong/kong.prod.yml`
 - `security-tests/README.md`
-
