@@ -1,5 +1,194 @@
-import { ChatShell } from "@/components/chat/ChatShell";
+import type { Metadata } from "next";
 
-export default function ChatPage() {
-  return <ChatShell />;
+import { ChatPreviewShell } from "@/components/chat/ChatPreviewShell";
+import type { ChatMessage } from "@/lib/chat/tool-results";
+
+export const metadata: Metadata = {
+  title: "Chat preview | SimpAgent",
+  description: "Preview the rebuilt SimpAgent chat UI with distinct assistant and limited Python surfaces.",
+};
+
+const previewMessages: ChatMessage[] = [
+  {
+    id: "user-0",
+    kind: "user",
+    content: "Clean this revenue table and let me know when limited Python is actively running.",
+    timestamp: "09:39",
+  },
+  {
+    id: "python-running",
+    kind: "python",
+    timestamp: "09:39",
+    result: {
+      execution_id: "exec-running-001",
+      status: "running",
+      summary: "The request was accepted and the limited Python worker is grouping the dataset now.",
+      duration_ms: null,
+      profile_name: "python-data-v1",
+      stdout_excerpt: null,
+      stderr_excerpt: null,
+      artifacts: [],
+      limit_triggered: null,
+      denial_reason: null,
+      policy_error_code: null,
+      infra_failure_reason: null,
+      retryable: false,
+      correlation_id: null,
+    },
+  },
+  {
+    id: "user-1",
+    kind: "user",
+    content: "Calculate quarterly totals from this table and return a CSV I can download.",
+    timestamp: "09:41",
+  },
+  {
+    id: "assistant-1",
+    kind: "assistant",
+    content:
+      "I'll use limited Python to group the data, keep the summary up front, and return only reviewed output artifacts.",
+    timestamp: "09:41",
+  },
+  {
+    id: "python-success",
+    kind: "python",
+    timestamp: "09:42",
+    result: {
+      execution_id: "exec-success-001",
+      status: "succeeded",
+      summary: "Quarterly totals were grouped successfully and a reviewed CSV is ready for download.",
+      duration_ms: 842,
+      profile_name: "python-data-v1",
+      stdout_excerpt: "quarters=4\nrows=4\ncsv_written=true",
+      stderr_excerpt: null,
+      artifacts: [
+        {
+          artifact_id: "artifact-csv-001",
+          name: "revenue-by-quarter.csv",
+          artifact_type: "csv",
+          size_bytes: 1824,
+          download_path: "/api/python/artifacts/revenue-by-quarter.csv",
+        },
+        {
+          artifact_id: "artifact-png-001",
+          name: "revenue-trend.png",
+          artifact_type: "png",
+          size_bytes: 62310,
+          download_path: "/api/python/artifacts/revenue-trend.png",
+        },
+      ],
+      limit_triggered: null,
+      denial_reason: null,
+      policy_error_code: null,
+      infra_failure_reason: null,
+      retryable: false,
+      correlation_id: "corr-success-001",
+    },
+  },
+  {
+    id: "user-2",
+    kind: "user",
+    content: "Import requests and call an external API to fetch the newest data for me.",
+    timestamp: "09:45",
+  },
+  {
+    id: "python-policy",
+    kind: "python",
+    timestamp: "09:45",
+    result: {
+      execution_id: "exec-policy-001",
+      status: "policy_error",
+      summary: "The request was stopped before execution because the import is outside the reviewed allowlist.",
+      duration_ms: 21,
+      profile_name: "python-basic-v1",
+      stdout_excerpt: null,
+      stderr_excerpt: "ImportError: requests is blocked",
+      artifacts: [],
+      limit_triggered: null,
+      denial_reason: null,
+      policy_error_code: "blocked_import",
+      infra_failure_reason: null,
+      retryable: false,
+      correlation_id: "corr-policy-001",
+    },
+  },
+  {
+    id: "user-3",
+    kind: "user",
+    content: "Run Python for me even though this account doesn't have the tool permission.",
+    timestamp: "09:47",
+  },
+  {
+    id: "python-denied",
+    kind: "python",
+    timestamp: "09:47",
+    result: {
+      execution_id: "exec-denied-001",
+      status: "denied",
+      summary: "The request was blocked before the Python environment could be created.",
+      duration_ms: null,
+      profile_name: null,
+      stdout_excerpt: null,
+      stderr_excerpt: null,
+      artifacts: [],
+      limit_triggered: null,
+      denial_reason: "missing_permission",
+      policy_error_code: null,
+      infra_failure_reason: null,
+      retryable: false,
+      correlation_id: "corr-denied-001",
+    },
+  },
+  {
+    id: "user-4",
+    kind: "user",
+    content: "Create a huge matrix and print all of it directly in chat.",
+    timestamp: "09:51",
+  },
+  {
+    id: "python-limit",
+    kind: "python",
+    timestamp: "09:51",
+    result: {
+      execution_id: "exec-limit-001",
+      status: "limit_reached",
+      summary: "Output printing was stopped to keep the reviewed runtime inside its safety envelope.",
+      duration_ms: 1304,
+      profile_name: "python-basic-v1",
+      stdout_excerpt: "matrix shape=(5000, 5000)\nprinting halted...",
+      stderr_excerpt: null,
+      artifacts: [],
+      limit_triggered: "output_size",
+      denial_reason: null,
+      policy_error_code: null,
+      infra_failure_reason: null,
+      retryable: false,
+      correlation_id: "corr-limit-001",
+    },
+  },
+  {
+    id: "python-infra",
+    kind: "python",
+    timestamp: "09:56",
+    result: {
+      execution_id: "exec-infra-001",
+      status: "infra_failure",
+      summary: "The Python worker wasn't fully ready, so the execution couldn't finish safely.",
+      duration_ms: null,
+      profile_name: "python-data-v1",
+      stdout_excerpt: null,
+      stderr_excerpt: "worker bootstrap timeout",
+      artifacts: [],
+      limit_triggered: null,
+      denial_reason: null,
+      policy_error_code: null,
+      infra_failure_reason: "worker_start_failed",
+      retryable: true,
+      correlation_id: "corr-infra-001",
+    },
+  },
+];
+
+export default function ChatPreviewPage() {
+  return <ChatPreviewShell messages={previewMessages} />;
 }

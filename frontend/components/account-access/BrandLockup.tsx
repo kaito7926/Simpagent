@@ -1,28 +1,43 @@
+import Image from "next/image";
+
+import { Card } from "@/components/ui/card";
+
+const COPY = {
+  signedOutTitle: "Secure AI assistance for internal work.",
+  signedInTitle: "Your protected workspace is ready.",
+  body: "SimpAgent keeps session access protected while giving you a modern workspace for direct chat, grounded search, limited Python, and administrative evidence.",
+};
+
 type BrandLockupProps = {
   authenticated: boolean;
 };
 
 export function BrandLockup({ authenticated }: BrandLockupProps) {
   return (
-    <section className="brand-hero" aria-label="Giới thiệu SimpAgent">
-      <p className="eyebrow">TRUY CẬP AN TOÀN</p>
-      <div className="brand-hero-copy">
+    <Card className="auth-brand-panel" aria-label="About SimpAgent">
+      <p className="auth-eyebrow">Protected workspace</p>
+      <div className="hero-copy">
         <div className="brand-row">
-          <span className="brand-mark-wrap" aria-hidden="true">
-            <span className="brand-mark brand-mark-primary" />
-            <span className="brand-mark brand-mark-secondary" />
+          <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-white shadow-sm">
+            <Image
+              alt="SimpAgent logo"
+              className="h-10 w-10 object-contain"
+              height={40}
+              priority
+              src="/brand/auroraguard-logo-mark-white.png"
+              width={40}
+            />
           </span>
-          <span className="brand-name">SimpAgent</span>
+          <div className="brand-copy">
+            <span className="brand-name">SimpAgent</span>
+            <span className="body-copy">Intelligent. Secure. Always by your side.</span>
+          </div>
         </div>
         <h1 className="page-heading">
-          {authenticated
-            ? "Một điểm vào rõ ràng cho tài khoản và phiên."
-            : "Một điểm vào rõ ràng cho tài khoản và phiên."}
+          {authenticated ? COPY.signedInTitle : COPY.signedOutTitle}
         </h1>
-        <p className="body-copy max-copy">
-          Giai đoạn này chứng minh đăng ký, đăng nhập, phiên làm mới được bảo vệ và trạng thái danh tính hiện tại.
-        </p>
+        <p className="body-copy max-copy">{COPY.body}</p>
       </div>
-    </section>
+    </Card>
   );
 }

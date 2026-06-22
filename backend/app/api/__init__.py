@@ -1,3 +1,3 @@
-from .routes import admin, auth, conversations, health
+from .routes import admin, auth, chat, conversations, health, python
 
-__all__ = ["admin", "auth", "conversations", "health"]
+__all__ = ["admin", "auth", "chat", "conversations", "health", "python"]

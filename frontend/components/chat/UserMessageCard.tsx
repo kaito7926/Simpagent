@@ -6,7 +6,8 @@ type UserMessageCardProps = {
 
 export function UserMessageCard({ turn }: UserMessageCardProps) {
   return (
-    <article className="message-card user-message-card">
+    <article className="message-card message-card-user user-message-card">
+      <p className="message-role">You</p>
       <p className="body-copy">{turn.content}</p>
     </article>
   );

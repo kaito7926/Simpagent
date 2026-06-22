@@ -1,4 +1,4 @@
-import { ActionButton } from "./ActionButton";
+import React from "react";
 
 type AuthModeSwitchProps = {
   mode: "login" | "register";
@@ -7,25 +7,31 @@ type AuthModeSwitchProps = {
 
 export function AuthModeSwitch({ mode, onChange }: AuthModeSwitchProps) {
   return (
-    <div className="auth-mode-switch" role="group" aria-label="Chế độ tài khoản">
-      <ActionButton
+    <div className="grid grid-cols-2 gap-2" role="group" aria-label="Account mode">
+      <button
         type="button"
-        variant={mode === "login" ? "secondary" : "quiet"}
-        className={mode === "login" ? "mode-selected" : "mode-unselected"}
+        className={
+          mode === "login"
+            ? "h-11 rounded-full border border-zinc-300 bg-white text-sm font-semibold text-zinc-900 shadow-sm"
+            : "h-11 rounded-full border border-gray-300 bg-gray-50 text-sm font-medium text-zinc-700 hover:bg-gray-100"
+        }
         aria-pressed={mode === "login"}
         onClick={() => onChange("login")}
       >
-        Đăng nhập
-      </ActionButton>
-      <ActionButton
+        Sign in
+      </button>
+      <button
         type="button"
-        variant={mode === "register" ? "secondary" : "quiet"}
-        className={mode === "register" ? "mode-selected" : "mode-unselected"}
+        className={
+          mode === "register"
+            ? "h-11 rounded-full border border-zinc-300 bg-white text-sm font-semibold text-zinc-900 shadow-sm"
+            : "h-11 rounded-full border border-gray-300 bg-gray-50 text-sm font-medium text-zinc-700 hover:bg-gray-100"
+        }
         aria-pressed={mode === "register"}
         onClick={() => onChange("register")}
       >
-        Đăng ký
-      </ActionButton>
+        Create account
+      </button>
     </div>
   );
 }

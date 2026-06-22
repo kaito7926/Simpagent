@@ -1,7 +1,8 @@
 "use client";
 
-import { useId, useState } from "react";
+import React, { useId, useState } from "react";
 
+import { Input } from "@/components/ui/input";
 import { FormField } from "./FormField";
 
 type PasswordFieldProps = {
@@ -28,12 +29,12 @@ export function PasswordField({
   const generatedId = useId();
   const fieldId = id ?? generatedId;
   const [visible, setVisible] = useState(false);
-  const actionLabel = visible ? "Ẩn mật khẩu" : "Hiện mật khẩu";
+  const actionLabel = visible ? "Hide password" : "Show password";
 
   return (
     <FormField id={fieldId} label={label} hint={hint} error={error}>
       <div className="password-field-wrap">
-        <input
+        <Input
           id={fieldId}
           className="text-input password-input"
           type={visible ? "text" : "password"}

@@ -1,3 +1,5 @@
+import React from "react";
+
 import type { ReadinessResponse } from "@/lib/auth-session";
 import {
   AGGREGATE_STATE_BODIES,
@@ -26,41 +28,32 @@ export function PlatformStatus({ readiness, isLoading, isRefreshing, onRefresh }
     : [];
 
   return (
-    <section className="status-panel" aria-labelledby="platform-status-heading">
-      <div className="status-panel-header">
-        <StatusBadge tone={aggregateStateTone(aggregate)}>{AGGREGATE_STATE_LABELS[aggregate]}</StatusBadge>
-        <ActionButton
-          type="button"
-          variant="secondary"
-          onClick={onRefresh}
-          disabled={isRefreshing}
-          fullWidth={false}
-        >
-          {isRefreshing ? "Đang kiểm tra..." : "Kiểm tra lại"}
+    <section className="space-y-4 rounded-3xl border border-zinc-200 bg-white/90 p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <StatusBadge tone={aggregateStateTone(aggregate)}>{AGGREGATE_STATE_LABELS[aggregate]}</StatusBadge>
+          <h2 className="text-xl font-semibold tracking-tight text-zinc-900">{AGGREGATE_STATE_LABELS[aggregate]}</h2>
+          <p className="text-sm leading-6 text-zinc-600">{AGGREGATE_STATE_BODIES[aggregate]}</p>
+        </div>
+        <ActionButton type="button" variant="secondary" onClick={onRefresh} disabled={isRefreshing} fullWidth={false}>
+          {isRefreshing ? "Checking..." : "Check again"}
         </ActionButton>
       </div>
-      <h2 className="section-heading" id="platform-status-heading">
-        {AGGREGATE_STATE_LABELS[aggregate]}
-      </h2>
-      <p className="body-copy max-copy">{AGGREGATE_STATE_BODIES[aggregate]}</p>
 
       {detailRows.length > 0 ? (
-        <details className="status-details" open={detailsDefaultOpen(readiness)}>
-          <summary>Xem trạng thái thành phần</summary>
-          <div className="status-detail-list">
+        <details className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4" open={detailsDefaultOpen(readiness)}>
+          <summary className="cursor-pointer text-sm font-semibold text-zinc-900">View component status</summary>
+          <div className="mt-4 space-y-3">
             {detailRows.map(([key, value]) => (
-              <div className="status-detail-row" key={key}>
-                <span className="status-detail-node" aria-hidden="true" />
-                <div className="status-detail-copy">
-                  <span className="status-detail-label">{COMPONENT_LABELS[key]}</span>
-                  <span className="status-detail-value">{componentStateLabel(value)}</span>
-                </div>
+              <div className="flex items-center justify-between gap-3 border-b border-zinc-200 pb-3 last:border-0 last:pb-0" key={key}>
+                <span className="text-sm font-medium text-zinc-900">{COMPONENT_LABELS[key]}</span>
+                <span className="text-sm text-zinc-600">{componentStateLabel(value)}</span>
               </div>
             ))}
           </div>
         </details>
       ) : (
-        <p className="body-copy status-empty">Chưa có dữ liệu trạng thái thành phần.</p>
+        <p className="text-sm text-zinc-600">Component status is not available yet.</p>
       )}
     </section>
   );

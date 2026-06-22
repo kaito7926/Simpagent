@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 from contextlib import aclosing
 from datetime import UTC, datetime
+import json
+import os
 from typing import Any, Protocol
 from uuid import UUID
 
@@ -49,7 +51,46 @@ class SearchAgentFactory(Protocol):
 
 
 def _default_runner_factory(agent: Agent) -> SearchRunner:
-    return InMemoryRunner(agent=agent)
+    runner = InMemoryRunner(agent=agent, app_name=agent.name)
+    runner.auto_create_session = True
+    return runner
+
+
+def _parse_worker_reply_text(
+    value: str | None,
+    *,
+    bounded_prompt: str,
+    max_output_chars: int,
+) -> SearchWorkerReply | None:
+    if not value:
+        return None
+    candidate = value.strip()
+    if not candidate:
+        return None
+
+    if candidate.startswith("```"):
+        stripped = candidate.removeprefix("```").strip()
+        if stripped.lower().startswith("json"):
+            stripped = stripped[4:].strip()
+        if stripped.endswith("```"):
+            stripped = stripped[:-3].strip()
+        candidate = stripped
+
+    try:
+        payload = json.loads(candidate)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+
+    answer = str(payload.get("answer_markdown") or "").strip()
+    query_used = str(payload.get("query_used") or bounded_prompt).strip()
+    if not answer:
+        return None
+    return SearchWorkerReply(
+        answer_markdown=answer[:max_output_chars],
+        query_used=query_used[:2048] or bounded_prompt,
+    )
 
 
 def _collect_event_text(event: Event) -> str | None:
@@ -80,6 +121,17 @@ def _coerce_worker_reply(
                 answer_markdown=answer[:max_output_chars] or "Không thể tạo phản hồi tìm kiếm hợp lệ.",
                 query_used=query_used[:2048] or bounded_prompt,
             )
+        parsed_output = _parse_worker_reply_text(str(output), bounded_prompt=bounded_prompt, max_output_chars=max_output_chars)
+        if parsed_output is not None:
+            return parsed_output
+
+    parsed_fallback = _parse_worker_reply_text(
+        fallback_text,
+        bounded_prompt=bounded_prompt,
+        max_output_chars=max_output_chars,
+    )
+    if parsed_fallback is not None:
+        return parsed_fallback
 
     answer_markdown = (fallback_text or "").strip()[:max_output_chars]
     if not answer_markdown:
@@ -111,85 +163,102 @@ class GoogleSearchWorkerService:
         correlation_id: str | None,
         capability_token: str | None = None,
     ) -> SearchWorkerResult:
-        try:
-            claims = validate_search_capability(
-                capability_token or "",
-                settings=self.settings,
-                now=self.settings.now_utc(),
-            )
-            if claims.sub != UUID(user_id):
-                raise SearchCapabilityError("Capability subject does not match the user")
-            if claims.conversation_id != UUID(conversation_id):
-                raise SearchCapabilityError("Capability conversation does not match")
-            if claims.correlation_id != correlation_id:
-                raise SearchCapabilityError("Capability correlation does not match")
-        except (SearchCapabilityError, ValueError):
-            return SearchWorkerResult(
-                state="search_unavailable",
-                answer_markdown=SEARCH_UNAVAILABLE_COPY,
-                google_grounded=False,
-                tool_executed=False,
-                output_summary="search_unavailable",
-            )
-
-        agent = self._agent_factory(self.settings)
-        runner = self._runner_factory(agent)
-        bounded_prompt = prompt.strip()[: self.settings.search_max_prompt_chars].strip()
-        if not bounded_prompt:
-            bounded_prompt = prompt.strip() or "Truy vấn tìm kiếm"
-
-        output: Any = None
-        fallback_text: str | None = None
-        grounding_metadata: Any = None
+        previous_google_api_key = os.environ.get("GOOGLE_API_KEY")
+        previous_gemini_api_key = os.environ.get("GEMINI_API_KEY")
+        google_api_key = self.settings.google_api_key_value
+        if google_api_key:
+            os.environ["GOOGLE_API_KEY"] = google_api_key
+            os.environ["GEMINI_API_KEY"] = google_api_key
 
         try:
-            async with asyncio.timeout(self.settings.search_worker_timeout_seconds):
-                async with aclosing(
-                    runner.run_async(
-                        user_id=user_id,
-                        session_id=conversation_id,
-                        new_message=types.Content(
-                            role="user",
-                            parts=[types.Part(text=bounded_prompt)],
-                        ),
-                    )
-                ) as events:
-                    async for event in events:
-                        if event.output is not None:
-                            output = event.output
-                        if event.grounding_metadata is not None:
-                            grounding_metadata = event.grounding_metadata
-                        if text := _collect_event_text(event):
-                            fallback_text = text
-                        if event.error_code or event.error_message:
-                            raise RuntimeError(event.error_message or event.error_code)
-        except TimeoutError:
-            return SearchWorkerResult(
-                state="timeout",
-                answer_markdown=SEARCH_TIMEOUT_COPY,
-                google_grounded=False,
-                tool_executed=True,
-                output_summary="timeout",
+            try:
+                claims = validate_search_capability(
+                    capability_token or "",
+                    settings=self.settings,
+                    now=self.settings.now_utc(),
+                )
+                if claims.sub != UUID(user_id):
+                    raise SearchCapabilityError("Capability subject does not match the user")
+                if claims.conversation_id != UUID(conversation_id):
+                    raise SearchCapabilityError("Capability conversation does not match")
+                if claims.correlation_id != correlation_id:
+                    raise SearchCapabilityError("Capability correlation does not match")
+            except (SearchCapabilityError, ValueError):
+                return SearchWorkerResult(
+                    state="search_unavailable",
+                    answer_markdown=SEARCH_UNAVAILABLE_COPY,
+                    google_grounded=False,
+                    tool_executed=False,
+                    output_summary="search_unavailable",
+                )
+
+            agent = self._agent_factory(self.settings)
+            runner = self._runner_factory(agent)
+            bounded_prompt = prompt.strip()[: self.settings.search_max_prompt_chars].strip()
+            if not bounded_prompt:
+                bounded_prompt = prompt.strip() or "Truy vấn tìm kiếm"
+
+            output: Any = None
+            fallback_text: str | None = None
+            grounding_metadata: Any = None
+
+            try:
+                async with asyncio.timeout(self.settings.search_worker_timeout_seconds):
+                    async with aclosing(
+                        runner.run_async(
+                            user_id=user_id,
+                            session_id=conversation_id,
+                            new_message=types.Content(
+                                role="user",
+                                parts=[types.Part(text=bounded_prompt)],
+                            ),
+                        )
+                    ) as events:
+                        async for event in events:
+                            if event.output is not None:
+                                output = event.output
+                            if event.grounding_metadata is not None:
+                                grounding_metadata = event.grounding_metadata
+                            if text := _collect_event_text(event):
+                                fallback_text = text
+                            if event.error_code or event.error_message:
+                                raise RuntimeError(event.error_message or event.error_code)
+            except TimeoutError:
+                return SearchWorkerResult(
+                    state="timeout",
+                    answer_markdown=SEARCH_TIMEOUT_COPY,
+                    google_grounded=False,
+                    tool_executed=True,
+                    output_summary="timeout",
+                )
+            except Exception:
+                return SearchWorkerResult(
+                    state="provider_failed",
+                    answer_markdown=SEARCH_PROVIDER_FAILED_COPY,
+                    google_grounded=False,
+                    tool_executed=True,
+                    output_summary="provider_failed",
+                )
+            finally:
+                await runner.close()
+
+            reply = _coerce_worker_reply(
+                output=output,
+                fallback_text=fallback_text,
+                bounded_prompt=bounded_prompt,
+                max_output_chars=self.settings.search_max_output_chars,
             )
-        except Exception:
-            return SearchWorkerResult(
-                state="provider_failed",
-                answer_markdown=SEARCH_PROVIDER_FAILED_COPY,
-                google_grounded=False,
-                tool_executed=True,
-                output_summary="provider_failed",
+            return grounding_to_search_result(
+                reply,
+                grounding_metadata,
+                max_output_chars=self.settings.search_max_output_chars,
             )
         finally:
-            await runner.close()
-
-        reply = _coerce_worker_reply(
-            output=output,
-            fallback_text=fallback_text,
-            bounded_prompt=bounded_prompt,
-            max_output_chars=self.settings.search_max_output_chars,
-        )
-        return grounding_to_search_result(
-            reply,
-            grounding_metadata,
-            max_output_chars=self.settings.search_max_output_chars,
-        )
+            if previous_google_api_key is None:
+                os.environ.pop("GOOGLE_API_KEY", None)
+            else:
+                os.environ["GOOGLE_API_KEY"] = previous_google_api_key
+            if previous_gemini_api_key is None:
+                os.environ.pop("GEMINI_API_KEY", None)
+            else:
+                os.environ["GEMINI_API_KEY"] = previous_gemini_api_key

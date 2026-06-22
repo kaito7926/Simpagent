@@ -10,6 +10,12 @@ from .attack_detection import (
     scan_attack_simulation,
 )
 from .csrf import CsrfValidationError, require_allowed_origin, validate_csrf_token
+from .message_encryption import (
+    EncryptedText,
+    MessageEncryptionError,
+    MessageEncryptor,
+    configure_message_encryptor,
+)
 from .passwords import dummy_hash, hash_password, validate_password, verify_password, verify_password_or_dummy
 
 __all__ = [
@@ -25,8 +31,12 @@ __all__ = [
     "DEFAULT_ATTACK_RULES",
     "decode_access_token",
     "dummy_hash",
+    "EncryptedText",
+    "configure_message_encryptor",
     "hash_password",
     "issue_access_token",
+    "MessageEncryptionError",
+    "MessageEncryptor",
     "require_allowed_origin",
     "scan_attack_simulation",
     "validate_csrf_token",

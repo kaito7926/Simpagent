@@ -8,9 +8,12 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent.orchestration import CoordinatorAgent, SafetyDecision
+from app.ai.schemas import ChatTurn
 from app.authorization.policy import PolicyResult, evaluate_required_scopes
 from app.authorization.principal import AuthenticatedPrincipal
 from app.core.config import Settings
+from app.db.repositories.agent_settings import AgentRuntimeSettingsRepository
 from app.db.repositories.conversations import ConversationsRepository
 from app.models.domain import (
     Message,
@@ -138,6 +141,7 @@ class ChatTurnsService:
         self.search_status = search_status
         self.search_worker = search_worker
         self.conversations = ConversationsRepository(session)
+        self.agent_settings = AgentRuntimeSettingsRepository(session)
 
     async def submit_turn(
         self,
@@ -172,6 +176,33 @@ class ChatTurnsService:
                 )
             else:
                 user_message = retry_target.user_message
+
+            guardrail_decision = await self._guardrail_decision(prompt=payload.prompt)
+            if not guardrail_decision.allowed:
+                assistant_message = await self._handle_guardrail_turn(
+                    conversation_id=conversation.id,
+                    decision=guardrail_decision,
+                    retry_target=retry_target,
+                )
+                tool_execution = await self.conversations.add_tool_execution(
+                    user_id=principal.user_id,
+                    conversation_id=conversation.id,
+                    tool_name="guardrail",
+                    input_summary=payload.prompt[: self.settings.search_max_prompt_chars],
+                    output_summary=guardrail_decision.reason or "guardrail_policy_denied",
+                    status="denied",
+                    duration_ms=0,
+                    correlation_id=self.correlation_id,
+                )
+                response = SubmitTurnResponse(
+                    conversation_id=conversation.id,
+                    mode=payload.mode,
+                    user_message=self._message_response(user_message),
+                    assistant_message=self._message_response(assistant_message),
+                    tool_execution=self._tool_execution_response(tool_execution),
+                )
+                await self.session.commit()
+                return response
 
             if payload.mode == "direct_chat":
                 if retry_target is not None:
@@ -316,6 +347,36 @@ class ChatTurnsService:
             metadata={},
         )
 
+    async def _handle_guardrail_turn(
+        self,
+        *,
+        conversation_id: UUID,
+        decision: SafetyDecision,
+        retry_target: RetryTarget | None,
+    ) -> Message:
+        metadata = {
+            "guardrail": {
+                "enabled": decision.enabled,
+                "allowed": decision.allowed,
+                "reason": decision.reason,
+            }
+        }
+        content = decision.response or "Yêu cầu này bị chặn bởi Guardrail/Safety Agent."
+        if retry_target is not None:
+            return await self.conversations.update_message(
+                retry_target.assistant_message,
+                content=content,
+                metadata=metadata,
+            )
+        sequence_no = await self.conversations.next_sequence_no(conversation_id=conversation_id)
+        return await self.conversations.add_message(
+            conversation_id=conversation_id,
+            sequence_no=sequence_no,
+            role="assistant",
+            content=content,
+            metadata=metadata,
+        )
+
     async def _append_search_message(
         self,
         *,
@@ -454,6 +515,20 @@ class ChatTurnsService:
             tool_status=TOOL_STATUS_BY_STATE[normalized.state],
             output_summary=normalized.output_summary or normalized.state,
             duration_ms=duration_ms,
+        )
+
+    async def _guardrail_decision(self, *, prompt: str) -> SafetyDecision:
+        enabled = await self.agent_settings.is_guardrail_enabled(
+            default=self.settings.guardrail_safety_enabled_default,
+        )
+        orchestration = CoordinatorAgent(
+            guardrail_enabled=enabled,
+            max_loop_iterations=self.settings.agent_loop_max_iterations,
+        )
+        orchestration.trace.add("CoordinatorAgent", "receive", "accepted")
+        return await orchestration.guardrail.check(
+            prompt=prompt,
+            messages=[ChatTurn(role="user", content=prompt)],
         )
 
     def _normalize_worker_result(self, result: SearchWorkerResult) -> SearchWorkerResult:

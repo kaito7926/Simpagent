@@ -21,6 +21,7 @@ class AccessTokenClaims:
     iat: int
     nbf: int
     exp: int
+    kid: str
     jti: UUID
 
 
@@ -34,7 +35,33 @@ JWT_LEEWAY_SECONDS = 30
 
 
 def _timestamp(moment: datetime) -> int:
-    return int(moment.replace(tzinfo=UTC).timestamp())
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=UTC)
+    else:
+        moment = moment.astimezone(UTC)
+    return int(moment.timestamp())
+
+
+def _validate_numeric_date(payload: dict[str, Any], claim_name: str) -> int:
+    value = payload.get(claim_name)
+    if not isinstance(value, int):
+        raise AccessTokenError(f"{claim_name} must be an integer numeric date")
+    return value
+
+
+def _validate_temporal_claims(payload: dict[str, Any], *, now: datetime | None) -> tuple[int, int, int]:
+    reference_now = (now or datetime.now(UTC)).astimezone(UTC).timestamp()
+    iat = _validate_numeric_date(payload, "iat")
+    nbf = _validate_numeric_date(payload, "nbf")
+    exp = _validate_numeric_date(payload, "exp")
+
+    if iat > reference_now + JWT_LEEWAY_SECONDS:
+        raise AccessTokenError("Token iat is too far in the future")
+    if nbf > reference_now + JWT_LEEWAY_SECONDS:
+        raise AccessTokenError("Token nbf is too far in the future")
+    if exp <= reference_now - JWT_LEEWAY_SECONDS:
+        raise AccessTokenError("Token has expired")
+    return iat, nbf, exp
 
 
 def issue_access_token(*, user_id: UUID, role: str, scopes: list[str], settings: Settings, now: datetime) -> str:
@@ -83,9 +110,9 @@ def decode_access_token(token: str, *, settings: Settings, now: datetime | None 
             options={
                 "require": ["iss", "aud", "sub", "role", "scopes", "exp", "iat", "nbf", "jti"],
                 "verify_signature": True,
-                "verify_exp": True,
-                "verify_iat": True,
-                "verify_nbf": True,
+                "verify_exp": False,
+                "verify_iat": False,
+                "verify_nbf": False,
                 "verify_aud": True,
                 "verify_iss": True,
             },
@@ -109,25 +136,22 @@ def decode_access_token(token: str, *, settings: Settings, now: datetime | None 
         jti = UUID(str(payload["jti"]))
     except ValueError as exc:
         raise AccessTokenError("Invalid UUID claim") from exc
-    for claim_name in ("iat", "nbf", "exp"):
-        if not isinstance(payload.get(claim_name), int):
-            raise AccessTokenError(f"{claim_name} must be an integer numeric date")
-    if payload["exp"] <= payload["iat"]:
+    iat, nbf, exp = _validate_temporal_claims(payload, now=now)
+    if exp <= iat:
         raise AccessTokenError("Invalid expiry ordering")
-    if payload["nbf"] > payload["iat"] + JWT_LEEWAY_SECONDS:
+    if nbf > iat + JWT_LEEWAY_SECONDS:
         raise AccessTokenError("nbf is too far after iat")
-    if payload["exp"] - payload["iat"] > settings.access_token_ttl_seconds:
+    if exp - iat > settings.access_token_ttl_seconds:
         raise AccessTokenError("Token lifetime exceeds policy")
-    if now is not None and payload["iat"] > _timestamp(now) + JWT_LEEWAY_SECONDS:
-        raise AccessTokenError("Token iat is too far in the future")
     return AccessTokenClaims(
         sub=sub,
         role=role,
         scopes=canonical_scopes,
         iss=str(payload["iss"]),
         aud=str(payload["aud"]),
-        iat=int(payload["iat"]),
-        nbf=int(payload["nbf"]),
-        exp=int(payload["exp"]),
+        iat=iat,
+        nbf=nbf,
+        exp=exp,
+        kid=str(header["kid"]),
         jti=jti,
     )

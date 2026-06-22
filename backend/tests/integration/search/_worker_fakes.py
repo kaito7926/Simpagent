@@ -7,6 +7,7 @@ from typing import Any
 from uuid import uuid4
 
 from google.adk.events.event import Event
+from google.genai import types
 from pydantic import SecretStr
 
 from app.security.search_capability import mint_search_capability
@@ -33,6 +34,14 @@ def mint_capability_token(settings, *, correlation_id: str | None = "corr-test")
         now=now,
     )
     return token, user_id, conversation_id
+
+
+def text_event(*, text: str, author: str = "model", grounding_metadata: dict[str, Any] | None = None) -> Event:
+    return Event(
+        author=author,
+        content=types.Content(role="model", parts=[types.Part(text=text)]),
+        grounding_metadata=grounding_metadata,
+    )
 
 
 class FakeRunner:

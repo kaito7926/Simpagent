@@ -4,6 +4,8 @@
 
 This roadmap delivers the prototype as dependency-ordered vertical slices: establish a runnable security and identity foundation, ship private direct chat, add policy-controlled Google Search, add isolated Python execution, harden the assembled gateway and evidence surfaces, then prove the complete system through adversarial verification and Vietnamese delivery documentation.
 
+**Integrated slice note:** PR #2 ships Phase 4 as an integrated tooling slice. Phase 3 still needs dedicated plans and refreshed verification artifacts before it can be marked complete in strict dependency order.
+
 ## Phases
 
 **Phase Numbering:**
@@ -11,11 +13,11 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions marked as INSERTED
 
-- [ ] **Phase 1: Secure Platform and Account Access** - The local topology runs and users can authenticate through strict, revocable sessions.
-- [ ] **Phase 2: Private Direct Chat** - Users can use a safe browser chat experience with owner-only conversation history.
+- [x] **Phase 1: Secure Platform and Account Access** - The local topology runs and users can authenticate through strict, revocable sessions.
+- [x] **Phase 2: Private Direct Chat** - Users can use a safe browser chat experience with owner-only conversation history.
 - [ ] **Phase 3: Policy-Controlled Google Search** - Authorized users can receive grounded search answers through a bounded coordinator.
-- [ ] **Phase 4: Isolated Python Execution** - Authorized users can run bounded Python without host, secret, or network access.
-- [ ] **Phase 5: Gateway, Administration, and Security Evidence** - The assembled application has hardened ingress, redacted observability, and protected admin evidence.
+- [x] **Phase 4: Isolated Python Execution** - Authorized users can run bounded Python without host, secret, or network access.
+- [x] **Phase 5: Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence** - The assembled application supports local, Google, and GitHub login, hardened ingress, redacted observability, protected admin evidence, and a small production deployment profile. (completed 2026-06-16)
 - [ ] **Phase 6: Adversarial Verification and Vietnamese Delivery** - Evaluators can verify the claimed controls and operate the documented prototype.
 
 ## Phase Details
@@ -34,32 +36,32 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   4. User can refresh and log out through a JavaScript-inaccessible protected session, while rotated-token reuse revokes the family and is denied.
   5. Authenticated user can inspect their safe identity attributes, while inactive principals and unknown roles, scopes, tools, or policy states fail closed.
 
-**Plans:** 8 plans
+**Plans:** 8/8 plans executed
 **Wave 1**
 
-- [ ] 01-01-PLAN.md - Establish the PostgreSQL-only test, app, and sandbox foundations.
+- [x] 01-01-PLAN.md - Establish the PostgreSQL-only test, app, and sandbox foundations.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md - Implement the real PostgreSQL registration/login/current-user API slice.
+- [x] 01-02-PLAN.md - Implement the real PostgreSQL registration/login/current-user API slice.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-03-PLAN.md - Prove the first frontend-to-Kong-to-API-to-PostgreSQL journey.
-- [ ] 01-04-PLAN.md - Enforce provider-neutral identity, strict JWTs, and fail-closed principals.
-- [ ] 01-07-PLAN.md - Complete schema, configuration, readiness, and provider degradation.
+- [x] 01-03-PLAN.md - Prove the first frontend-to-Kong-to-API-to-PostgreSQL journey.
+- [x] 01-04-PLAN.md - Enforce provider-neutral identity, strict JWTs, and fail-closed principals.
+- [x] 01-07-PLAN.md - Complete schema, configuration, readiness, and provider degradation.
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 01-05-PLAN.md - Add atomic refresh rotation, replay defense, CSRF, and logout.
+- [x] 01-05-PLAN.md - Add atomic refresh rotation, replay defense, CSRF, and logout.
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 01-06-PLAN.md - Complete browser session recovery and the account-access UI contract.
+- [x] 01-06-PLAN.md - Complete browser session recovery and the account-access UI contract.
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 01-08-PLAN.md - Provision demo/Admin accounts and verify the final assembled topology.
+- [x] 01-08-PLAN.md - Provision demo/Admin accounts and verify the final assembled topology.
 
 **UI hint:** no
 
@@ -77,7 +79,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   4. Configured OpenAI-compatible chat succeeds within bounded provider behavior, while provider failure creates no fabricated assistant message and returns a stable correlation-bearing error.
   5. Chat works through a correct non-streaming path and renders sanitized Markdown and code without executing raw HTML, scripts, handlers, or dangerous URLs.
 
-**Plans:** TBD
+**Plans:** 7/7 plans executed
 **UI hint:** yes
 
 ### Phase 3: Policy-Controlled Google Search
@@ -94,19 +96,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   4. Model output can propose but cannot authorize a tool; execution rechecks scope and policy and uses a short-lived audience-bound capability instead of the user's bearer token.
   5. Search and Python remain separate typed credential boundaries, every tool decision has a persisted correlated state, and untrusted prompts or search content cannot change policy, expose secrets, fetch internal URLs, or trigger arbitrary actions.
 
-**Plans:** 4 plans across 3 waves
-**Wave 1**
-
-- [x] 03-01-PLAN.md - Create the explicit search-turn contract and honest backend state matrix before wiring the real Google worker.
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 03-02-PLAN.md - Replace the fake search seam with the real dedicated ADK worker, capability credential, and startup capability check.
-- [x] 03-03-PLAN.md - Implement the explicit search-mode chat shell and the grounded/degraded rendering contract on the frontend.
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 03-04-PLAN.md - Harden the search path against prompt injection, retention drift, and end-to-end failure gaps, then verify the full grounded/degraded experience through Compose.
+**Plans:** TBD
 **UI hint:** yes
 
 ### Phase 4: Isolated Python Execution
@@ -123,24 +113,47 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   4. User receives bounded stdout, stderr, exit status, duration, and the specific terminating limit when time, CPU, memory, PID, process, file, or output controls stop execution.
   5. Temporary execution data is removed, and package installation, arbitrary external commands, user-controlled runtime settings, mounts, devices, namespaces, and privileged operation are denied.
 
-**Plans:** TBD
+**Plans:** 5/5 plans executed
+**Ship note:** Shipped on PR #2 as an integrated tooling slice. Phase 3 planning and refreshed verification artifacts are still pending in `.planning/phases/03-policy-controlled-google-search/`.
 **UI hint:** yes
 
-### Phase 5: Gateway, Administration, and Security Evidence
+### Phase 5: Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence
 
-**Goal:** Operators and authorized administrators can run and inspect the assembled application through hardened ingress and redacted, correlated evidence without weakening backend authority.
+**Goal:** Users can sign in with local credentials, Google, or GitHub, while operators and authorized administrators can run the assembled application through hardened ingress, redacted correlated evidence, and a small production deployment profile sized for about 100 users/month without weakening backend authority.
 **Mode:** mvp
 **Depends on:** Phase 4
-**Requirements:** AUTHZ-02, GATE-01, GATE-02, GATE-03, GATE-04, GATE-05, GATE-06, GATE-07, GATE-08, OBS-01, OBS-02, OBS-03, OBS-04, OBS-05, OBS-06, OBS-07
+**Requirements:** AUTHZ-02, IDEN-03, IDEN-06, IDEN-07, IDEN-08, GATE-01, GATE-02, GATE-03, GATE-04, GATE-05, GATE-06, GATE-07, GATE-08, OBS-01, OBS-02, OBS-03, OBS-04, OBS-05, OBS-06, OBS-07, PRODREADY-01, PRODREADY-02, PRODREADY-03, PRODREADY-04, PRODREADY-05
 **Success Criteria** (what must be TRUE):
 
-  1. Client traffic reaches only approved application and health routes through DB-less Kong with strict CORS, request-size controls, validated correlation IDs, and tighter useful rate limits on authentication and tool endpoints.
-  2. FastAPI remains authoritative for complete token, account, role, scope, ownership, and tool-policy decisions even when Kong performs coarse JWT rejection, and no database, worker control plane, or Kong Admin API is publicly exposed.
-  3. Requests, provider calls, tool calls, denials, replay, rate limits, sandbox violations, and administrative actions produce correlated structured evidence with recursive secret and sensitive-content redaction.
-  4. Properly scoped administrators can page through bounded users, audits, security events, tool executions, failed logins, rate-limit evidence, and aggregate metrics, while ordinary and under-scoped users are denied.
-  5. Operator can follow documented Cloudflare-to-Kong routing and trusted-proxy assumptions, including Free-plan limitations, without overclaiming distributed rate limiting or edge protection.
+  1. Users can authenticate with Google or GitHub through OAuth2/OIDC-safe redirect flows, provider secrets remain environment-only, and OAuth sessions land in the same short-lived JWT plus protected refresh-token model as local email/password login.
+  2. OAuth account linking and provisioning prevent account takeover by failing closed on missing, unverified, or conflicting provider email identity and by preserving existing local-account security semantics.
+  3. Client traffic reaches only approved application and health routes through DB-less Kong with strict CORS, request-size controls, validated correlation IDs, and tighter useful rate limits on authentication and tool endpoints.
+  4. FastAPI remains authoritative for complete token, account, role, scope, ownership, and tool-policy decisions even when Kong performs coarse JWT rejection, and no database, worker control plane, or Kong Admin API is publicly exposed.
+  5. Requests, provider calls, tool calls, denials, replay, rate limits, sandbox violations, and administrative actions produce correlated structured evidence with recursive secret and sensitive-content redaction; gateway-only rate-limit evidence is represented through Kong config and verification evidence rather than fabricated admin rows.
+  6. Properly scoped administrators can page through bounded users, audits, security events, tool executions, failed logins, rate-limit evidence, aggregate metrics, and orchestration controls, while ordinary and under-scoped users are denied.
+  7. Operator can follow a documented small-production deployment profile for about 100 users/month, including Cloudflare-to-Kong routing, trusted-proxy assumptions, secure cookies/origins, migrations, backup/restore, smoke checks, and explicit limits without overclaiming distributed rate limiting, edge protection, or production-grade guarantees.
 
-**Plans:** TBD
+**Plans:** 8/8 plans complete
+**Wave 1**
+
+- [x] 05-02-PLAN.md - Hold the Authlib legitimacy gate inside the Google OAuth implementation plan, then ship the Google OAuth redirect/callback slice.
+- [x] 05-04-PLAN.md - Deliver the first real admin slice with Overview and Orchestration surfaces.
+- [x] 05-05-PLAN.md - Harden DB-less Kong ingress, correlation handling, and trusted-proxy hooks.
+
+**Wave 2** *(blocked on Wave 1 completion where referenced)*
+
+- [x] 05-03-PLAN.md - Add GitHub OAuth and fail-closed account-linking rules.
+- [x] 05-06-PLAN.md - Build recursive redaction and gateway-evidence backend contracts.
+
+**Wave 3** *(blocked on Wave 2 completion where referenced)*
+
+- [x] 05-07-PLAN.md - Wire all six admin evidence surfaces into the shared shell and expose gateway evidence through the admin API.
+
+**Wave 4** *(blocked on Wave 2-3 completion where referenced)*
+
+- [x] 05-09-PLAN.md - Wire the shared Google and GitHub auth-shell CTA/readiness experience.
+- [x] 05-08-PLAN.md - Finalize the small-production profile, Cloudflare/trusted-proxy documentation, and assembled smoke coverage.
+
 **UI hint:** no
 
 ### Phase 6: Adversarial Verification and Vietnamese Delivery
@@ -151,7 +164,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 **Requirements:** TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-06, TEST-07, TEST-08, TEST-09, TEST-10, DOCS-01, DOCS-02, DOCS-03, DOCS-04, DOCS-05, DOCS-06
 **Success Criteria** (what must be TRUE):
 
-  1. Automated tests prove authentication lifecycle, strict token handling, two-user BOLA denial, role/scope/tool denial, chat ordering and idempotency, and provider failure behavior.
+  1. Automated tests prove authentication lifecycle, strict token handling, two-user BOLA denial, role/scope/tool denial, chat ordering and idempotency, provider failure behavior.
   2. Automated search and sandbox tests prove grounding contracts, prompt-injection resistance, time and resource limits, network and host denial, cleanup, and escape resistance through side-effect assertions.
   3. Evaluator can run attack scripts against the Compose topology and observe denied brute force, token replay, SSRF, BOLA, prompt/tool abuse, and sandbox escape attempts without forbidden side effects.
   4. Evaluator has practical SAST, dependency, container, Burp, AWVS, and DAST guidance plus a finding template and canary-secret evidence showing protected values do not leak.
@@ -165,13 +178,13 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 **Execution Order:**
 Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
-**Progress note:** Historical phases are not yet fully backfilled with summary artifacts in the current planning tree. The table below is therefore most accurate for the active Phase 3 branch, where implementation summaries now exist for Plans 03-01 through 03-04 and the full backend/frontend/smoke verification was rerun successfully on 2026-06-13.
+Note: PR #2 ships the Phase 4 Python slice before Phase 3 planning metadata was closed out. The table below reflects shipped code status, not strict dependency-order documentation completeness.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Secure Platform and Account Access | 0/8 | Not started | - |
-| 2. Private Direct Chat | 0/TBD | Not started | - |
-| 3. Policy-Controlled Google Search | 4/4 | Complete - reverified after backend clock fix | 2026-06-13 |
-| 4. Isolated Python Execution | 0/TBD | Not started | - |
-| 5. Gateway, Administration, and Security Evidence | 0/TBD | Not started | - |
+| 1. Secure Platform and Account Access | 8/8 | Complete | 2026-06-10 |
+| 2. Private Direct Chat | 7/7 | Complete | 2026-06-12 |
+| 3. Policy-Controlled Google Search | 0/TBD | Artifact closeout pending | - |
+| 4. Isolated Python Execution | 5/5 | Shipped (PR #2) | 2026-06-13 |
+| 5. Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 8/8 | Complete   | 2026-06-16 |
 | 6. Adversarial Verification and Vietnamese Delivery | 0/TBD | Not started | - |

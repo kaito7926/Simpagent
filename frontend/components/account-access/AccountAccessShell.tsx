@@ -1,18 +1,20 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { DemoConfig } from "@/lib/demo-config";
 import {
   AuthSessionController,
+  beginOAuth,
+  type OAuthProviderId,
   type SessionState,
   type ShellViewModel,
 } from "@/lib/auth-session";
-import { formsEnabled, toAggregateUiState } from "@/lib/readiness";
+import { formsEnabled, oauthProviderState, toAggregateUiState } from "@/lib/readiness";
 
+import { ChatWorkspace } from "@/components/chat/ChatWorkspace";
 import { ActionButton } from "./ActionButton";
 import { AuthCard } from "./AuthCard";
-import { BrandLockup } from "./BrandLockup";
 import { FormField } from "./FormField";
 import { PasswordField } from "./PasswordField";
 import { PlatformStatus } from "./PlatformStatus";
@@ -36,17 +38,17 @@ type FormErrors = {
 };
 
 const SCOPE_LABELS: Record<string, string> = {
-  "chat:read": "Đọc hội thoại",
-  "chat:write": "Tạo và cập nhật hội thoại",
-  "tool:websearch": "Dùng tìm kiếm web",
-  "tool:python": "Dùng Python giới hạn",
-  "admin:read": "Xem dữ liệu quản trị",
-  "admin:write": "Thay đổi dữ liệu quản trị",
+  "chat:read": "Read conversations",
+  "chat:write": "Create and update conversations",
+  "tool:websearch": "Use Google Search",
+  "tool:python": "Use limited Python",
+  "admin:read": "View administration data",
+  "admin:write": "Change administration data",
 };
 
-const NETWORK_ERROR_COPY = "Không thể kết nối đến máy chủ. Kiểm tra hệ thống đang chạy rồi thử lại.";
-const SERVER_ERROR_COPY = "Đã xảy ra lỗi phía máy chủ. Vui lòng thử lại.";
-const READINESS_RECOVERED_COPY = "Hệ thống đã sẵn sàng cho đăng ký và đăng nhập.";
+const NETWORK_ERROR_COPY = "Can't reach the server. Check that the local stack is running and try again.";
+const SERVER_ERROR_COPY = "The server couldn't complete this request. Try again.";
+const READINESS_RECOVERED_COPY = "The system is ready for registration and sign in.";
 
 function readCsrfToken(): string | null {
   if (typeof document === "undefined") {
@@ -73,46 +75,46 @@ function buildEmptyErrors(): FormErrors {
 function labelForState(state: SessionState): string {
   switch (state) {
     case "checking_session":
-      return "Đang kiểm tra phiên";
+      return "Checking your session";
     case "registration_accepted":
-      return "Yêu cầu đã được tiếp nhận";
+      return "Request received";
     case "authenticated":
-      return "Bạn đã đăng nhập";
+      return "You are signed in";
     case "session_expired":
-      return "Đăng nhập vào SimpAgent";
+      return "Session ended";
     case "core_not_ready":
-      return "Hệ thống chưa sẵn sàng";
+      return "System not ready";
     case "anonymous_register":
-      return "Tạo tài khoản";
+      return "Create your account";
     case "anonymous_login":
     default:
-      return "Đăng nhập vào SimpAgent";
+      return "Sign in to SimpAgent";
   }
 }
 
 function bodyForState(state: SessionState): string {
   switch (state) {
     case "checking_session":
-      return "SimpAgent đang xác nhận phiên được bảo vệ trên thiết bị này.";
+      return "SimpAgent is restoring a protected session on this device.";
     case "registration_accepted":
-      return "Nếu địa chỉ này có thể đăng ký, bạn có thể tiếp tục đăng nhập.";
+      return "If this address is accepted, you can continue directly to sign in.";
     case "authenticated":
-      return "Đây là thông tin an toàn mà máy chủ cho phép hiển thị cho tài khoản hiện tại.";
+      return "Your protected workspace is ready.";
     case "session_expired":
-      return "Sử dụng tài khoản cục bộ để mở một phiên được bảo vệ.";
+      return "Your session is no longer valid. Sign in again to continue.";
     case "core_not_ready":
-      return "Đăng nhập tạm thời không khả dụng. Hãy đợi hệ thống hoàn tất khởi động rồi thử lại.";
+      return "Sign in is temporarily unavailable. Wait for the local stack to finish starting, then try again.";
     case "anonymous_register":
-      return "Tài khoản mới nhận quyền Người dùng tiêu chuẩn. Vai trò và quyền không thể chọn trong biểu mẫu này.";
+      return "New accounts start with the Standard User role. Roles and scopes are assigned by the server, not chosen here.";
     case "anonymous_login":
     default:
-      return "Sử dụng tài khoản cục bộ để mở một phiên được bảo vệ.";
+      return "Use your local account to enter the protected SimpAgent workspace.";
   }
 }
 
 function titleForViewModel(viewModel: ShellViewModel): string {
   if (viewModel.sessionState === "authenticated") {
-    return "Tài khoản của bạn | SimpAgent";
+    return "Workspace | SimpAgent";
   }
 
   if (
@@ -120,12 +122,12 @@ function titleForViewModel(viewModel: ShellViewModel): string {
     toAggregateUiState(viewModel.readiness) === "not_ready" ||
     toAggregateUiState(viewModel.readiness) === "disconnected"
   ) {
-    return "Hệ thống chưa sẵn sàng | SimpAgent";
+    return "System not ready | SimpAgent";
   }
 
   return viewModel.authMode === "register"
-    ? "Đăng ký | SimpAgent"
-    : "Đăng nhập | SimpAgent";
+    ? "Create account | SimpAgent"
+    : "Sign in | SimpAgent";
 }
 
 export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShellProps) {
@@ -262,10 +264,10 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
   function validateLogin(): boolean {
     const nextErrors = buildEmptyErrors();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formFields.email.trim())) {
-      nextErrors.email = "Nhập địa chỉ email hợp lệ.";
+      nextErrors.email = "Enter a valid email address.";
     }
     if (!formFields.password) {
-      nextErrors.password = "Nhập mật khẩu.";
+      nextErrors.password = "Enter your password.";
     }
     setFormErrors(nextErrors);
     return !nextErrors.email && !nextErrors.password;
@@ -275,17 +277,17 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
     const nextErrors = buildEmptyErrors();
     const normalizedPassword = normalizePasswordForClient(formFields.password);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formFields.email.trim())) {
-      nextErrors.email = "Nhập địa chỉ email hợp lệ.";
+      nextErrors.email = "Enter a valid email address.";
     }
     if (!formFields.password) {
-      nextErrors.password = "Nhập mật khẩu.";
+      nextErrors.password = "Enter a password.";
     } else if (normalizedPassword.length < 15) {
-      nextErrors.password = "Mật khẩu cần ít nhất 15 ký tự.";
+      nextErrors.password = "Password must contain at least 15 characters.";
     } else if (normalizedPassword.length > 128) {
-      nextErrors.password = "Mật khẩu không được vượt quá 128 ký tự.";
+      nextErrors.password = "Password must not exceed 128 characters.";
     }
     if (formFields.confirmPassword !== formFields.password) {
-      nextErrors.confirmPassword = "Mật khẩu nhập lại chưa khớp.";
+      nextErrors.confirmPassword = "The passwords do not match.";
     }
     setFormErrors(nextErrors);
     return !nextErrors.email && !nextErrors.password && !nextErrors.confirmPassword;
@@ -364,7 +366,7 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
     setViewModel(nextState);
     const failed =
       nextState.globalMessage ===
-      "Không thể hoàn tất đăng xuất. Hãy kiểm tra kết nối và thử lại.";
+      "Sign out could not be completed. Check your connection and try again.";
     setLogoutRetryVisible(failed);
     setIsSubmitting(false);
   }
@@ -381,6 +383,12 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
     switchMode("login");
   }
 
+  function handleOAuthStart(provider: OAuthProviderId) {
+    clearFormState();
+    setAnnouncement(null);
+    beginOAuth(provider);
+  }
+
   function fillDemoAccount(kind: "user" | "admin") {
     if (!demoConfig.enabled) {
       return;
@@ -392,14 +400,14 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
         password: demoConfig.userPassword,
         confirmPassword: "",
       });
-      setAnnouncement("Đã điền tài khoản demo Người dùng.");
+      setAnnouncement("Standard user demo account filled.");
     } else {
       setFormFields({
         email: demoConfig.adminEmail,
         password: demoConfig.adminPassword,
         confirmPassword: "",
       });
-      setAnnouncement("Đã điền tài khoản demo Quản trị viên.");
+      setAnnouncement("Administrator demo account filled.");
     }
 
     window.setTimeout(() => submitButtonRef.current?.focus(), 0);
@@ -409,128 +417,213 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
   const disabled = !formsAreEnabled || isSubmitting;
   const combinedGlobalMessage = announcement ?? viewModel.globalMessage;
   const combinedCorrelationId = errorCorrelationId ?? viewModel.correlationId;
+  const oauthProviders = [
+    oauthProviderState(viewModel.readiness, "google"),
+    oauthProviderState(viewModel.readiness, "github"),
+  ];
+
+  if (viewModel.sessionState === "authenticated" && viewModel.currentUser) {
+    return (
+      <ChatWorkspace
+        controller={controller}
+        currentUser={viewModel.currentUser}
+        onSessionExpired={() => setViewModel(controller.snapshot)}
+        onLogout={handleLogout}
+      />
+    );
+  }
 
   const loginForm = (
-    <>
-      <FormField
-        id="login-email"
-        label="Email"
-        type="email"
-        inputMode="email"
-        autoComplete="email"
-        value={formFields.email}
+    <div className="space-y-6">
+      <div className="space-y-2.5">
+        <label htmlFor="login-email" className="text-sm font-medium text-foreground">
+          Email Address
+        </label>
+        <input
+          id="login-email"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={formFields.email}
+          disabled={disabled}
+          onChange={(event) => setFormFields((current) => ({ ...current, email: event.target.value }))}
+          className="flex h-11 w-full rounded-md bg-white border border-gray-300 px-3 py-2 text-foreground placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
+        />
+        {formErrors.email && <p className="text-sm text-destructive">{formErrors.email}</p>}
+      </div>
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <label htmlFor="login-password" className="text-sm font-medium text-foreground">
+            Password
+          </label>
+        </div>
+        <input
+          id="login-password"
+          type="password"
+          autoComplete="current-password"
+          placeholder="••••••••"
+          value={formFields.password}
+          disabled={disabled}
+          onChange={(event) => setFormFields((current) => ({ ...current, password: event.target.value }))}
+          className="flex h-11 w-full rounded-md bg-white border border-gray-300 px-3 py-2 text-foreground placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
+        />
+        {formErrors.password && <p className="text-sm text-destructive">{formErrors.password}</p>}
+      </div>
+      <button
+        ref={submitButtonRef}
+        type="submit"
         disabled={disabled}
-        error={formErrors.email}
-        onChange={(event) => setFormFields((current) => ({ ...current, email: event.target.value }))}
-      />
-      <PasswordField
-        id="login-password"
-        label="Mật khẩu"
-        autoComplete="current-password"
-        value={formFields.password}
-        disabled={disabled}
-        error={formErrors.password}
-        onChange={(value) => setFormFields((current) => ({ ...current, password: value }))}
-      />
-      <ActionButton ref={submitButtonRef} type="submit" disabled={disabled}>
-        {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
-      </ActionButton>
-      <p className="mode-prompt">
-        <span>Chưa có tài khoản?</span>
-        <button className="text-link-button" type="button" onClick={() => switchMode("register")}>
-          Đăng ký
+        className="w-full h-11 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-md font-semibold transition-all duration-200 mt-3 flex items-center justify-center gap-2"
+      >
+        {isSubmitting ? (
+          <>
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            Signing in...
+          </>
+        ) : (
+          <>
+            <span>Sign in</span>
+            <span className="text-lg">✦</span>
+          </>
+        )}
+      </button>
+      <p className="text-center text-sm text-muted-foreground mt-4">
+        Need an account?{" "}
+        <button type="button" onClick={() => switchMode("register")} className="text-blue-600 hover:text-blue-700 font-semibold transition-colors">
+          Create account
         </button>
       </p>
-    </>
+    </div>
   );
 
   const registerForm = (
-    <>
-      <FormField
-        id="register-email"
-        label="Email"
-        type="email"
-        inputMode="email"
-        autoComplete="email"
-        value={formFields.email}
+    <div className="space-y-6">
+      <div className="space-y-2.5">
+        <label htmlFor="register-email" className="text-sm font-medium text-foreground">
+          Email Address
+        </label>
+        <input
+          id="register-email"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={formFields.email}
+          disabled={disabled}
+          onChange={(event) => setFormFields((current) => ({ ...current, email: event.target.value }))}
+          className="flex h-11 w-full rounded-md bg-white border border-gray-300 px-3 py-2 text-foreground placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
+        />
+        {formErrors.email && <p className="text-sm text-destructive">{formErrors.email}</p>}
+      </div>
+      <div className="space-y-2.5">
+        <label htmlFor="register-password" className="text-sm font-medium text-foreground">
+          Password
+        </label>
+        <input
+          id="register-password"
+          type="password"
+          autoComplete="new-password"
+          placeholder="••••••••"
+          value={formFields.password}
+          disabled={disabled}
+          onChange={(event) => setFormFields((current) => ({ ...current, password: event.target.value }))}
+          className="flex h-11 w-full rounded-md bg-white border border-gray-300 px-3 py-2 text-foreground placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
+        />
+        <p className="text-xs text-muted-foreground">Use 15 to 128 characters.</p>
+        {formErrors.password && <p className="text-sm text-destructive">{formErrors.password}</p>}
+      </div>
+      <div className="space-y-2.5">
+        <label htmlFor="register-confirm-password" className="text-sm font-medium text-foreground">
+          Confirm password
+        </label>
+        <input
+          id="register-confirm-password"
+          type="password"
+          autoComplete="new-password"
+          placeholder="••••••••"
+          value={formFields.confirmPassword}
+          disabled={disabled}
+          onChange={(event) => setFormFields((current) => ({ ...current, confirmPassword: event.target.value }))}
+          className="flex h-11 w-full rounded-md bg-white border border-gray-300 px-3 py-2 text-foreground placeholder:text-gray-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500/30 transition-all"
+        />
+        {formErrors.confirmPassword && <p className="text-sm text-destructive">{formErrors.confirmPassword}</p>}
+      </div>
+      <button
+        type="submit"
         disabled={disabled}
-        error={formErrors.email}
-        onChange={(event) => setFormFields((current) => ({ ...current, email: event.target.value }))}
-      />
-      <PasswordField
-        id="register-password"
-        label="Mật khẩu"
-        autoComplete="new-password"
-        value={formFields.password}
-        disabled={disabled}
-        hint="Từ 15 đến 128 ký tự; cho phép khoảng trắng và tiếng Việt. Không bắt buộc chữ hoa, số hoặc ký hiệu."
-        error={formErrors.password}
-        onChange={(value) => setFormFields((current) => ({ ...current, password: value }))}
-      />
-      <PasswordField
-        id="register-confirm-password"
-        label="Nhập lại mật khẩu"
-        autoComplete="new-password"
-        value={formFields.confirmPassword}
-        disabled={disabled}
-        error={formErrors.confirmPassword}
-        onChange={(value) =>
-          setFormFields((current) => ({ ...current, confirmPassword: value }))
-        }
-      />
-      <ActionButton type="submit" disabled={disabled}>
-        {isSubmitting ? "Đang gửi yêu cầu..." : "Gửi yêu cầu đăng ký"}
-      </ActionButton>
-      <p className="mode-prompt">
-        <span>Đã có tài khoản?</span>
-        <button className="text-link-button" type="button" onClick={() => switchMode("login")}>
-          Đăng nhập
+        className="w-full h-11 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-md font-semibold transition-all duration-200 mt-3 flex items-center justify-center gap-2"
+      >
+        {isSubmitting ? (
+          <>
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            Sending request...
+          </>
+        ) : (
+          <>
+            <span>Create account</span>
+            <span className="text-lg">✦</span>
+          </>
+        )}
+      </button>
+      <p className="text-center text-sm text-muted-foreground mt-4">
+        Already have an account?{" "}
+        <button type="button" onClick={() => switchMode("login")} className="text-blue-600 hover:text-blue-700 font-semibold transition-colors">
+          Sign in
         </button>
       </p>
-    </>
+    </div>
   );
 
   return (
-    <main className="page-shell">
-      <a className="skip-link" href="#account-content">
-        Bỏ qua đến nội dung tài khoản
-      </a>
-      <section className="layout-grid">
-        <div className="context-column">
-          <BrandLockup authenticated={viewModel.sessionState === "authenticated"} />
-          <SecuritySummary />
-          <PlatformStatus
-            readiness={viewModel.readiness}
-            isLoading={isReadinessLoading}
-            isRefreshing={isReadinessRefreshing}
-            onRefresh={() => void refreshReadiness(true)}
-          />
-        </div>
+    <main className="min-h-[100dvh] relative overflow-hidden bg-background px-4 py-8">
+      {/* Subtle gradient background accents */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-100/30 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-cyan-100/20 rounded-full blur-3xl"></div>
+      </div>
 
-        <AuthCard
-          sessionState={viewModel.sessionState}
-          authMode={viewModel.authMode}
-          heading={labelForState(viewModel.sessionState)}
-          body={bodyForState(viewModel.sessionState)}
-          disabled={!formsAreEnabled}
-          isSubmitting={isSubmitting}
-          currentUser={viewModel.currentUser}
-          logoutRetryVisible={logoutRetryVisible}
-          formContent={viewModel.authMode === "login" ? loginForm : registerForm}
-          globalMessage={combinedGlobalMessage}
-          errorMessage={errorMessage}
-          correlationId={combinedCorrelationId}
-          onModeChange={switchMode}
-          onLoginSubmit={handleLoginSubmit}
-          onRegisterSubmit={handleRegisterSubmit}
-          onLogout={handleLogout}
-          onGoToLogin={handleGoToLogin}
-          scopeLabels={SCOPE_LABELS}
-          demoEnabled={demoConfig.enabled}
-          onFillDemoUser={() => fillDemoAccount("user")}
-          onFillDemoAdmin={() => fillDemoAccount("admin")}
-        />
-      </section>
+      <div className="relative min-h-[100dvh] flex flex-col items-center justify-center">
+        <a className="sr-only focus:not-sr-only" href="#account-content">
+          Skip to account access
+        </a>
+        <div className="w-full max-w-md">
+          <AuthCard
+            sessionState={viewModel.sessionState}
+            authMode={viewModel.authMode}
+            heading={labelForState(viewModel.sessionState)}
+            body={bodyForState(viewModel.sessionState)}
+            disabled={!formsAreEnabled}
+            isSubmitting={isSubmitting}
+            currentUser={viewModel.currentUser}
+            logoutRetryVisible={logoutRetryVisible}
+            formContent={viewModel.authMode === "login" ? loginForm : registerForm}
+            globalMessage={combinedGlobalMessage}
+            errorMessage={errorMessage}
+            correlationId={combinedCorrelationId}
+            oauthProviders={oauthProviders}
+            onOAuthStart={handleOAuthStart}
+            onModeChange={switchMode}
+            onLoginSubmit={handleLoginSubmit}
+            onRegisterSubmit={handleRegisterSubmit}
+            onLogout={handleLogout}
+            onGoToLogin={handleGoToLogin}
+            scopeLabels={SCOPE_LABELS}
+            demoEnabled={demoConfig.enabled}
+            onFillDemoUser={() => fillDemoAccount("user")}
+            onFillDemoAdmin={() => fillDemoAccount("admin")}
+          />
+          <div className="mt-8 flex flex-col gap-4">
+            <SecuritySummary />
+            <PlatformStatus
+              readiness={viewModel.readiness}
+              isLoading={isReadinessLoading}
+              isRefreshing={isReadinessRefreshing}
+              onRefresh={() => void refreshReadiness(true)}
+            />
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

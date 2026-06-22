@@ -46,7 +46,29 @@ export type ReadinessResponse = {
     llm: ReadinessComponentState;
     search: ReadinessComponentState;
     sandbox: ReadinessComponentState;
+    oauth_google?: ReadinessComponentState;
+    oauth_github?: ReadinessComponentState;
   };
+};
+
+export type OAuthProviderId = "google" | "github";
+
+export type OAuthProviderState = {
+  provider: OAuthProviderId;
+  label: string;
+  enabled: boolean;
+  unavailableLabel: string | null;
+};
+
+type OAuthStorageTrap = {
+  setItem: (key: string, value: string) => void;
+  removeItem: (key: string) => void;
+};
+
+export type BeginOAuthDependencies = {
+  navigate?: (url: string) => void;
+  localStorage?: OAuthStorageTrap;
+  sessionStorage?: OAuthStorageTrap;
 };
 
 export type DemoConfig = {
@@ -125,6 +147,22 @@ function defaultHeaders(accessToken?: string | null): HeadersInit {
     : {};
 }
 
+const OAUTH_START_ROUTES: Record<OAuthProviderId, string> = {
+  google: "/api/auth/oauth/google/start",
+  github: "/api/auth/oauth/github/start",
+};
+
+export function beginOAuth(provider: OAuthProviderId, deps: BeginOAuthDependencies = {}): void {
+  const startUrl = OAUTH_START_ROUTES[provider];
+  const navigate =
+    deps.navigate ??
+    ((url: string) => {
+      window.location.assign(url);
+    });
+
+  navigate(startUrl);
+}
+
 export class AuthSessionController {
   private readonly fetchImpl: typeof fetch;
   private readonly getCsrfToken: () => string | null;
@@ -185,7 +223,7 @@ export class AuthSessionController {
         ...this.model,
         readiness: null,
         sessionState: "core_not_ready",
-        globalMessage: "Không đọc được trạng thái nền tảng. Kiểm tra hệ thống đang chạy rồi thử lại.",
+        globalMessage: "Can't reach the server. Check that the local stack is running and try again.",
         correlationId: null,
       };
     }
@@ -283,7 +321,7 @@ export class AuthSessionController {
       if (error instanceof ApiError) {
         this.model = {
           ...this.model,
-          globalMessage: "Không thể hoàn tất đăng xuất. Hãy kiểm tra kết nối và thử lại.",
+          globalMessage: "Sign out could not be completed. Check your connection and try again.",
           correlationId: error.correlationId ?? null,
         };
       }
@@ -295,7 +333,7 @@ export class AuthSessionController {
       ...this.model,
       sessionState: "anonymous_login",
       authMode: "login",
-      globalMessage: "Bạn đã đăng xuất khỏi phiên hiện tại.",
+      globalMessage: "You signed out of this session.",
       correlationId: null,
     };
     return this.snapshot;
@@ -443,7 +481,7 @@ export class AuthSessionController {
       ...this.model,
       authMode: "login",
       sessionState: "session_expired",
-      globalMessage: "Phiên của bạn không còn hợp lệ. Vui lòng đăng nhập lại để tiếp tục.",
+      globalMessage: "Your session is no longer valid. Sign in again to continue.",
       correlationId: correlationId ?? null,
     };
   }

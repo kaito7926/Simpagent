@@ -218,7 +218,7 @@ void test("logout failure preserves authenticated state and surfaces retry copy"
   const snapshot = await controller.logout();
   assert.equal(snapshot.sessionState, "authenticated");
   assert.equal(snapshot.currentUser?.email, "demo.user@simpagent.test");
-  assert.equal(snapshot.globalMessage, "Không thể hoàn tất đăng xuất. Hãy kiểm tra kết nối và thử lại.");
+  assert.equal(snapshot.globalMessage, "Sign out could not be completed. Check your connection and try again.");
   assert.equal(snapshot.correlationId, "corr-3");
   assert.equal(meCalls, 1);
 });

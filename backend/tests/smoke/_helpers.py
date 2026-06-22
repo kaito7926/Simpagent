@@ -12,12 +12,14 @@ import pytest
 
 PUBLIC_BASE_URL = os.getenv("SIMPAGENT_PUBLIC_BASE_URL", "http://kong:8000")
 LOKI_BASE_URL = os.getenv("SIMPAGENT_LOKI_BASE_URL", "http://loki:3100")
+TEMPO_BASE_URL = os.getenv("SIMPAGENT_TEMPO_BASE_URL", "http://tempo:3200")
 RUN_SMOKE = os.getenv("SIMPAGENT_RUN_SMOKE", "false").lower() == "true"
 DEFAULT_ORIGIN = os.getenv("SIMPAGENT_SMOKE_ORIGIN", "http://localhost:3000")
 EXPECTED_SEARCH_STATE = os.getenv("SIMPAGENT_EXPECT_SEARCH_STATE", "search_unavailable")
 
 DEMO_ADMIN_EMAIL = os.getenv("SIMPAGENT_DEMO_ADMIN_EMAIL", "demo.admin@simpagent.test")
 DEMO_ADMIN_PASSWORD = os.getenv("SIMPAGENT_DEMO_ADMIN_PASSWORD", "ThayDoiMatKhauDemoAdmin123")
+OAUTH_PROVIDERS = ("google", "github")
 
 
 def require_smoke() -> None:
@@ -51,6 +53,45 @@ async def login(
     )
     assert response.status_code == 200
     return str(response.json()["access_token"])
+
+
+async def fetch_readiness(client: httpx.AsyncClient) -> dict[str, Any]:
+    response = await client.get("/ready")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] in {"ready", "degraded"}
+    return payload
+
+
+def assert_readiness_has_oauth_components(payload: dict[str, Any]) -> None:
+    components = payload["components"]
+    for key in ("database", "migrations", "oauth_google", "oauth_github"):
+        assert key in components
+    assert components["database"] == "ready"
+    assert components["migrations"] == "ready"
+    for provider in OAUTH_PROVIDERS:
+        assert components[f"oauth_{provider}"] in {"ready", "unconfigured", "unavailable"}
+
+
+def assert_no_secret_markers(text: str, *markers: str) -> None:
+    lowered = text.lower()
+    for marker in ("client_secret", "api_key", "password", "refresh_token", *markers):
+        assert marker.lower() not in lowered
+
+
+def assert_oauth_start_contract(response: httpx.Response, *, provider: str) -> None:
+    assert response.status_code in {303, 503}
+    assert_no_secret_markers(response.text, f"{provider.upper()}_CLIENT_SECRET")
+    if response.status_code == 303:
+        location = response.headers["location"]
+        assert "state=" in location
+        assert "client_id=" in location
+        assert "client_secret" not in location.lower()
+        assert f"simpagent_oauth_{provider}_state" in response.headers.get("set-cookie", "")
+        assert "httponly" in response.headers.get("set-cookie", "").lower()
+    else:
+        payload = response.json()
+        assert payload["error"]["code"] == "oauth_provider_unconfigured"
 
 
 async def register_user(
@@ -175,6 +216,32 @@ async def poll_loki_lines(
             await asyncio.sleep(poll_interval_seconds)
 
 
+async def poll_tempo_trace(
+    trace_id: str,
+    *,
+    timeout_seconds: float = 30.0,
+    poll_interval_seconds: float = 1.0,
+) -> dict[str, Any]:
+    deadline = monotonic() + timeout_seconds
+    last_payload: dict[str, Any] = {}
+
+    async with httpx.AsyncClient(base_url=TEMPO_BASE_URL, timeout=5.0) as client:
+        while True:
+            response = await client.get(f"/api/traces/{trace_id}")
+            if response.status_code == 404:
+                payload: dict[str, Any] = {}
+            else:
+                response.raise_for_status()
+                payload = response.json()
+                last_payload = payload
+                if payload.get("batches"):
+                    return payload
+
+            if monotonic() >= deadline:
+                return last_payload
+            await asyncio.sleep(poll_interval_seconds)
+
+
 def _extract_loki_lines(payload: dict[str, Any]) -> list[str]:
     results = payload.get("data", {}).get("result", [])
     lines: list[str] = []
@@ -190,12 +257,19 @@ __all__ = [
     "DEMO_ADMIN_EMAIL",
     "DEMO_ADMIN_PASSWORD",
     "EXPECTED_SEARCH_STATE",
+    "OAUTH_PROVIDERS",
     "PUBLIC_BASE_URL",
     "RUN_SMOKE",
+    "TEMPO_BASE_URL",
+    "assert_no_secret_markers",
+    "assert_oauth_start_contract",
+    "assert_readiness_has_oauth_components",
     "assert_search_contract",
+    "fetch_readiness",
     "find_admin_user_by_email",
     "login",
     "poll_loki_lines",
+    "poll_tempo_trace",
     "register_and_login_user",
     "require_smoke",
     "submit_search_turn",

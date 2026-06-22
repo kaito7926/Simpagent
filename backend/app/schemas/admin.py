@@ -49,11 +49,31 @@ class AdminUserUpdateResponse(BaseModel):
     changed_fields: list[str]
 
 
+class GuardrailToggleRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool
+
+
+class OrchestrationSettingsResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    guardrail_safety_enabled: bool
+
+
 class AdminUsersPage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     items: list[AdminUserItem]
     page: AdminPage
+
+
+class SafeEvidenceSnippet(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: str
+    text: str = Field(max_length=240)
+    truncated: bool = False
 
 
 class SecurityEventItem(BaseModel):
@@ -66,6 +86,7 @@ class SecurityEventItem(BaseModel):
     description: str
     correlation_id: str | None = None
     metadata: dict[str, Any]
+    snippets: list[SafeEvidenceSnippet] = Field(default_factory=list)
     created_at: datetime
 
 
@@ -88,6 +109,7 @@ class ToolExecutionItem(BaseModel):
     status: str
     duration_ms: int | None = None
     correlation_id: str | None = None
+    snippets: list[SafeEvidenceSnippet] = Field(default_factory=list)
     created_at: datetime
 
 
@@ -108,3 +130,39 @@ class AdminMetricsResponse(BaseModel):
     security_events_last_24h: int = Field(ge=0)
     tool_executions_total: int = Field(ge=0)
     tool_executions_last_24h: int = Field(ge=0)
+    correlation_references_total: int = Field(ge=0)
+    rate_limit_events_total: int = Field(ge=0)
+
+
+GatewayEvidenceType = Literal["rate_limit", "request_size", "correlation_id", "route_protection"]
+
+
+class GatewayEvidenceSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rate_limit_routes: int = Field(ge=0)
+    request_size_routes: int = Field(ge=0)
+    correlation_id_enabled: bool
+    route_protection_routes: int = Field(ge=0)
+
+
+class GatewayEvidenceItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    evidence_type: GatewayEvidenceType
+    source: Literal["kong_config", "kong_log"]
+    route: str | None = None
+    plugin: str
+    status_codes: list[int] = Field(default_factory=list)
+    summary: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    snippets: list[SafeEvidenceSnippet] = Field(default_factory=list)
+
+
+class GatewayEvidencePage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[GatewayEvidenceItem]
+    page: AdminPage
+    summary: GatewayEvidenceSummary

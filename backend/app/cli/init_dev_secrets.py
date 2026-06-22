@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import secrets
 from pathlib import Path
 
@@ -35,17 +36,25 @@ def _generate_rsa_pair() -> tuple[str, str]:
     return private_pem, public_pem
 
 
+def _generate_message_encryption_key() -> str:
+    return base64.urlsafe_b64encode(secrets.token_bytes(32)).decode("ascii").rstrip("=")
+
+
 def init_dev_secrets(*, secrets_dir: Path) -> dict[str, bool]:
     private_path = secrets_dir / "jwt_private_key"
     public_path = secrets_dir / "jwt_public_key"
     refresh_path = secrets_dir / "refresh_hmac_key"
     csrf_path = secrets_dir / "csrf_hmac_key"
+    message_encryption_path = secrets_dir / "message_encryption_key"
+    python_capability_path = secrets_dir / "python_capability_secret"
 
     created = {
         "jwt_private_key": False,
         "jwt_public_key": False,
         "refresh_hmac_key": False,
         "csrf_hmac_key": False,
+        "message_encryption_key": False,
+        "python_capability_secret": False,
     }
 
     if not private_path.exists() or not public_path.exists():
@@ -55,6 +64,8 @@ def init_dev_secrets(*, secrets_dir: Path) -> dict[str, bool]:
 
     created["refresh_hmac_key"] = _write_if_missing(refresh_path, secrets.token_urlsafe(48))
     created["csrf_hmac_key"] = _write_if_missing(csrf_path, secrets.token_urlsafe(48))
+    created["message_encryption_key"] = _write_if_missing(message_encryption_path, _generate_message_encryption_key())
+    created["python_capability_secret"] = _write_if_missing(python_capability_path, secrets.token_urlsafe(48))
     return created
 
 

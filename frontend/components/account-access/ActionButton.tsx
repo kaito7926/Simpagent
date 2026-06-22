@@ -1,12 +1,20 @@
+import React, { forwardRef } from "react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { forwardRef } from "react";
-import React from "react";
+
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type ActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "quiet";
   icon?: ReactNode;
   fullWidth?: boolean;
 };
+
+const VARIANT_MAP = {
+  primary: "default",
+  secondary: "secondary",
+  quiet: "ghost",
+} as const;
 
 export const ActionButton = forwardRef<HTMLButtonElement, ActionButtonProps>(function ActionButton(
   {
@@ -19,19 +27,15 @@ export const ActionButton = forwardRef<HTMLButtonElement, ActionButtonProps>(fun
   },
   ref,
 ) {
-  const classes = [
-    "action-button",
-    `action-button-${variant}`,
-    fullWidth ? "action-button-full" : "",
-    className ?? "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
   return (
-    <button className={classes} ref={ref} {...props}>
+    <Button
+      className={cn(fullWidth ? "w-full" : "w-auto", className)}
+      variant={VARIANT_MAP[variant]}
+      ref={ref}
+      {...props}
+    >
       {icon ? <span className="button-icon" aria-hidden="true">{icon}</span> : null}
       <span>{children}</span>
-    </button>
+    </Button>
   );
 });

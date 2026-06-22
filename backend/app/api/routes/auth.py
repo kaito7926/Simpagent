@@ -28,11 +28,11 @@ def get_now(request: Request) -> datetime:
     return request.app.state.clock()
 
 
-def _set_auth_cookies(response: Response, *, settings: Settings, refresh_token: str, csrf_token: str, max_age: int) -> None:
+def _set_auth_cookies(response: Response, *, settings: Settings, refresh_token: str, csrf_token: str) -> None:
+    # Auth cookies are session-only so closing the browser drops refresh ability.
     response.set_cookie(
         key=REFRESH_COOKIE_NAME,
         value=refresh_token,
-        max_age=max_age,
         path="/",
         secure=settings.cookie_secure,
         httponly=True,
@@ -41,7 +41,6 @@ def _set_auth_cookies(response: Response, *, settings: Settings, refresh_token: 
     response.set_cookie(
         key=CSRF_COOKIE_NAME,
         value=csrf_token,
-        max_age=max_age,
         path="/",
         secure=settings.cookie_secure,
         httponly=False,
@@ -102,7 +101,6 @@ async def login(
         settings=settings,
         refresh_token=outcome.refresh_token,
         csrf_token=outcome.csrf_token,
-        max_age=settings.refresh_idle_ttl_seconds,
     )
     return TokenResponse(access_token=outcome.access_token, expires_in=outcome.expires_in)
 
@@ -135,7 +133,6 @@ async def refresh(
         settings=settings,
         refresh_token=outcome.refresh_token,
         csrf_token=outcome.csrf_token,
-        max_age=settings.refresh_idle_ttl_seconds,
     )
     return TokenResponse(access_token=outcome.access_token, expires_in=outcome.expires_in)
 

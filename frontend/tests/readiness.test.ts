@@ -59,10 +59,10 @@ void test("not ready and disconnected states disable forms", () => {
 });
 
 void test("aggregate labels and bodies stay aligned with UI contract", () => {
-  assert.equal(AGGREGATE_STATE_LABELS.ready, "Sẵn sàng");
+  assert.equal(AGGREGATE_STATE_LABELS.ready, "Ready");
   assert.equal(
     AGGREGATE_STATE_BODIES.degraded,
-    "Tài khoản vẫn hoạt động; một số dịch vụ AI chưa được cấu hình hoặc đang tạm gián đoạn.",
+    "Accounts remain available while some AI services are unconfigured or temporarily unavailable.",
   );
   assert.equal(toAggregateUiState(null), "disconnected");
 });
@@ -98,7 +98,7 @@ void test("readiness details open only when state is not ready or degraded", () 
 });
 
 void test("unknown component labels fail closed", () => {
-  assert.equal(componentStateLabel("future_unknown"), "Không xác định");
+  assert.equal(componentStateLabel("future_unknown"), "Unknown");
 });
 
 void test("demo config is emitted only for development plus enabled seed", () => {

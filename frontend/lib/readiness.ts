@@ -1,38 +1,40 @@
-import type { ReadinessComponentState, ReadinessResponse } from "@/lib/auth-session";
+import type { OAuthProviderId, OAuthProviderState, ReadinessComponentState, ReadinessResponse } from "@/lib/auth-session";
 
 export const AGGREGATE_STATE_LABELS = {
-  loading: "Đang kiểm tra hệ thống",
-  ready: "Sẵn sàng",
-  degraded: "Hoạt động giới hạn",
-  not_ready: "Chưa sẵn sàng",
-  disconnected: "Không thể kết nối",
+  loading: "Checking system",
+  ready: "Ready",
+  degraded: "Limited operation",
+  not_ready: "Not ready",
+  disconnected: "Can't connect",
 } as const;
 
 export const AGGREGATE_STATE_BODIES = {
-  loading: "Vui lòng chờ trong giây lát.",
-  ready: "Đăng ký và đăng nhập đang hoạt động.",
-  degraded: "Tài khoản vẫn hoạt động; một số dịch vụ AI chưa được cấu hình hoặc đang tạm gián đoạn.",
-  not_ready: "Đăng nhập tạm thời không khả dụng. Hãy đợi hệ thống hoàn tất khởi động rồi thử lại.",
-  disconnected: "Không đọc được trạng thái nền tảng. Kiểm tra hệ thống đang chạy rồi thử lại.",
+  loading: "Please wait a moment.",
+  ready: "Registration and sign in are available.",
+  degraded: "Accounts remain available while some AI services are unconfigured or temporarily unavailable.",
+  not_ready: "Sign in is temporarily unavailable. Wait for the local stack to finish starting, then try again.",
+  disconnected: "Can't reach the server. Check that the local stack is running and try again.",
 } as const;
 
 export const COMPONENT_LABELS = {
-  database: "Cơ sở dữ liệu",
-  migrations: "Cấu trúc dữ liệu",
-  llm: "Dịch vụ trò chuyện AI",
-  search: "Tìm kiếm có căn cứ",
-  sandbox: "Nền tảng Python giới hạn",
+  database: "Database",
+  migrations: "Database schema",
+  llm: "AI chat service",
+  search: "Grounded search",
+  sandbox: "Limited Python foundation",
+  oauth_google: "Google sign-in",
+  oauth_github: "GitHub sign-in",
 } as const;
 
 export const COMPONENT_STATE_LABELS: Record<ReadinessComponentState | "unknown_state", string> = {
-  ready: "Sẵn sàng",
-  foundation_ready: "Nền tảng sẵn sàng",
-  unconfigured: "Chưa cấu hình",
-  model_unavailable: "Mô hình không khả dụng",
-  unavailable: "Không khả dụng",
-  out_of_date: "Chưa cập nhật",
-  unknown: "Không xác định",
-  unknown_state: "Không xác định",
+  ready: "Ready",
+  foundation_ready: "Foundation ready",
+  unconfigured: "Unconfigured",
+  model_unavailable: "Model unavailable",
+  unavailable: "Unavailable",
+  out_of_date: "Out of date",
+  unknown: "Unknown",
+  unknown_state: "Unknown",
 };
 
 export type AggregateUiState = keyof typeof AGGREGATE_STATE_LABELS;
@@ -56,6 +58,31 @@ export function toAggregateUiState(readiness: ReadinessResponse | null): Aggrega
 export function formsEnabled(readiness: ReadinessResponse | null): boolean {
   const aggregate = toAggregateUiState(readiness);
   return aggregate === "ready" || aggregate === "degraded";
+}
+
+const OAUTH_LABELS: Record<OAuthProviderId, string> = {
+  google: "Continue with Google",
+  github: "Continue with GitHub",
+};
+
+const OAUTH_UNAVAILABLE_LABELS: Record<OAuthProviderId, string> = {
+  google: "Google sign-in is not configured",
+  github: "GitHub sign-in is not configured",
+};
+
+export function oauthProviderState(
+  readiness: ReadinessResponse | null,
+  provider: OAuthProviderId,
+): OAuthProviderState {
+  const component = provider === "google" ? readiness?.components.oauth_google : readiness?.components.oauth_github;
+  const enabled = component === "ready";
+
+  return {
+    provider,
+    label: OAUTH_LABELS[provider],
+    enabled,
+    unavailableLabel: enabled ? null : OAUTH_UNAVAILABLE_LABELS[provider],
+  };
 }
 
 export function componentStateLabel(state: string): string {

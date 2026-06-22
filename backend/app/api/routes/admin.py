@@ -15,6 +15,9 @@ from app.schemas.admin import (
     AdminUserUpdateRequest,
     AdminUserUpdateResponse,
     AdminUsersPage,
+    GatewayEvidencePage,
+    GuardrailToggleRequest,
+    OrchestrationSettingsResponse,
     SecurityEventsPage,
     ToolExecutionsPage,
 )
@@ -114,6 +117,21 @@ async def list_tool_executions(
         raise _admin_access_error(exc) from exc
 
 
+@router.get("/gateway-evidence", response_model=GatewayEvidencePage)
+async def list_gateway_evidence(
+    request: Request,
+    principal: Annotated[AuthenticatedPrincipal, Depends(resolve_principal)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> GatewayEvidencePage:
+    service = _service(request, session)
+    try:
+        return await service.list_gateway_evidence(principal=principal, limit=limit, offset=offset)
+    except AdminAccessDenied as exc:
+        raise _admin_access_error(exc) from exc
+
+
 @router.get("/metrics", response_model=AdminMetricsResponse)
 async def get_metrics(
     request: Request,
@@ -123,6 +141,39 @@ async def get_metrics(
     service = _service(request, session)
     try:
         return await service.get_metrics(principal=principal)
+    except AdminAccessDenied as exc:
+        raise _admin_access_error(exc) from exc
+
+
+@router.get("/orchestration", response_model=OrchestrationSettingsResponse)
+async def get_orchestration_settings(
+    request: Request,
+    principal: Annotated[AuthenticatedPrincipal, Depends(resolve_principal)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> OrchestrationSettingsResponse:
+    service = _service(request, session)
+    try:
+        return await service.get_orchestration_settings(
+            principal=principal,
+            default_guardrail_enabled=request.app.state.settings.guardrail_safety_enabled_default,
+        )
+    except AdminAccessDenied as exc:
+        raise _admin_access_error(exc) from exc
+
+
+@router.patch("/orchestration/guardrail", response_model=OrchestrationSettingsResponse)
+async def update_guardrail_safety(
+    payload: GuardrailToggleRequest,
+    request: Request,
+    principal: Annotated[AuthenticatedPrincipal, Depends(resolve_principal)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> OrchestrationSettingsResponse:
+    service = _service(request, session)
+    try:
+        return await service.set_guardrail_safety_enabled(
+            principal=principal,
+            enabled=payload.enabled,
+        )
     except AdminAccessDenied as exc:
         raise _admin_access_error(exc) from exc
 

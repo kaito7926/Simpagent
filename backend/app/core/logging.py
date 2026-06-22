@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.config import Settings
+from app.core.tracing import get_trace_context
 
 
 _correlation_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar(
@@ -132,6 +133,11 @@ class JsonFormatter(logging.Formatter):
         correlation_id = getattr(record, "correlation_id", None) or get_correlation_id()
         if correlation_id:
             payload["correlation_id"] = correlation_id
+        trace_id, span_id = get_trace_context()
+        if trace_id:
+            payload["trace_id"] = trace_id
+        if span_id:
+            payload["span_id"] = span_id
 
         extra_fields = {
             key: value

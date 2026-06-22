@@ -2,20 +2,30 @@ import type { ReactNode } from "react";
 
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Geist_Mono } from "next/font/google";
 
 import "./globals.css";
 
 const beVietnamPro = localFont({
   src: "./fonts/BeVietnamPro-Variable.woff2",
-  variable: "--font-be-vietnam-pro",
+  variable: "--font-be-vietnam",
   display: "swap",
+});
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
-  title: "Đăng nhập | SimpAgent",
-  description: "Truy cập an toàn cho tài khoản và phiên SimpAgent.",
+  title: "SimpAgent",
+  description: "Secure AI workspace for protected conversations, grounded search, limited Python, and admin evidence.",
   icons: {
-    icon: "/icon.svg",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
   },
 };
 
@@ -25,8 +35,10 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="vi">
-      <body className={beVietnamPro.variable}>{children}</body>
+    <html lang="en">
+      <body className={`${beVietnamPro.variable} ${geistMono.variable} font-sans antialiased bg-background text-foreground`}>
+        {children}
+      </body>
     </html>
   );
 }

@@ -54,8 +54,29 @@ def session_factory(postgres_engine: AsyncEngine) -> async_sessionmaker[AsyncSes
     return async_sessionmaker(postgres_engine, expire_on_commit=False)
 
 
-@pytest.fixture
-async def clean_database(session_factory: async_sessionmaker[AsyncSession]) -> AsyncIterator[None]:
+@pytest.fixture(autouse=True)
+async def clean_database(
+    request: pytest.FixtureRequest,
+) -> AsyncIterator[None]:
+    # Smoke tests exercise the assembled topology and must not mutate its shared database state.
+    if request.node.get_closest_marker("smoke") is not None:
+        yield
+        return
+
+    db_fixture_names = {
+        "alembic_config",
+        "app",
+        "client",
+        "db_session",
+        "postgres_engine",
+        "session_factory",
+    }
+    if not (db_fixture_names & set(request.fixturenames)):
+        yield
+        return
+
+    session_factory = request.getfixturevalue("session_factory")
+
     table_names = [table.name for table in reversed(Base.metadata.sorted_tables)]
     if table_names:
         truncate_sql = f"TRUNCATE TABLE {', '.join(table_names)} RESTART IDENTITY CASCADE"

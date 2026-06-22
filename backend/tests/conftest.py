@@ -28,6 +28,7 @@ os.environ.setdefault("SIMPAGENT_JWT_PRIVATE_KEY_FILE", str(SECRETS / "test_jwt_
 os.environ.setdefault("SIMPAGENT_JWT_PUBLIC_KEY_FILE", str(SECRETS / "test_jwt_public.pem"))
 os.environ.setdefault("SIMPAGENT_REFRESH_HMAC_KEY_FILE", str(SECRETS / "test_refresh_hmac_key"))
 os.environ.setdefault("SIMPAGENT_CSRF_HMAC_KEY_FILE", str(SECRETS / "test_csrf_hmac_key"))
+os.environ.setdefault("SIMPAGENT_MESSAGE_ENCRYPTION_KEY_FILE", str(SECRETS / "test_message_encryption_key"))
 
 from app.core.config import Settings
 from app.main import create_app
@@ -58,6 +59,11 @@ def settings() -> Settings:
         refresh_hmac_key_file=os.getenv("SIMPAGENT_REFRESH_HMAC_KEY_FILE", str(SECRETS / "test_refresh_hmac_key")),
         csrf_hmac_key=os.getenv("SIMPAGENT_CSRF_HMAC_KEY"),
         csrf_hmac_key_file=os.getenv("SIMPAGENT_CSRF_HMAC_KEY_FILE", str(SECRETS / "test_csrf_hmac_key")),
+        message_encryption_key=os.getenv("SIMPAGENT_MESSAGE_ENCRYPTION_KEY"),
+        message_encryption_key_file=os.getenv(
+            "SIMPAGENT_MESSAGE_ENCRYPTION_KEY_FILE",
+            str(SECRETS / "test_message_encryption_key"),
+        ),
         cookie_secure=os.getenv("SIMPAGENT_COOKIE_SECURE", "true").lower() == "true",
         cookie_samesite=os.getenv("SIMPAGENT_COOKIE_SAMESITE", "strict"),
         access_token_ttl_seconds=int(os.getenv("SIMPAGENT_ACCESS_TOKEN_TTL_SECONDS", "600")),
@@ -70,6 +76,18 @@ def settings() -> Settings:
         google_api_key=os.getenv("SIMPAGENT_GOOGLE_API_KEY"),
         google_api_key_file=os.getenv("SIMPAGENT_GOOGLE_API_KEY_FILE"),
         provider_check_timeout_seconds=int(os.getenv("SIMPAGENT_PROVIDER_CHECK_TIMEOUT_SECONDS", "2")),
+        python_supervisor_base_url=os.getenv("SIMPAGENT_PYTHON_SUPERVISOR_BASE_URL", "http://sandbox:8080"),
+        python_supervisor_request_timeout_seconds=int(
+            os.getenv("SIMPAGENT_PYTHON_SUPERVISOR_REQUEST_TIMEOUT_SECONDS", "30")
+        ),
+        python_capability_secret=os.getenv("SIMPAGENT_PYTHON_CAPABILITY_SECRET", "sandbox-dev-secret"),
+        python_capability_secret_file=os.getenv("SIMPAGENT_PYTHON_CAPABILITY_SECRET_FILE"),
+        python_capability_ttl_seconds=int(os.getenv("SIMPAGENT_PYTHON_CAPABILITY_TTL_SECONDS", "60")),
+        python_session_ttl_seconds=int(os.getenv("SIMPAGENT_PYTHON_SESSION_TTL_SECONDS", "900")),
+        python_artifact_storage_dir=os.getenv(
+            "SIMPAGENT_PYTHON_ARTIFACT_STORAGE_DIR",
+            "/tmp/simpagent-python-artifacts",
+        ),
     )
 
 

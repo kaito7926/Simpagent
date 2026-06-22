@@ -22,44 +22,33 @@ export function CurrentUserCard({
   logoutRetryVisible,
 }: CurrentUserCardProps) {
   return (
-    <div className="identity-card">
-      <div className="identity-header-row">
-        <div>
-          <StatusBadge tone="success">{user.role === "admin" ? "Quản trị viên" : "Người dùng"}</StatusBadge>
-        </div>
+    <div className="space-y-5 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <StatusBadge tone="success">{user.role === "admin" ? "Administrator" : "Standard user"}</StatusBadge>
         <StatusBadge tone={user.is_active ? "success" : "danger"}>
-          {user.is_active ? "Đang hoạt động" : "Không hoạt động"}
+          {user.is_active ? "Active" : "Inactive"}
         </StatusBadge>
       </div>
 
-      <dl className="identity-grid">
-        <div>
-          <dt>Email</dt>
-          <dd>{user.email}</dd>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1">
+          <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">Email</dt>
+          <dd className="text-sm leading-6 text-zinc-900">{user.email}</dd>
         </div>
-        <div>
-          <dt>Mã tài khoản</dt>
-          <dd>{user.id}</dd>
+        <div className="space-y-1">
+          <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">Account ID</dt>
+          <dd className="text-sm leading-6 text-zinc-900">{user.id}</dd>
         </div>
-      </dl>
+      </div>
 
-      <section className="scope-section" aria-labelledby="scope-section-heading">
-        <h3 className="label-heading" id="scope-section-heading">
-          Quyền được cấp
+      <section className="space-y-3" aria-labelledby="scope-section-heading">
+        <h3 className="text-sm font-semibold text-zinc-900" id="scope-section-heading">
+          Granted scopes
         </h3>
         <ScopeList scopes={user.scopes} labels={scopeLabels} />
       </section>
 
-      <section className="phase-note" aria-labelledby="phase-note-heading">
-        <h3 className="label-heading" id="phase-note-heading">
-          Nền tảng tài khoản đã sẵn sàng
-        </h3>
-        <p className="body-copy max-copy">
-          Giao diện trò chuyện và các công cụ tác tử sẽ được bổ sung ở giai đoạn sau.
-        </p>
-      </section>
-
-      <div className="logout-row">
+      <div className="flex justify-end">
         <ActionButton
           type="button"
           variant={logoutRetryVisible ? "secondary" : "quiet"}
