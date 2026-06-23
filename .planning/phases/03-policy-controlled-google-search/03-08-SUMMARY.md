@@ -72,6 +72,7 @@ completed: 2026-06-23
 1. **Task 1: Add RED assembled smoke expectations for the dual-provider matrix** - `5028140` (test)
 2. **Task 2: Update smoke suites and validation commands for provider-matrix closeout** - `58d7ed4` (feat)
 3. **Regression gate fix: Preserve injected search runtime in legacy coordinator** - `3a0a55d` (fix)
+4. **Verification gap fix: Preserve unavailable provider metadata in `/turns`** - `4f8df9b` (fix)
 
 ## Files Created/Modified
 
@@ -79,7 +80,7 @@ completed: 2026-06-23
 - `backend/tests/smoke/test_admin_flow.py` - Updates admin orchestration smoke to current guardrail/provider contract and covers provider override set/clear.
 - `backend/tests/smoke/_helpers.py` - Adds provider-aware search assertions and bounded login retry for gateway rate limits.
 - `backend/app/agent/coordinator.py` - Preserves already-ready injected search workers in the legacy chat coordinator path when no admin override is active.
-- `backend/app/services/chat_turns.py` - Preserves already-ready injected search workers when no admin override is active.
+- `backend/app/services/chat_turns.py` - Preserves already-ready injected search workers when no admin override is active and keeps Firecrawl-selected unavailable turns provider-honest.
 - `compose.yaml` - Passes Firecrawl configuration to the assembled backend and production profile.
 - `compose.test.yaml` - Passes Firecrawl configuration to backend-test.
 - `.env.example` - Documents Firecrawl key/base variables.
@@ -97,6 +98,8 @@ completed: 2026-06-23
 - `rg -n "Gemini|Firecrawl|test_search_retention_allowlist|test_google_search_flow|test_admin_flow|websearch_provider" ...` -> validation and smoke files reference the same provider matrix and SRCH-05 retention suite.
 - Regression gate after `3a0a55d`: `docker compose -f compose.test.yaml run --rm --build backend-test pytest -q tests/integration/auth/test_session_flow.py tests/integration/chat tests/security/test_chat_authorization.py tests/security/test_chat_idempotency.py tests/security/test_chat_provider_failure.py tests/security/test_chat_rendering_contract.py tests/integration/python tests/security/test_python_backend_boundary.py tests/security/test_python_cleanup.py tests/security/test_python_network_denial.py tests/security/test_python_runtime_profile.py tests/security/test_python_side_effects.py -x` -> `57 passed`.
 - Frontend regression gate after `3a0a55d`: `npm --prefix frontend test -- tests/auth-session.test.ts tests/readiness.test.ts tests/chat-workspace.test.ts tests/chat-markdown.test.ts tests/chat-session-routing.test.ts tests/python-result-card.test.tsx tests/search-rendering.test.tsx tests/admin-evidence.test.tsx` -> `49 passed`; `npm --prefix frontend run typecheck` -> passed.
+- Verification gap fix after `4f8df9b`: `docker compose -f compose.test.yaml run --rm --build backend-test pytest -q tests/integration/search/test_search_failure_states.py::test_firecrawl_without_key_returns_search_unavailable_without_gemini_fallback` -> `1 passed`.
+- Phase 03 search/security gate after `4f8df9b`: `docker compose -f compose.test.yaml run --rm --build backend-test pytest -q tests/integration/search tests/security/test_search_capability_token.py tests/security/test_search_guardrails.py tests/security/test_search_prompt_injection.py tests/security/test_search_secret_leakage.py tests/security/test_search_retention_allowlist.py -x` -> `44 passed`.
 
 ## Decisions Made
 
@@ -148,9 +151,17 @@ completed: 2026-06-23
 - **Verification:** Focused forced-search chat test passed after rebuild; full backend regression subset passed with 57 tests.
 - **Committed in:** `3a0a55d`
 
+**6. [Rule 1 - Bug] Preserved provider metadata for unavailable `/turns` searches**
+- **Found during:** Phase verifier closeout
+- **Issue:** Firecrawl-selected but unconfigured `/api/conversations/{conversation_id}/turns` returned `search_unavailable` with provider `gemini`.
+- **Fix:** Preserved the route-supplied effective provider/status in `ChatTurnsService._refresh_search_runtime()` when no admin override is active, including non-ready selected providers.
+- **Files modified:** `backend/app/services/chat_turns.py`
+- **Verification:** Focused Firecrawl-unconfigured test passed; Phase 03 search/security suite passed with 44 tests.
+- **Committed in:** `4f8df9b`
+
 ---
 
-**Total deviations:** 5 auto-fixed (3 bugs, 1 missing critical functionality, 1 blocking issue)
+**Total deviations:** 6 auto-fixed (4 bugs, 1 missing critical functionality, 1 blocking issue)
 **Impact on plan:** All fixes were required to make the provider-matrix smoke and validation evidence executable against the assembled topology. No unrelated user-facing feature scope was added.
 
 ## Issues Encountered
@@ -183,6 +194,7 @@ Phase 03 enhancement pack is ready for verification closeout. The historical Pha
 - Found task commit `5028140`.
 - Found task commit `58d7ed4`.
 - Found regression fix commit `3a0a55d`.
+- Found verification gap fix commit `4f8df9b`.
 
 ---
 *Phase: 03-policy-controlled-google-search*
