@@ -315,8 +315,8 @@ class FirecrawlSearchWorkerService:
         return await client.search(query=prompt)
 
 
-def build_search_worker_service(settings: Settings):
-    provider = resolve_search_provider(settings)
+def build_search_worker_service(settings: Settings, *, runtime_override: str | None = None):
+    provider = resolve_search_provider(settings, runtime_override=runtime_override)
     if provider == "firecrawl":
         return FirecrawlSearchWorkerService(settings=settings)
     if provider == "gemini":

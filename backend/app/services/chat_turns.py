@@ -9,11 +9,13 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.orchestration import CoordinatorAgent, SafetyDecision
+from app.ai.search_worker.service import build_search_worker_service
 from app.ai.schemas import ChatTurn
 from app.ai.search_worker.grounding import sanitize_source_uri
 from app.authorization.policy import PolicyResult, evaluate_required_scopes
 from app.authorization.principal import AuthenticatedPrincipal
 from app.core.config import Settings
+from app.core.provider_status import resolve_search_provider, search_status as resolve_search_status
 from app.db.repositories.agent_settings import AgentRuntimeSettingsRepository
 from app.db.repositories.conversations import ConversationsRepository
 from app.models.domain import (
@@ -143,14 +145,17 @@ class ChatTurnsService:
         search_provider: str,
         search_status: str,
         search_worker: SearchWorker | None,
+        search_runtime_worker_factory=None,
     ) -> None:
         self.session = session
         self.settings = settings
         self.now = now
         self.correlation_id = correlation_id
         self.search_provider = search_provider if search_provider in {"gemini", "firecrawl"} else "gemini"
+        self._startup_search_provider = self.search_provider
         self.search_status = search_status
         self.search_worker = search_worker
+        self.search_runtime_worker_factory = search_runtime_worker_factory
         self.conversations = ConversationsRepository(session)
         self.agent_settings = AgentRuntimeSettingsRepository(session)
 
@@ -425,6 +430,7 @@ class ChatTurnsService:
         prompt: str,
         retry_target: RetryTarget | None,
     ) -> SearchTurnOutcome:
+        await self._refresh_search_runtime()
         started_at = perf_counter()
         search_policy = evaluate_required_scopes(
             principal_scopes=set(principal.scopes),
@@ -529,6 +535,30 @@ class ChatTurnsService:
             tool_status=TOOL_STATUS_BY_STATE[normalized.state],
             output_summary=normalized.output_summary or normalized.state,
             duration_ms=duration_ms,
+        )
+
+    async def _refresh_search_runtime(self) -> None:
+        provider_override = await self.agent_settings.get_websearch_provider_override()
+        resolved_provider = resolve_search_provider(self.settings, runtime_override=provider_override)
+        if resolved_provider is None:
+            self.search_status = "invalid_provider"
+            self.search_worker = None
+            return
+
+        self.search_provider = resolved_provider
+        self.search_status = resolve_search_status(self.settings, runtime_override=provider_override)
+        if self.search_status not in SEARCH_READY_STATES:
+            self.search_worker = None
+            return
+
+        if callable(self.search_runtime_worker_factory):
+            self.search_worker = self.search_runtime_worker_factory(resolved_provider, self.settings)
+            return
+        if resolved_provider == self._startup_search_provider and self.search_worker is not None:
+            return
+        self.search_worker = build_search_worker_service(
+            self.settings,
+            runtime_override=resolved_provider,
         )
 
     async def _guardrail_decision(self, *, prompt: str) -> SafetyDecision:
