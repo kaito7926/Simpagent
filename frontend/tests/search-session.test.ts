@@ -8,6 +8,9 @@ import {
   type ChatResponseEnvelope,
 } from "@/lib/chat-session";
 
+type WebsearchProvider = "gemini" | "firecrawl";
+type ProviderAwareEnvelope = ChatResponseEnvelope & { provider: WebsearchProvider | null };
+
 type Deferred<T> = {
   promise: Promise<T>;
   resolve: (value: T) => void;
@@ -25,9 +28,10 @@ function createDeferred<T>(): Deferred<T> {
   return { promise, resolve, reject };
 }
 
-function groundedEnvelope(): ChatResponseEnvelope {
+function groundedEnvelope(provider: WebsearchProvider = "gemini"): ProviderAwareEnvelope {
   return {
     request_mode: "search",
+    provider,
     response_state: "grounded",
     turn_id: "assistant-1",
     answer_markdown: "The current situation has been verified.",
@@ -49,15 +53,17 @@ function groundedEnvelope(): ChatResponseEnvelope {
         domain: "docs.example.com",
       },
     ],
-    suggestions: [
-      { id: "suggestion-1", label: "Search for today’s latest update", query: "today latest update" },
-    ],
+    suggestions:
+      provider === "gemini"
+        ? [{ id: "suggestion-1", label: "Search for today’s latest update", query: "today latest update" }]
+        : [],
   };
 }
 
-function timeoutEnvelope(turnId = "assistant-timeout"): ChatResponseEnvelope {
+function timeoutEnvelope(turnId = "assistant-timeout"): ProviderAwareEnvelope {
   return {
     request_mode: "search",
+    provider: "gemini",
     response_state: "timeout",
     turn_id: turnId,
     answer_markdown: null,
@@ -75,12 +81,12 @@ void test("switching mode preserves draft and updates mode-specific submit label
   controller.setMode("search");
   assert.equal(controller.snapshot.mode, "search");
   assert.equal(controller.snapshot.draft, "Draft question");
-  assert.equal(controller.snapshot.submitLabel, "Search with Google");
+  assert.equal(controller.snapshot.submitLabel, "Tìm bằng Google");
 
   controller.setMode("direct");
   assert.equal(controller.snapshot.mode, "direct");
   assert.equal(controller.snapshot.draft, "Draft question");
-  assert.equal(controller.snapshot.submitLabel, "Send message");
+  assert.equal(controller.snapshot.submitLabel, "Gửi câu hỏi");
 });
 
 void test("pending requests lock mode switching until the request settles", async () => {
@@ -99,20 +105,21 @@ void test("pending requests lock mode switching until the request settles", asyn
   const submitPromise = controller.submitTurn();
 
   assert.equal(controller.snapshot.isPending, true);
-  assert.equal(controller.snapshot.submitLabel, "Sending...");
+  assert.equal(controller.snapshot.submitLabel, "Đang gửi...");
 
   controller.setMode("search");
   assert.equal(controller.snapshot.mode, "direct");
 
   deferred.resolve({
     request_mode: "direct",
+    provider: null,
     response_state: "direct",
     turn_id: "assistant-direct",
     answer_markdown: "This is a normal direct answer.",
     citations: [],
     sources: [],
     suggestions: [],
-  });
+  } satisfies ProviderAwareEnvelope);
 
   await submitPromise;
   assert.deepEqual(requestedModes, ["direct"]);
@@ -137,7 +144,7 @@ void test("suggestion clicks prefill composer, switch to search mode, and never 
   assert.equal(controller.snapshot.turns.length, 0);
   assert.equal(
     controller.snapshot.announcement,
-    'The suggested search has been added to the composer. Click "Search with Google" to continue.',
+    'Đã điền gợi ý tìm kiếm vào ô soạn. Nhấn "Tìm bằng Google" để tiếp tục.',
   );
   assert.deepEqual(submitted, []);
 });
@@ -185,13 +192,14 @@ void test("response mapping keeps grounded, missing-grounding, denied, unavailab
     const controller = new ChatSessionController({
       sendTurn: async () => ({
         request_mode: "search",
+        provider: state === "grounded" ? "firecrawl" : "gemini",
         response_state: state,
         turn_id: `assistant-${state}`,
         answer_markdown: state === "denied" ? null : "Response content",
         citations: [],
         sources: [],
         suggestions: [],
-      }),
+      }) satisfies ProviderAwareEnvelope,
     });
 
     controller.setMode("search");
@@ -201,5 +209,28 @@ void test("response mapping keeps grounded, missing-grounding, denied, unavailab
     const assistantTurn = controller.snapshot.turns.at(-1);
     assert.equal(assistantTurn?.role, "assistant");
     assert.equal(assistantTurn?.state, state);
+    if (state === "grounded") {
+      assert.equal((assistantTurn as { provider?: WebsearchProvider } | undefined)?.provider, "firecrawl");
+    }
   }
+});
+
+void test("provider metadata is preserved so Firecrawl turns cannot inherit Google-only UI state", async () => {
+  const controller = new ChatSessionController({
+    sendTurn: async () => groundedEnvelope("firecrawl"),
+  });
+
+  controller.setMode("search");
+  controller.setDraft("Latest supplier security advisory");
+  await controller.submitTurn();
+
+  const assistantTurn = controller.snapshot.turns.at(-1);
+  assert.equal(assistantTurn?.role, "assistant");
+  assert.equal(assistantTurn?.state, "grounded");
+  assert.equal((assistantTurn as { provider?: WebsearchProvider } | undefined)?.provider, "firecrawl");
+  assert.deepEqual(
+    assistantTurn?.suggestions,
+    [],
+    "Firecrawl turns must not carry Google Search Suggestions when the provider does not return trusted suggestions.",
+  );
 });
