@@ -5,7 +5,7 @@ status: validated
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-06-11
-updated: 2026-06-13
+updated: 2026-06-23
 ---
 
 # Phase 03 - Validation Strategy
@@ -22,14 +22,14 @@ updated: 2026-06-13
 | **Frontend framework** | `node:test` via `tsx --test` |
 | **Backend config file** | `backend/pyproject.toml` |
 | **Frontend config file** | `frontend/package.json` |
-| **Backend quick run command** | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search -x` |
+| **Backend quick run command** | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search/test_search_capability_check.py tests/integration/search/test_search_persistence.py tests/security/test_search_retention_allowlist.py -x` |
 | **Backend security quick command** | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/security/test_search_guardrails.py -x` |
 | **Frontend quick run command** | `cd frontend && npm test -- tests/search-session.test.ts tests/search-rendering.test.tsx` |
-| **Full suite command** | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search tests/security/test_search_guardrails.py tests/security/test_search_prompt_injection.py && cd frontend && npm test -- tests/search-session.test.ts tests/search-rendering.test.tsx` |
-| **Compose smoke command** | `docker compose up --build --wait && docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/smoke/test_google_search_flow.py` |
+| **Full suite command** | `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search/test_search_capability_check.py tests/integration/search/test_search_persistence.py tests/security/test_search_retention_allowlist.py tests/integration/admin/test_admin_write.py tests/smoke/test_google_search_flow.py tests/smoke/test_admin_flow.py -x && cd frontend && npm test -- tests/search-session.test.ts tests/search-rendering.test.tsx tests/admin-evidence.test.tsx && npm run typecheck` |
+| **Compose smoke command** | `docker compose up --build --wait && docker compose run --rm -e SIMPAGENT_RUN_SMOKE=true backend python -m pytest -q tests/smoke/test_google_search_flow.py tests/smoke/test_admin_flow.py -x` |
 | **Estimated quick runtime** | Under 45 seconds after search-specific fixtures and tests exist |
 
-Search-specific backend tests should continue to run against PostgreSQL 18 and real application-created sessions. Frontend tests should prefer controller/state tests and pure rendering assertions before introducing heavier browser tooling.
+Search-specific backend tests should continue to run against PostgreSQL 18 and real application-created sessions. Frontend tests should prefer controller/state tests and pure rendering assertions before introducing heavier browser tooling. The closeout provider matrix covers Gemini default search, Firecrawl admin override search, Firecrawl-selected-but-unconfigured `search_unavailable`, and admin override clear-to-default behavior. Firecrawl success smoke requires `FIRECRAWL_API_KEY` or `SIMPAGENT_FIRECRAWL_API_KEY_FILE`; without it, the assembled smoke must prove the D-11 fail-closed unconfigured branch.
 
 ---
 
@@ -38,7 +38,7 @@ Search-specific backend tests should continue to run against PostgreSQL 18 and r
 - **After every task commit:** Run the narrowest relevant backend or frontend search test, targeting under 45 seconds.
 - **After every plan wave:** Run the backend search integration suite plus the frontend search-session/rendering suite.
 - **After worker, policy, or grounding changes:** Also run prompt-injection, missing-grounding, unavailable, timeout, and no-bearer-forwarding tests.
-- **Before `$gsd-verify-work`:** Start a fresh Compose topology, run the full backend search/security suite, the frontend search suite, and the end-to-end grounded/degraded smoke path.
+- **Before `$gsd-verify-work`:** Start a fresh Compose topology, run the full backend search/security suite, the frontend search/admin suite, the SRCH-05 retention allowlist suite, and the end-to-end Gemini/Firecrawl grounded/degraded smoke matrix.
 - **Max feedback latency:** 45 seconds for task-level checks; full topology checks run at wave and phase gates.
 
 ---
@@ -79,6 +79,7 @@ Task IDs and plan assignments are finalized by the planner. Every requirement be
 6. **Suggestion safety:** Search Suggestions prefill the composer and never auto-submit.
 7. **One-tool-per-turn:** a single user turn cannot trigger both direct chat and search or more than one search attempt.
 8. **Retention allowlist:** persisted message/tool metadata excludes disallowed raw provider or click-tracking fields.
+9. **Dual-provider closeout:** assembled smoke proves Gemini default behavior, Firecrawl override behavior, Firecrawl-unconfigured fail-closed behavior, and override clear-to-default behavior through public search/admin entry points.
 
 ---
 
@@ -104,6 +105,22 @@ Wave 0 is complete. Every path below now exists in the repository and is linked 
 | `frontend/tests/search-session.test.ts` | 03-03 | Client mode switch, retry, and suggestion-prefill controller behavior |
 | `frontend/tests/search-rendering.test.tsx` | 03-03 | Grounded/degraded rendering contract |
 | `backend/tests/smoke/test_google_search_flow.py` | 03-04 | End-to-end grounded/degraded search flow through Compose topology |
+| `backend/tests/smoke/test_admin_flow.py` | 05-04 / 03-08 | End-to-end admin evidence, provider override set, denied, clear, and runtime search evidence through Compose topology |
+
+---
+
+## Provider Matrix Closeout 2026-06-23
+
+Final Phase 03 enhancement validation must keep these commands synchronized:
+
+1. **Backend provider matrix and SRCH-05 quick proof**
+   - `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search/test_search_capability_check.py tests/integration/search/test_search_persistence.py tests/security/test_search_retention_allowlist.py -x`
+2. **Full enhancement regression**
+   - `docker compose -f compose.test.yaml run --rm backend-test pytest -q tests/integration/search/test_search_capability_check.py tests/integration/search/test_search_persistence.py tests/security/test_search_retention_allowlist.py tests/integration/admin/test_admin_write.py tests/smoke/test_google_search_flow.py tests/smoke/test_admin_flow.py -x && cd frontend && npm test -- tests/search-session.test.ts tests/search-rendering.test.tsx tests/admin-evidence.test.tsx && npm run typecheck`
+3. **Assembled topology smoke**
+   - `docker compose up --build --wait && docker compose run --rm -e SIMPAGENT_RUN_SMOKE=true backend python -m pytest -q tests/smoke/test_google_search_flow.py tests/smoke/test_admin_flow.py -x`
+
+The smoke files and validation commands intentionally point at the same matrix: Gemini default search, Firecrawl override search, Firecrawl-selected-but-unconfigured `search_unavailable`, admin provider override set, denied, clear, and correlated evidence. `backend/tests/security/test_search_retention_allowlist.py` remains mandatory in quick and full commands so SRCH-05 retention/no-click-tracking coverage cannot disappear from closeout evidence.
 
 ---
 

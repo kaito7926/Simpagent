@@ -52,11 +52,20 @@ async def login(
     if correlation_id is not None:
         headers["X-Correlation-Id"] = correlation_id
 
-    response = await client.post(
-        "/api/auth/login",
-        headers=headers,
-        json={"email": email, "password": password},
-    )
+    response: httpx.Response | None = None
+    for attempt in range(5):
+        response = await client.post(
+            "/api/auth/login",
+            headers=headers,
+            json={"email": email, "password": password},
+        )
+        if response.status_code != 429:
+            break
+        retry_after = response.headers.get("retry-after")
+        delay = float(retry_after) if retry_after and retry_after.isdigit() else 1.0 + attempt
+        await asyncio.sleep(min(delay, 5.0))
+
+    assert response is not None
     assert response.status_code == 200
     return str(response.json()["access_token"])
 
@@ -151,15 +160,26 @@ async def submit_search_turn(
     return payload
 
 
-def assert_search_contract(payload: dict[str, Any]) -> None:
+def assert_search_contract(
+    payload: dict[str, Any],
+    *,
+    expected_provider: str | None = None,
+    expected_state: str | None = None,
+) -> None:
     search = payload["assistant_message"]["search"]
-    if EXPECTED_SEARCH_STATE is not None:
-        assert search["state"] == EXPECTED_SEARCH_STATE
+    expected = expected_state or EXPECTED_SEARCH_STATE
+    if expected is not None:
+        assert search["state"] == expected
     else:
         assert search["state"] in VALID_SEARCH_STATES
+    if expected_provider is not None:
+        assert search["provider"] == expected_provider
     assert payload["assistant_message"]["id"]
     if search["state"] == "grounded":
-        assert search["google_grounded"] is True
+        if search["provider"] == "gemini":
+            assert search["google_grounded"] is True
+        else:
+            assert search["google_grounded"] is False
         assert search["sources"]
         assert search["citations"]
     else:

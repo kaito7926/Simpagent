@@ -93,48 +93,60 @@ async def test_public_stack_search_flow_covers_gemini_firecrawl_and_unconfigured
         default_provider = clear_response.json()["websearch_provider_effective"]
         assert default_provider == "gemini"
 
-        gemini_payload = await submit_search_turn(
-            client,
-            access_token=user_token,
-            conversation_id=conversation_id,
-            correlation_id=unique_correlation_id("corr-smk-gemini-default"),
-            prompt="current software supply chain security news",
-        )
-        assert_search_contract(gemini_payload)
-        assert gemini_payload["assistant_message"]["search"]["provider"] == "gemini"
+        try:
+            gemini_payload = await submit_search_turn(
+                client,
+                access_token=user_token,
+                conversation_id=conversation_id,
+                correlation_id=unique_correlation_id("corr-smk-gemini-default"),
+                prompt="current software supply chain security news",
+            )
+            assert_search_contract(gemini_payload, expected_provider="gemini")
 
-        firecrawl_response = await client.patch(
-            "/api/admin/orchestration/websearch-provider",
-            headers={
-                "Authorization": f"Bearer {admin_token}",
-                "X-Correlation-Id": unique_correlation_id("corr-smk-provider-firecrawl"),
-            },
-            json={"provider": "firecrawl"},
-        )
-        assert firecrawl_response.status_code == 200
-        assert firecrawl_response.json()["websearch_provider_effective"] == "firecrawl"
+            firecrawl_response = await client.patch(
+                "/api/admin/orchestration/websearch-provider",
+                headers={
+                    "Authorization": f"Bearer {admin_token}",
+                    "X-Correlation-Id": unique_correlation_id("corr-smk-provider-firecrawl"),
+                },
+                json={"provider": "firecrawl"},
+            )
+            assert firecrawl_response.status_code == 200
+            firecrawl_admin = firecrawl_response.json()
+            assert firecrawl_admin["websearch_provider_effective"] == "firecrawl"
+            assert firecrawl_admin["websearch_provider_readiness"] in {"ready", "unconfigured"}
 
-        firecrawl_payload = await submit_search_turn(
-            client,
-            access_token=user_token,
-            conversation_id=conversation_id,
-            correlation_id=unique_correlation_id("corr-smk-firecrawl-override"),
-            prompt="current web application security guidance",
-        )
-        assert_search_contract(firecrawl_payload)
-        firecrawl_search = firecrawl_payload["assistant_message"]["search"]
-        assert firecrawl_search["provider"] == "firecrawl"
-        assert firecrawl_search["state"] == "grounded"
-        assert firecrawl_search["google_grounded"] is False
-
-        clear_back_response = await client.patch(
-            "/api/admin/orchestration/websearch-provider",
-            headers={
-                "Authorization": f"Bearer {admin_token}",
-                "X-Correlation-Id": unique_correlation_id("corr-smk-provider-clear-end"),
-            },
-            json={"provider": None},
-        )
-        assert clear_back_response.status_code == 200
-        assert clear_back_response.json()["websearch_provider_override"] is None
-        assert clear_back_response.json()["websearch_provider_effective"] == "gemini"
+            firecrawl_payload = await submit_search_turn(
+                client,
+                access_token=user_token,
+                conversation_id=conversation_id,
+                correlation_id=unique_correlation_id("corr-smk-firecrawl-override"),
+                prompt="current web application security guidance",
+            )
+            expected_firecrawl_state = (
+                "grounded"
+                if firecrawl_admin["websearch_provider_readiness"] == "ready"
+                else "search_unavailable"
+            )
+            assert_search_contract(
+                firecrawl_payload,
+                expected_provider="firecrawl",
+                expected_state=expected_firecrawl_state,
+            )
+            firecrawl_search = firecrawl_payload["assistant_message"]["search"]
+            assert firecrawl_search["google_grounded"] is False
+            if expected_firecrawl_state == "search_unavailable":
+                assert firecrawl_search["sources"] == []
+                assert firecrawl_search["citations"] == []
+        finally:
+            clear_back_response = await client.patch(
+                "/api/admin/orchestration/websearch-provider",
+                headers={
+                    "Authorization": f"Bearer {admin_token}",
+                    "X-Correlation-Id": unique_correlation_id("corr-smk-provider-clear-end"),
+                },
+                json={"provider": None},
+            )
+            assert clear_back_response.status_code == 200
+            assert clear_back_response.json()["websearch_provider_override"] is None
+            assert clear_back_response.json()["websearch_provider_effective"] == "gemini"
