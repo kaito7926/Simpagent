@@ -96,8 +96,15 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   4. Model output can propose but cannot authorize a tool; execution rechecks scope and policy and uses a short-lived audience-bound capability instead of the user's bearer token.
   5. Search and Python remain separate typed credential boundaries, every tool decision has a persisted correlated state, and untrusted prompts or search content cannot change policy, expose secrets, fetch internal URLs, or trigger arbitrary actions.
 
-**Plans:** 4/4 plan artifacts present
+**Plans:** 5/8 plans executed
 **Historical note:** `03-VERIFICATION.md` is still the stale gaps-found snapshot, so Phase 3 remains visibly out of sync even though later phases and Phase 6 verify shipped search behavior.
+**Planned enhancement follow-up:**
+
+- [x] 03-05-PLAN.md - Add the fail-closed Gemini/Firecrawl backend provider runtime and explicit Firecrawl SRCH-05 retention/no-click-tracking coverage.
+- [ ] 03-06-PLAN.md - Persist the admin runtime provider override and expose the orchestration API contract for default, override, effective provider, and clear flows.
+- [ ] 03-07-PLAN.md - Generalize chat and admin frontend behavior to provider-honest Gemini/Firecrawl UX while preserving Vietnamese copy expectations.
+- [ ] 03-08-PLAN.md - Close the enhancement pack with dual-provider smoke coverage and validation updates.
+
 **UI hint:** yes
 
 ### Phase 4: Isolated Python Execution
@@ -185,6 +192,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 **Wave 3** *(blocked on Wave 1-2 completion where referenced)*
 
 - [x] 06-05-PLAN.md - Deliver Vietnamese testing/runbook/limitations docs and the final Phase 6 verification closeout.
+
 **Verification note:** `06-VERIFICATION.md` passed on 2026-06-19 after a clean matrix rerun and a passing 6-scenario attack suite.
 **UI hint:** no
 
@@ -199,7 +207,7 @@ Note: PR #2 ships the Phase 4 Python slice before Phase 3 planning metadata was 
 |-------|----------------|--------|-----------|
 | 1. Secure Platform and Account Access | 8/8 | Complete | 2026-06-10 |
 | 2. Private Direct Chat | 7/7 | Complete | 2026-06-12 |
-| 3. Policy-Controlled Google Search | 4/4 | Historical debt visible | - |
+| 3. Policy-Controlled Google Search | 5/8 | In Progress|  |
 | 4. Isolated Python Execution | 5/5 | Shipped (PR #2) | 2026-06-13 |
 | 5. Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 8/8 | Complete | 2026-06-17 |
 | 6. Adversarial Verification and Vietnamese Delivery | 5/5 | Complete | 2026-06-19 |

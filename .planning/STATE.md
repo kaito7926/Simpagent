@@ -2,16 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 06 verified and delivered
-stopped_at: Completed Phase 06 closeout artifacts
-last_updated: "2026-06-20T08:17:41Z"
-last_activity: 2026-06-20
+status: Ready to execute
+stopped_at: Completed 03-policy-controlled-google-search-05-PLAN.md
+last_updated: "2026-06-23T06:38:52.672Z"
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 37
-  completed_plans: 37
-  percent: 100
+  total_plans: 41
+  completed_plans: 38
+  percent: 83
 ---
 
 # Project State
@@ -21,11 +20,12 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-08)
 
 **Core value:** Users can safely authenticate and use an AI chatbot with controlled agent tools without crossing tenant, role, scope, network, or host-execution boundaries.
-**Current focus:** Phase 06 closeout complete; keep the historical Phase 03 planning debt visible and truthful.
+**Current focus:** Phase 03 — policy-controlled-google-search
 
 ## Current Position
 
-Phase: 06 (adversarial-verification-and-vietnamese-delivery) - VERIFIED
+Phase: 03 (policy-controlled-google-search) — EXECUTING
+Plan: 2 of 8
 Plan pack: 5/5 plans completed, summarized, and closed with final verification/UAT
 Known shipped slice: Phase 04 (isolated Python execution) - PR #2 remains the latest code-shipping milestone; Phase 06 is proof/delivery closeout work
 Latest verification: `06-VERIFICATION.md` passed on 2026-06-19 with 5/5 must-haves verified and 4/4 human checks passed
@@ -56,6 +56,8 @@ Progress: Phase 06 verified and delivered; historical Phase 03 planning/verifica
 - Most recent completed plans: 06-01, 06-02, 06-03, 06-04, 06-05
 - Trend: Stable; Phase 06 verification and delivery passed, with only the historical Phase 03 artifact debt still called out
 
+| Phase 03-policy-controlled-google-search P05 | 14 min | 3 tasks | 20 files |
+
 ## Accumulated Context
 
 ### Decisions
@@ -71,6 +73,8 @@ Recent decisions affecting current work:
 - Phase 06 uses dedicated `security-tests/` attack assets and `docs/` Vietnamese delivery docs instead of treating scanner output or `.planning` alone as the evaluator deliverable.
 - Phase 06 verified the shipped search behavior without erasing the historical Phase 03 planning/verification debt.
 - Public gateway routing now includes `undo-delete` so adversarial verification hits the real backend authorization path instead of a frontend 404.
+- [Phase ?]: Keep Firecrawl behind existing google_search turn mode — Provider identity is metadata behind tool:websearch, not a new client-visible tool surface.
+- [Phase ?]: Use HTTPX directly for Firecrawl Cloud — The plan required no new SDK; existing HTTPX keeps the provider boundary small and auditable.
 
 ### Pending Todos
 
@@ -99,6 +103,6 @@ None currently tracked.
 
 ## Session Continuity
 
-Last session: 2026-06-19T16:38:51.8010623Z
-Stopped at: Completed `06-VERIFICATION.md`, `06-UAT.md`, and Phase 06 summary artifacts
-Resume file: `.planning/phases/06-adversarial-verification-and-vietnamese-delivery/06-VERIFICATION.md`
+Last session: 2026-06-23T06:38:52.650Z
+Stopped at: Completed 03-policy-controlled-google-search-05-PLAN.md
+Resume file: None
