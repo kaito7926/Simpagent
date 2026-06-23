@@ -3,7 +3,7 @@ from __future__ import annotations
 from html.parser import HTMLParser
 import ipaddress
 from typing import Any, Mapping
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from app.ai.search_worker.schemas import SearchGroundingEvidence, SearchWorkerReply
 from app.schemas.search import SearchCitation, SearchSource, SearchSuggestions, SearchWorkerResult
@@ -20,6 +20,18 @@ SENSITIVE_TEXT_MARKERS = (
     "access token",
     "password",
 )
+TRACKING_QUERY_KEYS = {
+    "fbclid",
+    "gclid",
+    "mc_cid",
+    "mc_eid",
+    "msclkid",
+    "utm_campaign",
+    "utm_content",
+    "utm_medium",
+    "utm_source",
+    "utm_term",
+}
 
 
 def looks_sensitive_text(value: str | None) -> bool:
@@ -57,6 +69,27 @@ def is_public_web_uri(uri: str | None) -> bool:
         or ip_address.is_multicast
         or ip_address.is_reserved
         or ip_address.is_unspecified
+    )
+
+
+def sanitize_source_uri(uri: str | None) -> str | None:
+    if not is_public_web_uri(uri):
+        return None
+    parsed = urlparse(uri)
+    filtered_query = [
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key.casefold() not in TRACKING_QUERY_KEYS
+    ]
+    return urlunparse(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            parsed.params,
+            urlencode(filtered_query, doseq=True),
+            "",
+        )
     )
 
 
@@ -133,7 +166,8 @@ def normalize_grounding_evidence(
 
         if looks_sensitive_text(title) or looks_sensitive_text(domain):
             continue
-        if not title or not domain or not is_public_web_uri(uri):
+        uri = sanitize_source_uri(uri)
+        if not title or not domain or not uri:
             continue
 
         source_index = len(sources) + 1

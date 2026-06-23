@@ -19,6 +19,7 @@ TOOL_STATUS_CHECK = (
 SEARCH_METADATA_ALLOWED_ROOT_KEYS = frozenset(
     {
         "mode",
+        "provider",
         "state",
         "google_grounded",
         "tool_executed",

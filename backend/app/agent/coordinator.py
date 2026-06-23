@@ -108,6 +108,7 @@ class ChatCoordinator:
         python_planner: PythonPlannerLike | None = None,
         python_client: PythonClientLike | None = None,
         search_worker: SearchWorkerLike | None = None,
+        search_provider: str = "gemini",
         search_status: str = "unconfigured",
         guardrail_enabled: bool | None = None,
         agent_settings: AgentRuntimeSettingsRepository | None = None,
@@ -120,6 +121,7 @@ class ChatCoordinator:
         self._python_planner = python_planner
         self._python_client = python_client
         self.search_worker = search_worker
+        self.search_provider = search_provider if search_provider in {"gemini", "firecrawl"} else "gemini"
         self.search_status = search_status
         self._guardrail_enabled = guardrail_enabled
         self.agent_settings = agent_settings or AgentRuntimeSettingsRepository(session)
@@ -267,6 +269,7 @@ class ChatCoordinator:
         if not self._search_scope_allowed():
             trace.add("WebSearchAgent", "authorize", "denied", "missing tool:websearch")
             search = SearchTurnResult(
+                provider=self.search_provider,
                 state="denied",
                 google_grounded=False,
                 tool_executed=False,
@@ -292,6 +295,7 @@ class ChatCoordinator:
         if self.search_status not in SEARCH_READY_STATES or self.search_worker is None:
             trace.add("WebSearchAgent", "execute", "failed", "search_unavailable")
             search = SearchTurnResult(
+                provider=self.search_provider,
                 state="search_unavailable",
                 google_grounded=False,
                 tool_executed=False,
@@ -333,6 +337,7 @@ class ChatCoordinator:
         tool_status = TOOL_STATUS_BY_SEARCH_STATE[normalized.state]
         trace.add("WebSearchAgent", "execute", tool_status, normalized.state)
         search = SearchTurnResult(
+            provider=normalized.provider,
             state=normalized.state,
             google_grounded=normalized.google_grounded,
             tool_executed=normalized.tool_executed,
@@ -624,9 +629,10 @@ class ChatCoordinator:
 
 def _normalize_search_result(result: SearchWorkerResult) -> SearchWorkerResult:
     if result.state == "grounded" and (
-        not result.google_grounded or not result.sources or not result.citations
+        (result.provider == "gemini" and not result.google_grounded) or not result.sources or not result.citations
     ):
         return SearchWorkerResult(
+            provider=result.provider,
             state="missing_grounding",
             answer_markdown=result.answer_markdown,
             google_grounded=False,
@@ -636,6 +642,7 @@ def _normalize_search_result(result: SearchWorkerResult) -> SearchWorkerResult:
         )
     if result.state == "provider_failed":
         return SearchWorkerResult(
+            provider=result.provider,
             state="provider_failed",
             answer_markdown=result.answer_markdown or SEARCH_PROVIDER_FAILED_COPY,
             google_grounded=False,
@@ -645,6 +652,7 @@ def _normalize_search_result(result: SearchWorkerResult) -> SearchWorkerResult:
         )
     if result.state == "timeout":
         return SearchWorkerResult(
+            provider=result.provider,
             state="timeout",
             answer_markdown=result.answer_markdown or SEARCH_TIMEOUT_COPY,
             google_grounded=False,
@@ -654,6 +662,7 @@ def _normalize_search_result(result: SearchWorkerResult) -> SearchWorkerResult:
         )
     if result.state == "search_unavailable":
         return SearchWorkerResult(
+            provider=result.provider,
             state="search_unavailable",
             answer_markdown=result.answer_markdown or SEARCH_UNAVAILABLE_COPY,
             google_grounded=False,

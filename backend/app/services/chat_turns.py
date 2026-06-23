@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.orchestration import CoordinatorAgent, SafetyDecision
 from app.ai.schemas import ChatTurn
+from app.ai.search_worker.grounding import sanitize_source_uri
 from app.authorization.policy import PolicyResult, evaluate_required_scopes
 from app.authorization.principal import AuthenticatedPrincipal
 from app.core.config import Settings
@@ -100,6 +101,14 @@ def allowlist_search_metadata(payload: dict[str, Any]) -> dict[str, Any]:
                 for source in value
                 if isinstance(source, dict)
             ]
+            for source in filtered[key]:
+                if "uri" not in source:
+                    continue
+                sanitized_uri = sanitize_source_uri(source.get("uri"))
+                if sanitized_uri:
+                    source["uri"] = sanitized_uri
+                else:
+                    source.pop("uri", None)
             continue
         if key == "citations" and isinstance(value, list):
             filtered[key] = [
@@ -131,6 +140,7 @@ class ChatTurnsService:
         settings: Settings,
         now: datetime,
         correlation_id: str | None,
+        search_provider: str,
         search_status: str,
         search_worker: SearchWorker | None,
     ) -> None:
@@ -138,6 +148,7 @@ class ChatTurnsService:
         self.settings = settings
         self.now = now
         self.correlation_id = correlation_id
+        self.search_provider = search_provider if search_provider in {"gemini", "firecrawl"} else "gemini"
         self.search_status = search_status
         self.search_worker = search_worker
         self.conversations = ConversationsRepository(session)
@@ -422,6 +433,7 @@ class ChatTurnsService:
         if search_policy is not PolicyResult.allow:
             search = self._search_result(
                 state="denied",
+                provider=self.search_provider,
                 tool_executed=False,
                 retry_of_message_id=retry_target.assistant_message.id if retry_target else None,
             )
@@ -448,6 +460,7 @@ class ChatTurnsService:
         if self.search_status not in SEARCH_READY_STATES or self.search_worker is None:
             search = self._search_result(
                 state="search_unavailable",
+                provider=self.search_provider,
                 tool_executed=False,
                 retry_of_message_id=retry_target.assistant_message.id if retry_target else None,
             )
@@ -489,6 +502,7 @@ class ChatTurnsService:
         duration_ms = max(0, int((perf_counter() - started_at) * 1000))
         search = self._search_result(
             state=normalized.state,
+            provider=normalized.provider,
             google_grounded=normalized.google_grounded,
             tool_executed=normalized.tool_executed,
             retry_of_message_id=retry_target.assistant_message.id if retry_target else None,
@@ -533,8 +547,9 @@ class ChatTurnsService:
 
     def _normalize_worker_result(self, result: SearchWorkerResult) -> SearchWorkerResult:
         if result.state == "grounded":
-            if not result.google_grounded or not result.sources or not result.citations:
+            if (result.provider == "gemini" and not result.google_grounded) or not result.sources or not result.citations:
                 return SearchWorkerResult(
+                    provider=result.provider,
                     state="missing_grounding",
                     answer_markdown=result.answer_markdown,
                     google_grounded=False,
@@ -546,6 +561,7 @@ class ChatTurnsService:
 
         if result.state == "missing_grounding":
             return SearchWorkerResult(
+                provider=result.provider,
                 state="missing_grounding",
                 answer_markdown=result.answer_markdown,
                 google_grounded=False,
@@ -556,6 +572,7 @@ class ChatTurnsService:
 
         if result.state == "provider_failed":
             return SearchWorkerResult(
+                provider=result.provider,
                 state="provider_failed",
                 answer_markdown=result.answer_markdown or SEARCH_PROVIDER_FAILED_COPY,
                 google_grounded=False,
@@ -566,6 +583,7 @@ class ChatTurnsService:
 
         if result.state == "timeout":
             return SearchWorkerResult(
+                provider=result.provider,
                 state="timeout",
                 answer_markdown=result.answer_markdown or SEARCH_TIMEOUT_COPY,
                 google_grounded=False,
@@ -576,6 +594,7 @@ class ChatTurnsService:
 
         if result.state == "search_unavailable":
             return SearchWorkerResult(
+                provider=result.provider,
                 state="search_unavailable",
                 answer_markdown=result.answer_markdown or SEARCH_UNAVAILABLE_COPY,
                 google_grounded=False,
@@ -590,6 +609,7 @@ class ChatTurnsService:
         self,
         *,
         state: str,
+        provider: str,
         tool_executed: bool,
         retry_of_message_id: UUID | None,
         google_grounded: bool = False,
@@ -598,6 +618,7 @@ class ChatTurnsService:
         suggestions=None,
     ) -> SearchTurnResult:
         return SearchTurnResult(
+            provider=provider if provider in {"gemini", "firecrawl"} else "gemini",
             state=state,
             google_grounded=google_grounded,
             tool_executed=tool_executed,
