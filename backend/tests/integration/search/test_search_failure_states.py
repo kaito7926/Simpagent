@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select
 
 from app.models.domain import Message
+from app.schemas.search import SEARCH_UNAVAILABLE_COPY
 from tests.integration.search._helpers import (
     RecordingSearchWorker,
     create_conversation,
@@ -96,3 +97,48 @@ async def test_missing_grounding_stays_distinct_from_grounded_after_hardening(cl
     assert payload["assistant_message"]["search"]["google_grounded"] is False
     assert payload["assistant_message"]["search"]["sources"] == []
     assert payload["assistant_message"]["search"]["suggestions"] is None
+
+
+async def test_firecrawl_without_key_returns_search_unavailable_without_gemini_fallback(
+    client,
+    app,
+    db_session,
+    settings,
+) -> None:
+    user = await create_user(
+        db_session,
+        email="firecrawl-unconfigured@example.test",
+        scopes=["chat:read", "chat:write", "tool:websearch"],
+    )
+    conversation = await create_conversation(db_session, user_id=user.id)
+    await db_session.commit()
+
+    gemini_worker = RecordingSearchWorker(grounded_result())
+    app.state.search_provider = "firecrawl"
+    app.state.search_status = "unconfigured"
+    app.state.search_ready = False
+    app.state.search_worker = None
+    app.state.gemini_search_worker = gemini_worker
+
+    token = issue_token(
+        user=user,
+        scopes=["chat:read", "chat:write", "tool:websearch"],
+        settings=settings,
+    )
+    response = await client.post(
+        f"/api/conversations/{conversation.id}/turns",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-Correlation-Id": "corr-firecrawl-unconfigured",
+        },
+        json={"mode": "google_search", "prompt": "Firecrawl without key"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    search = payload["assistant_message"]["search"]
+    assert search["state"] == "search_unavailable"
+    assert search["provider"] == "firecrawl"
+    assert search["tool_executed"] is False
+    assert payload["assistant_message"]["content"] == SEARCH_UNAVAILABLE_COPY
+    assert gemini_worker.calls == 0

@@ -61,3 +61,42 @@ def test_search_metadata_allowlist_keeps_only_approved_fields() -> None:
     assert set(filtered["citations"][0]) == {"index", "source_index", "start", "end"}
     assert set(filtered["suggestions"]) == {"trusted", "items"}
     assert "forbidden" not in json.dumps(filtered)
+
+
+def test_firecrawl_metadata_allowlist_rejects_click_tracking_and_raw_payload_fields() -> None:
+    filtered = allowlist_search_metadata(
+        {
+            "mode": "google_search",
+            "provider": "firecrawl",
+            "state": "grounded",
+            "google_grounded": False,
+            "tool_executed": True,
+            "correlation_id": "corr-firecrawl-retention",
+            "sources": [
+                {
+                    "index": 1,
+                    "title": "Firecrawl source",
+                    "domain": "example.test",
+                    "uri": "https://example.test/source?utm_source=tracker&safe=1",
+                    "description": "must not persist",
+                    "click_tracking_id": "click-123",
+                    "redirect_url": "https://tracker.example/redirect",
+                    "analytics": {"campaign": "forbidden"},
+                }
+            ],
+            "citations": [{"index": 1, "source_index": 1}],
+            "web_search_queries": ["firecrawl query"],
+            "lifecycle": [{"event": "requested"}],
+            "firecrawl_raw": {"creditsUsed": 10, "id": "job-123"},
+            "tracking": {"utm_source": "tracker"},
+        }
+    )
+
+    assert filtered["provider"] == "firecrawl"
+    assert set(filtered["sources"][0]) == {"index", "title", "domain", "uri"}
+    assert filtered["sources"][0]["uri"] == "https://example.test/source?safe=1"
+    serialized = json.dumps(filtered)
+    assert "click-123" not in serialized
+    assert "redirect_url" not in serialized
+    assert "utm_source" not in serialized
+    assert "firecrawl_raw" not in serialized
