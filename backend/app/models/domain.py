@@ -99,9 +99,16 @@ class ToolExecution(Base):
 
 class AgentRuntimeSetting(Base):
     __tablename__ = "agent_runtime_settings"
+    __table_args__ = (
+        CheckConstraint(
+            "value IS NULL OR value IN ('gemini', 'firecrawl')",
+            name="ck_agent_runtime_settings_value_websearch_provider",
+        ),
+    )
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
+    value: Mapped[str | None] = mapped_column(String(64))
     updated_by_user_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,

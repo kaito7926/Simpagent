@@ -24,8 +24,9 @@ SUPPORTED_SEARCH_MODELS = {"gemini-2.5-flash"}
 SUPPORTED_SEARCH_MODEL_PREVIEW_PREFIXES = ("gemini-2.5-flash-preview-",)
 
 
-def resolve_search_provider(settings: Settings) -> SearchProvider | None:
-    provider = settings.websearch_provider.strip().casefold()
+def resolve_search_provider(settings: Settings, *, runtime_override: str | None = None) -> SearchProvider | None:
+    provider_source = runtime_override if runtime_override is not None else settings.websearch_provider
+    provider = provider_source.strip().casefold()
     if provider not in SEARCH_PROVIDER_ALLOWLIST:
         return None
     return provider  # type: ignore[return-value]
@@ -47,10 +48,15 @@ def supports_google_search_model(model: str | None) -> bool:
     )
 
 
-def search_status(settings: Settings, *, override: str | None = None) -> str:
+def search_status(
+    settings: Settings,
+    *,
+    override: str | None = None,
+    runtime_override: str | None = None,
+) -> str:
     if override:
         return override
-    provider = resolve_search_provider(settings)
+    provider = resolve_search_provider(settings, runtime_override=runtime_override)
     if provider is None:
         return "invalid_provider"
     if provider == "firecrawl":
