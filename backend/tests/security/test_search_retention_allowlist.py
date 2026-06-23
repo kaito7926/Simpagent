@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 
+from pydantic import SecretStr
+
+from app.ai.search_worker.firecrawl_client import FirecrawlSearchClient
 from app.services.chat_turns import allowlist_search_metadata
 
 
@@ -100,3 +103,42 @@ def test_firecrawl_metadata_allowlist_rejects_click_tracking_and_raw_payload_fie
     assert "redirect_url" not in serialized
     assert "utm_source" not in serialized
     assert "firecrawl_raw" not in serialized
+
+
+def test_firecrawl_normalizer_refuses_redirect_wrappers_and_strips_tracking_query(settings) -> None:
+    client = FirecrawlSearchClient(
+        settings.model_copy(
+            update={
+                "websearch_provider": "firecrawl",
+                "firecrawl_api_key": SecretStr("test-firecrawl-key"),
+            }
+        )
+    )
+
+    result = client._normalize_payload(
+        {
+            "success": True,
+            "data": {
+                "web": [
+                    {
+                        "title": "Tracking wrapper",
+                        "url": "https://tracker.example/redirect?url=https%3A%2F%2Fexample.test%2Fwrapped",
+                        "description": "must be refused",
+                    },
+                    {
+                        "title": "Clean source",
+                        "url": "https://example.test/source?utm_source=tracker&safe=1",
+                        "description": "kept",
+                    },
+                ]
+            },
+        },
+        query="firecrawl tracking",
+    )
+
+    assert result.provider == "firecrawl"
+    assert result.state == "grounded"
+    assert [source.title for source in result.sources] == ["Clean source"]
+    assert result.sources[0].uri == "https://example.test/source?safe=1"
+    assert "tracker.example" not in result.model_dump_json()
+    assert "utm_source" not in result.model_dump_json()
