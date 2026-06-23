@@ -539,6 +539,13 @@ class ChatTurnsService:
 
     async def _refresh_search_runtime(self) -> None:
         provider_override = await self.agent_settings.get_websearch_provider_override()
+        if provider_override is None and self.search_provider in {"gemini", "firecrawl"}:
+            if self.search_status not in SEARCH_READY_STATES:
+                self.search_worker = None
+                return
+            if self.search_worker is not None:
+                return
+
         if (
             provider_override is None
             and self.search_worker is not None
