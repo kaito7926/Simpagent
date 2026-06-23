@@ -26,6 +26,7 @@ key-files:
     - backend/tests/smoke/test_google_search_flow.py
     - backend/tests/smoke/test_admin_flow.py
     - backend/tests/smoke/_helpers.py
+    - backend/app/agent/coordinator.py
     - backend/app/services/chat_turns.py
     - compose.yaml
     - compose.test.yaml
@@ -70,12 +71,14 @@ completed: 2026-06-23
 
 1. **Task 1: Add RED assembled smoke expectations for the dual-provider matrix** - `5028140` (test)
 2. **Task 2: Update smoke suites and validation commands for provider-matrix closeout** - `58d7ed4` (feat)
+3. **Regression gate fix: Preserve injected search runtime in legacy coordinator** - `3a0a55d` (fix)
 
 ## Files Created/Modified
 
 - `backend/tests/smoke/test_google_search_flow.py` - Adds provider matrix smoke for Gemini default, Firecrawl override, Firecrawl-unconfigured, and override clear.
 - `backend/tests/smoke/test_admin_flow.py` - Updates admin orchestration smoke to current guardrail/provider contract and covers provider override set/clear.
 - `backend/tests/smoke/_helpers.py` - Adds provider-aware search assertions and bounded login retry for gateway rate limits.
+- `backend/app/agent/coordinator.py` - Preserves already-ready injected search workers in the legacy chat coordinator path when no admin override is active.
 - `backend/app/services/chat_turns.py` - Preserves already-ready injected search workers when no admin override is active.
 - `compose.yaml` - Passes Firecrawl configuration to the assembled backend and production profile.
 - `compose.test.yaml` - Passes Firecrawl configuration to backend-test.
@@ -92,6 +95,8 @@ completed: 2026-06-23
 - `docker compose up --build --wait` -> topology healthy.
 - `docker compose run --rm -e SIMPAGENT_RUN_SMOKE=true backend python -m pytest -q tests/smoke/test_google_search_flow.py tests/smoke/test_admin_flow.py -x` -> `3 passed`.
 - `rg -n "Gemini|Firecrawl|test_search_retention_allowlist|test_google_search_flow|test_admin_flow|websearch_provider" ...` -> validation and smoke files reference the same provider matrix and SRCH-05 retention suite.
+- Regression gate after `3a0a55d`: `docker compose -f compose.test.yaml run --rm --build backend-test pytest -q tests/integration/auth/test_session_flow.py tests/integration/chat tests/security/test_chat_authorization.py tests/security/test_chat_idempotency.py tests/security/test_chat_provider_failure.py tests/security/test_chat_rendering_contract.py tests/integration/python tests/security/test_python_backend_boundary.py tests/security/test_python_cleanup.py tests/security/test_python_network_denial.py tests/security/test_python_runtime_profile.py tests/security/test_python_side_effects.py -x` -> `57 passed`.
+- Frontend regression gate after `3a0a55d`: `npm --prefix frontend test -- tests/auth-session.test.ts tests/readiness.test.ts tests/chat-workspace.test.ts tests/chat-markdown.test.ts tests/chat-session-routing.test.ts tests/python-result-card.test.tsx tests/search-rendering.test.tsx tests/admin-evidence.test.tsx` -> `49 passed`; `npm --prefix frontend run typecheck` -> passed.
 
 ## Decisions Made
 
@@ -135,9 +140,17 @@ completed: 2026-06-23
 - **Verification:** Assembled smoke passed after restarting Kong's local test counter.
 - **Committed in:** `58d7ed4`
 
+**5. [Rule 1 - Bug] Preserved injected ready search workers in legacy chat coordinator**
+- **Found during:** Post-execution regression gate
+- **Issue:** The `/api/conversations` chat route uses `ChatCoordinator`, which still replaced an injected ready search worker with environment-derived unconfigured status when no admin override existed.
+- **Fix:** Mirrored the no-override ready-worker early return in `ChatCoordinator._refresh_search_runtime()`.
+- **Files modified:** `backend/app/agent/coordinator.py`
+- **Verification:** Focused forced-search chat test passed after rebuild; full backend regression subset passed with 57 tests.
+- **Committed in:** `3a0a55d`
+
 ---
 
-**Total deviations:** 4 auto-fixed (2 bugs, 1 missing critical functionality, 1 blocking issue)
+**Total deviations:** 5 auto-fixed (3 bugs, 1 missing critical functionality, 1 blocking issue)
 **Impact on plan:** All fixes were required to make the provider-matrix smoke and validation evidence executable against the assembled topology. No unrelated user-facing feature scope was added.
 
 ## Issues Encountered
@@ -169,6 +182,7 @@ Phase 03 enhancement pack is ready for verification closeout. The historical Pha
 - Found `.planning/phases/03-policy-controlled-google-search/03-08-PLAN.md`.
 - Found task commit `5028140`.
 - Found task commit `58d7ed4`.
+- Found regression fix commit `3a0a55d`.
 
 ---
 *Phase: 03-policy-controlled-google-search*
