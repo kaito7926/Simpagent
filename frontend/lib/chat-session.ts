@@ -1,7 +1,9 @@
 import { ApiError, requestJson } from "@/lib/api";
+import type { ChatMessage } from "@/lib/chat-types";
 
 export type ChatMode = "direct" | "search";
 export type ChatRequestMode = ChatMode;
+export type WebsearchProvider = "gemini" | "firecrawl";
 export type SearchResponseState =
   | "grounded"
   | "missing_grounding"
@@ -43,6 +45,7 @@ type TransportSearchSuggestions = {
 
 type TransportSearchTurn = {
   mode: "google_search";
+  provider?: WebsearchProvider;
   state: SearchTransportState;
   google_grounded: boolean;
   tool_executed: boolean;
@@ -110,6 +113,7 @@ export type AssistantTurn = {
   id: string;
   role: "assistant";
   mode: ChatMode;
+  provider: WebsearchProvider | null;
   state: AssistantTurnState;
   answer: string | null;
   citations: CitationReference[];
@@ -122,6 +126,7 @@ export type ChatTurn = UserTurn | AssistantTurn;
 
 export type ChatResponseEnvelope = {
   request_mode: ChatRequestMode;
+  provider: WebsearchProvider | null;
   response_state: AssistantTurnState;
   turn_id: string;
   answer_markdown: string | null;
@@ -178,10 +183,10 @@ function fromTransportMode(mode: TransportMode): ChatMode {
 
 function defaultSubmitLabel(mode: ChatMode, pending: boolean): string {
   if (pending) {
-    return mode === "search" ? "Searching..." : "Sending...";
+    return mode === "search" ? "Đang tìm bằng Google..." : "Đang gửi...";
   }
 
-  return mode === "search" ? "Search with Google" : "Send message";
+  return mode === "search" ? "Tìm bằng Google" : "Gửi câu hỏi";
 }
 
 function normalizeSearchPayload(
@@ -192,6 +197,7 @@ function normalizeSearchPayload(
   if (!search) {
     return {
       request_mode: "direct",
+      provider: null,
       response_state: "direct",
       turn_id: messageId,
       answer_markdown: answerMarkdown,
@@ -218,7 +224,8 @@ function normalizeSearchPayload(
     end: citation.end ?? undefined,
   }));
 
-  const suggestions = search.suggestions?.trusted
+  const provider = search.provider ?? "gemini";
+  const suggestions = provider === "gemini" && search.suggestions?.trusted
     ? search.suggestions.items.map((item, index) => ({
         id: `${messageId}-suggestion-${index + 1}`,
         label: item,
@@ -228,6 +235,7 @@ function normalizeSearchPayload(
 
   return {
     request_mode: "search",
+    provider,
     response_state: search.state,
     turn_id: messageId,
     answer_markdown: answerMarkdown,
@@ -243,6 +251,7 @@ function toAssistantTurn(response: ChatResponseEnvelope, originalMode: ChatMode)
     id: response.turn_id,
     role: "assistant",
     mode: response.request_mode,
+    provider: response.provider,
     state: response.response_state,
     answer: response.answer_markdown,
     citations: response.citations,
@@ -267,6 +276,7 @@ function transportFailureToAssistant(
     id: turnId,
     role: "assistant",
     mode,
+    provider: mode === "search" ? "gemini" : null,
     state: "provider_failed",
     answer: null,
     citations: [],
@@ -387,7 +397,7 @@ export class ChatSessionController {
       ...this.model,
       mode: "search",
       draft: query,
-      announcement: 'The suggested search has been added to the composer. Click "Search with Google" to continue.',
+      announcement: 'Đã điền gợi ý tìm kiếm vào ô soạn. Nhấn "Tìm bằng Google" để tiếp tục.',
       errorMessage: null,
     };
     return this.snapshot;
@@ -518,4 +528,105 @@ export class ChatSessionController {
 
     return this.snapshot;
   }
+}
+
+function isWebsearchProvider(value: unknown): value is WebsearchProvider {
+  return value === "gemini" || value === "firecrawl";
+}
+
+function isSearchState(value: unknown): value is SearchResponseState {
+  return (
+    value === "grounded" ||
+    value === "missing_grounding" ||
+    value === "denied" ||
+    value === "search_unavailable" ||
+    value === "provider_failed" ||
+    value === "timeout"
+  );
+}
+
+function metadataObject(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function metadataString(value: unknown): string | null {
+  return typeof value === "string" && value ? value : null;
+}
+
+function metadataNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function metadataArray(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is Record<string, unknown> => metadataObject(item) !== null)
+    : [];
+}
+
+export function assistantTurnFromMessage(message: ChatMessage): AssistantTurn {
+  const search = metadataObject(message.metadata.search);
+  if (!search) {
+    return {
+      id: message.id,
+      role: "assistant",
+      mode: "direct",
+      provider: null,
+      state: "direct",
+      answer: message.content,
+      citations: [],
+      sources: [],
+      suggestions: [],
+      correlationId: null,
+    };
+  }
+
+  const state = isSearchState(search.state) ? search.state : "provider_failed";
+  const provider = isWebsearchProvider(search.provider) ? search.provider : "gemini";
+  const sources = metadataArray(search.sources).map((source, index) => {
+    const sourceIndex = metadataNumber(source.index) ?? index + 1;
+    return {
+      id: `${message.id}-source-${sourceIndex}`,
+      title: metadataString(source.title) ?? "Nguồn không có tiêu đề",
+      domain: metadataString(source.domain) ?? "unknown",
+      url: metadataString(source.uri) ?? "#",
+    };
+  });
+
+  const citations = metadataArray(search.citations).map((citation, index) => {
+    const marker = metadataNumber(citation.index) ?? index + 1;
+    const sourceIndex = metadataNumber(citation.source_index) ?? marker;
+    return {
+      id: `${message.id}-citation-${marker}`,
+      source_id: `${message.id}-source-${sourceIndex}`,
+      marker,
+      label: `Nguồn ${marker}`,
+      start: metadataNumber(citation.start),
+      end: metadataNumber(citation.end),
+    };
+  });
+
+  const suggestionsPayload = metadataObject(search.suggestions);
+  const suggestionItems =
+    provider === "gemini" && suggestionsPayload?.trusted === true && Array.isArray(suggestionsPayload.items)
+      ? suggestionsPayload.items.filter((item): item is string => typeof item === "string" && item.length > 0)
+      : [];
+
+  return {
+    id: message.id,
+    role: "assistant",
+    mode: "search",
+    provider,
+    state,
+    answer: message.content || null,
+    citations,
+    sources,
+    suggestions: suggestionItems.map((item, index) => ({
+      id: `${message.id}-suggestion-${index + 1}`,
+      label: item,
+      query: item,
+    })),
+    correlationId: metadataString(search.correlation_id) ?? metadataString(message.metadata.correlation_id),
+  };
 }

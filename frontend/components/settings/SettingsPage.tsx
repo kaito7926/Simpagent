@@ -8,13 +8,20 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import type { WebsearchProvider } from "@/lib/admin-api";
 import type { CurrentUser } from "@/lib/auth-session";
+
+export type AdminOrchestrationSettings = {
+  guardrailSafetyEnabled: boolean;
+  websearchProviderDefault: WebsearchProvider;
+  websearchProviderOverride: WebsearchProvider | null;
+  websearchProviderEffective: WebsearchProvider;
+  websearchProviderReadiness: string;
+};
 
 type SettingsPageProps = {
   currentUser: CurrentUser;
-  adminSettings: {
-    guardrailSafetyEnabled: boolean;
-  } | null;
+  adminSettings: AdminOrchestrationSettings | null;
   adminCanWrite: boolean;
   adminBusy: boolean;
   adminError: string | null;
@@ -22,10 +29,11 @@ type SettingsPageProps = {
   initialSection?: SettingsSectionId;
   initialConfirmingSetting?: OrchestrationSettingId | null;
   onGuardrailSafetyToggle: (enabled: boolean) => void;
+  onWebsearchProviderOverrideChange?: (provider: WebsearchProvider | null) => void;
 };
 
 type SettingsSectionId = "profile" | "roles" | "tools" | "readiness";
-type OrchestrationSettingId = "guardrail";
+type OrchestrationSettingId = "guardrail" | "websearch-provider";
 
 const settingsNavigation: Array<{
   id: SettingsSectionId;
@@ -48,6 +56,7 @@ export function SettingsPage({
   initialSection = "profile",
   initialConfirmingSetting = null,
   onGuardrailSafetyToggle,
+  onWebsearchProviderOverrideChange,
   searchEnabled,
 }: SettingsPageProps) {
   const [activeSection, setActiveSection] = React.useState<SettingsSectionId>(initialSection);
@@ -79,6 +88,7 @@ export function SettingsPage({
             currentUser={currentUser}
             onConfirmingSettingChange={setConfirmingSetting}
             onGuardrailSafetyToggle={onGuardrailSafetyToggle}
+            onWebsearchProviderOverrideChange={onWebsearchProviderOverrideChange}
             searchEnabled={searchEnabled}
           />
         );
@@ -202,18 +212,18 @@ function ToolsSection({
   confirmingSetting,
   onConfirmingSettingChange,
   onGuardrailSafetyToggle,
+  onWebsearchProviderOverrideChange,
   searchEnabled,
 }: {
   currentUser: CurrentUser;
-  adminSettings: {
-    guardrailSafetyEnabled: boolean;
-  } | null;
+  adminSettings: AdminOrchestrationSettings | null;
   adminCanWrite: boolean;
   adminBusy: boolean;
   adminError: string | null;
   confirmingSetting: OrchestrationSettingId | null;
   onConfirmingSettingChange: (setting: OrchestrationSettingId | null) => void;
   onGuardrailSafetyToggle: (enabled: boolean) => void;
+  onWebsearchProviderOverrideChange?: (provider: WebsearchProvider | null) => void;
   searchEnabled: boolean;
 }) {
   const pythonEnabled = currentUser.scopes.includes("tool:python");
@@ -229,13 +239,13 @@ function ToolsSection({
           <div className="scope-list-item">
             <div className="inline-actions flex-wrap">
               <Search className="h-4 w-4" />
-              <span className="scope-label">Google Search Grounding</span>
+              <span className="scope-label">Policy-controlled websearch</span>
               <Badge variant={searchEnabled ? "success" : "secondary"}>
                 {searchEnabled ? "Enabled" : "Disabled"}
               </Badge>
             </div>
             <span className="scope-code">
-              Allows real-time searches with verifiable citations.
+              Allows bounded current-information searches with provider-honest evidence.
             </span>
           </div>
 
@@ -285,6 +295,12 @@ function ToolsSection({
                 onConfirmingSettingChange(null);
                 onGuardrailSafetyToggle(false);
               }}
+            />
+            <WebsearchProviderCard
+              settings={adminSettings}
+              canWrite={adminCanWrite}
+              busy={adminBusy}
+              onProviderChange={onWebsearchProviderOverrideChange}
             />
             {!adminCanWrite ? (
               <span className="body-copy">This account can review orchestration status but cannot change it.</span>
@@ -371,6 +387,97 @@ function OrchestrationSettingCard({
               {disableConfirm}
             </ActionButton>
           </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function formatProvider(provider: WebsearchProvider | null): string {
+  if (provider === "gemini") {
+    return "Gemini";
+  }
+  if (provider === "firecrawl") {
+    return "Firecrawl";
+  }
+  return "None";
+}
+
+function WebsearchProviderCard({
+  settings,
+  canWrite,
+  busy,
+  onProviderChange,
+}: {
+  settings: AdminOrchestrationSettings | null;
+  canWrite: boolean;
+  busy: boolean;
+  onProviderChange?: (provider: WebsearchProvider | null) => void;
+}) {
+  const loaded = settings !== null;
+  const override = settings?.websearchProviderOverride ?? null;
+  const currentEffective = settings?.websearchProviderEffective ?? null;
+  const controlsDisabled = busy || !loaded || !canWrite || !onProviderChange;
+
+  return (
+    <div className="scope-list-item">
+      <div className="inline-actions flex-wrap">
+        <Search className="h-4 w-4" />
+        <span className="scope-label">Websearch provider</span>
+        <Badge variant={loaded ? "success" : "secondary"}>
+          {loaded ? formatProvider(currentEffective) : "Loading"}
+        </Badge>
+      </div>
+      <span className="scope-code">
+        Runtime provider state is redacted and mirrors the backend orchestration contract.
+      </span>
+      <div className="scope-list">
+        <div className="scope-list-item">
+          <span className="scope-label">Default provider</span>
+          <span className="scope-code">{formatProvider(settings?.websearchProviderDefault ?? null)}</span>
+        </div>
+        <div className="scope-list-item">
+          <span className="scope-label">Runtime override</span>
+          <span className="scope-code">{formatProvider(override)}</span>
+        </div>
+        <div className="scope-list-item">
+          <span className="scope-label">Effective provider</span>
+          <span className="scope-code">{formatProvider(currentEffective)}</span>
+        </div>
+        <div className="scope-list-item">
+          <span className="scope-label">Readiness</span>
+          <span className="scope-code">{settings?.websearchProviderReadiness ?? "loading"}</span>
+        </div>
+      </div>
+      {canWrite ? (
+        <div className="admin-card-actions">
+          <ActionButton
+            type="button"
+            variant={currentEffective === "gemini" && override === "gemini" ? "secondary" : "quiet"}
+            fullWidth={false}
+            disabled={controlsDisabled || override === "gemini"}
+            onClick={() => onProviderChange?.("gemini")}
+          >
+            Use Gemini
+          </ActionButton>
+          <ActionButton
+            type="button"
+            variant={currentEffective === "firecrawl" && override === "firecrawl" ? "secondary" : "quiet"}
+            fullWidth={false}
+            disabled={controlsDisabled || override === "firecrawl"}
+            onClick={() => onProviderChange?.("firecrawl")}
+          >
+            Use Firecrawl
+          </ActionButton>
+          <ActionButton
+            type="button"
+            variant="secondary"
+            fullWidth={false}
+            disabled={controlsDisabled || override === null}
+            onClick={() => onProviderChange?.(null)}
+          >
+            Clear provider override
+          </ActionButton>
         </div>
       ) : null}
     </div>

@@ -22,6 +22,7 @@ export function AssistantMessageCard({
       {turn.state === "grounded" && turn.answer ? (
         <GroundedAnswer
           answer={turn.answer}
+          provider={turn.provider ?? "gemini"}
           citations={turn.citations}
           sources={turn.sources}
           suggestions={turn.suggestions}
@@ -50,6 +51,7 @@ export function AssistantMessageCard({
       turn.state === "timeout" ? (
         <SearchFailureCard
           state={turn.state}
+          provider={turn.provider}
           correlationId={turn.correlationId ?? null}
           retryDisabled={retryDisabled}
           onRetry={() => onRetry(turn.id)}

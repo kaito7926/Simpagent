@@ -236,6 +236,10 @@ void test("orchestration settings show guardrail confirmation copy before destru
       currentUser: adminUser,
       adminSettings: {
         guardrailSafetyEnabled: true,
+        websearchProviderDefault: "gemini",
+        websearchProviderOverride: null,
+        websearchProviderEffective: "gemini",
+        websearchProviderReadiness: "ready",
       },
       adminCanWrite: true,
       adminBusy: false,
