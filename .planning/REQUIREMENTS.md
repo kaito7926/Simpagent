@@ -77,7 +77,7 @@
 - [ ] **SRCH-01**: A dedicated Google ADK worker invokes built-in Google Search using a deployment-configured, currently available compatible Gemini 2 model.
 - [x] **SRCH-02**: Search startup or deployment performs a capability check for model availability, Google Search support, and expected grounding metadata.
 - [x] **SRCH-03**: A live grounded response transports answer text and required grounding fields without falsely labeling an ungrounded response as grounded.
-- [ ] **SRCH-04**: Frontend renders claim-to-source citations and required Google Search Suggestions safely for the same end user.
+- [x] **SRCH-04**: Frontend renders claim-to-source citations and required Google Search Suggestions safely for the same end user.
 - [x] **SRCH-05**: Grounding persistence and telemetry retain only fields allowed by Google terms effective at implementation time and do not perform source-link click tracking.
 - [x] **SRCH-06**: Search requests apply input limits, timeout, result/output limits, user budgets, and safe failure behavior.
 - [x] **SRCH-07**: Search failures, missing grounding, and model unavailability are visibly distinguished from successful grounded answers.
@@ -260,7 +260,7 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | SRCH-01 | Phase 3 | Pending |
 | SRCH-02 | Phase 3 | Complete |
 | SRCH-03 | Phase 3 | Complete |
-| SRCH-04 | Phase 3 | Pending |
+| SRCH-04 | Phase 3 | Complete |
 | SRCH-05 | Phase 3 | Complete |
 | SRCH-06 | Phase 3 | Complete |
 | SRCH-07 | Phase 3 | Complete |

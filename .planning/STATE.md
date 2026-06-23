@@ -58,6 +58,7 @@ Progress: Phase 06 verified and delivered; historical Phase 03 planning/verifica
 
 | Phase 03-policy-controlled-google-search P05 | 14 min | 3 tasks | 20 files |
 | Phase 03-policy-controlled-google-search P06 | 11 min | 3 tasks | 15 files |
+| Phase 03-policy-controlled-google-search P07 | 13 min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,7 @@ Recent decisions affecting current work:
 - [Phase ?]: Use HTTPX directly for Firecrawl Cloud — The plan required no new SDK; existing HTTPX keeps the provider boundary small and auditable.
 - [Phase 03-policy-controlled-google-search]: Keep provider override in existing runtime settings — Plan 03-06 reuses agent_runtime_settings as nullable value data instead of introducing a new table.
 - [Phase 03-policy-controlled-google-search]: Resolve websearch provider at request time — Admin reads, readiness, and live execution must use the same effective provider contract after overrides and clears.
+- [Phase 03-policy-controlled-google-search]: Keep frontend provider labels metadata-driven — Plan 03-07 renders Google-specific badges and suggestions only for Gemini search turns while Firecrawl uses provider-honest or neutral websearch copy.
 
 ### Pending Todos
 
