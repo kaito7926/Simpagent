@@ -29,6 +29,19 @@ def test_search_provider_allowlist_accepts_only_gemini_and_firecrawl(settings) -
     assert search_status(invalid) == "invalid_provider"
 
 
+def test_runtime_provider_override_takes_precedence_and_clear_returns_to_environment_default(settings) -> None:
+    configured = make_search_settings(
+        settings,
+        websearch_provider="gemini",
+        firecrawl_api_key=SecretStr("test-firecrawl-key"),
+    )
+
+    assert resolve_search_provider(configured) == "gemini"
+    assert resolve_search_provider(configured, runtime_override="firecrawl") == "firecrawl"
+    assert search_status(configured, runtime_override="firecrawl") == "ready"
+    assert resolve_search_provider(configured, runtime_override=None) == "gemini"
+
+
 def test_search_status_is_unconfigured_without_google_credentials(settings) -> None:
     snapshot = compute_provider_snapshot(settings)
     assert snapshot.search == "unconfigured"

@@ -218,6 +218,10 @@ async def test_admin_can_read_and_toggle_guardrail_safety_agent(client, db_sessi
     assert read_response.status_code == 200
     assert read_response.json() == {
         "guardrail_safety_enabled": True,
+        "websearch_provider_default": "gemini",
+        "websearch_provider_override": None,
+        "websearch_provider_effective": "gemini",
+        "websearch_provider_readiness": "unconfigured",
     }
 
     denied_response = await client.patch(
@@ -239,6 +243,10 @@ async def test_admin_can_read_and_toggle_guardrail_safety_agent(client, db_sessi
     assert write_response.status_code == 200
     assert write_response.json() == {
         "guardrail_safety_enabled": False,
+        "websearch_provider_default": "gemini",
+        "websearch_provider_override": None,
+        "websearch_provider_effective": "gemini",
+        "websearch_provider_readiness": "unconfigured",
     }
 
     await db_session.rollback()
@@ -254,6 +262,134 @@ async def test_admin_can_read_and_toggle_guardrail_safety_agent(client, db_sessi
         )
     ).scalar_one()
     assert event.event_type == "guardrail_safety_toggled"
+
+
+async def test_admin_can_set_clear_and_audit_websearch_provider_override(client, db_session, settings) -> None:
+    admin_reader = await create_user(
+        db_session,
+        email="provider-reader@example.test",
+        scopes=["admin:read"],
+        role="admin",
+    )
+    admin_writer = await create_user(
+        db_session,
+        email="provider-writer@example.test",
+        scopes=["admin:write"],
+        role="admin",
+    )
+    ordinary_user = await create_user(
+        db_session,
+        email="provider-user@example.test",
+        scopes=["admin:read", "admin:write"],
+        role="user",
+    )
+    await db_session.commit()
+
+    reader_token = issue_token(user=admin_reader, scopes=["admin:read"], settings=settings)
+    writer_token = issue_token(user=admin_writer, scopes=["admin:write"], settings=settings)
+    ordinary_token = issue_token(
+        user=ordinary_user,
+        scopes=["admin:read", "admin:write"],
+        settings=settings,
+    )
+
+    denied_read = await client.get(
+        "/api/admin/orchestration",
+        headers={
+            "Authorization": f"Bearer {ordinary_token}",
+            "X-Correlation-Id": "corr-admin-provider-read-denied",
+        },
+    )
+    assert denied_read.status_code == 403
+    assert denied_read.json()["error"]["code"] == "admin_role_required"
+
+    denied_write = await client.patch(
+        "/api/admin/orchestration/websearch-provider",
+        headers={
+            "Authorization": f"Bearer {reader_token}",
+            "X-Correlation-Id": "corr-admin-provider-write-denied",
+        },
+        json={"provider": "firecrawl"},
+    )
+    assert denied_write.status_code == 403
+    assert denied_write.json()["error"]["code"] == "admin_scope_required"
+
+    invalid_write = await client.patch(
+        "/api/admin/orchestration/websearch-provider",
+        headers={"Authorization": f"Bearer {writer_token}"},
+        json={"provider": "serpapi"},
+    )
+    assert invalid_write.status_code == 422
+
+    set_response = await client.patch(
+        "/api/admin/orchestration/websearch-provider",
+        headers={
+            "Authorization": f"Bearer {writer_token}",
+            "X-Correlation-Id": "corr-admin-provider-firecrawl",
+        },
+        json={"provider": "firecrawl"},
+    )
+    assert set_response.status_code == 200
+    assert set_response.json() == {
+        "guardrail_safety_enabled": True,
+        "websearch_provider_default": "gemini",
+        "websearch_provider_override": "firecrawl",
+        "websearch_provider_effective": "firecrawl",
+        "websearch_provider_readiness": "unconfigured",
+    }
+
+    read_after_set = await client.get(
+        "/api/admin/orchestration",
+        headers={"Authorization": f"Bearer {reader_token}"},
+    )
+    assert read_after_set.status_code == 200
+    assert read_after_set.json()["websearch_provider_effective"] == "firecrawl"
+
+    clear_response = await client.patch(
+        "/api/admin/orchestration/websearch-provider",
+        headers={
+            "Authorization": f"Bearer {writer_token}",
+            "X-Correlation-Id": "corr-admin-provider-clear",
+        },
+        json={"provider": None},
+    )
+    assert clear_response.status_code == 200
+    assert clear_response.json() == {
+        "guardrail_safety_enabled": True,
+        "websearch_provider_default": "gemini",
+        "websearch_provider_override": None,
+        "websearch_provider_effective": "gemini",
+        "websearch_provider_readiness": "unconfigured",
+    }
+
+    await db_session.rollback()
+    setting = await db_session.scalar(
+        select(AgentRuntimeSetting).where(AgentRuntimeSetting.key == "websearch_provider_override")
+    )
+    assert setting is not None
+    assert setting.value is None
+
+    events = (
+        await db_session.execute(
+            select(SecurityEvent).where(
+                SecurityEvent.correlation_id.in_(
+                    [
+                        "corr-admin-provider-read-denied",
+                        "corr-admin-provider-write-denied",
+                        "corr-admin-provider-firecrawl",
+                        "corr-admin-provider-clear",
+                    ]
+                )
+            )
+        )
+    ).scalars().all()
+    event_by_correlation = {event.correlation_id: event for event in events}
+    assert event_by_correlation["corr-admin-provider-read-denied"].event_type == "admin_access_denied"
+    assert event_by_correlation["corr-admin-provider-write-denied"].event_type == "admin_access_denied"
+    assert event_by_correlation["corr-admin-provider-firecrawl"].event_type == "websearch_provider_override_set"
+    assert event_by_correlation["corr-admin-provider-clear"].event_type == "websearch_provider_override_cleared"
+    assert event_by_correlation["corr-admin-provider-firecrawl"].event_metadata["websearch_provider_effective"] == "firecrawl"
+    assert event_by_correlation["corr-admin-provider-clear"].event_metadata["websearch_provider_effective"] == "gemini"
 
 
 async def test_overview_and_orchestration_enforce_read_write_split_and_record_denials(
@@ -301,7 +437,13 @@ async def test_overview_and_orchestration_enforce_read_write_split_and_record_de
         headers={"Authorization": f"Bearer {reader_token}"},
     )
     assert orchestration_response.status_code == 200
-    assert set(orchestration_response.json()) == {"guardrail_safety_enabled"}
+    assert set(orchestration_response.json()) == {
+        "guardrail_safety_enabled",
+        "websearch_provider_default",
+        "websearch_provider_override",
+        "websearch_provider_effective",
+        "websearch_provider_readiness",
+    }
 
     denied_metrics_response = await client.get(
         "/api/admin/metrics",
