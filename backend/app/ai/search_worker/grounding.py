@@ -32,6 +32,8 @@ TRACKING_QUERY_KEYS = {
     "utm_source",
     "utm_term",
 }
+REDIRECT_WRAPPER_QUERY_KEYS = {"redirect", "redirect_url", "target", "to", "u", "url"}
+REDIRECT_WRAPPER_PATH_MARKERS = ("/redirect", "/out", "/outbound", "/url")
 
 
 def looks_sensitive_text(value: str | None) -> bool:
@@ -76,9 +78,15 @@ def sanitize_source_uri(uri: str | None) -> str | None:
     if not is_public_web_uri(uri):
         return None
     parsed = urlparse(uri)
+    raw_query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    if any(key.casefold() in REDIRECT_WRAPPER_QUERY_KEYS for key, _ in raw_query_pairs):
+        return None
+    path = parsed.path.rstrip("/").casefold()
+    if any(path.endswith(marker) for marker in REDIRECT_WRAPPER_PATH_MARKERS):
+        return None
     filtered_query = [
         (key, value)
-        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        for key, value in raw_query_pairs
         if key.casefold() not in TRACKING_QUERY_KEYS
     ]
     return urlunparse(
