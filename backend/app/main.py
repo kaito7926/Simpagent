@@ -19,6 +19,7 @@ from app.core.config import Settings, get_settings
 from app.core.errors import ApiError, install_error_handlers
 from app.core.logging import configure_logging, reset_correlation_id, set_correlation_id
 from app.core.provider_status import resolve_search_provider, search_status
+from app.core.tracing import configure_tracing, instrument_app
 from app.db.session import create_session_factory
 
 Clock = Callable[[], datetime]
@@ -70,6 +71,7 @@ def create_app(
 ) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings)
+    configure_tracing(settings)
     resolved_session_factory = session_factory or create_session_factory(settings)
     app = FastAPI(title="SimpAgent API", version="0.1.0")
     app.state.settings = settings
@@ -80,6 +82,7 @@ def create_app(
     app.state.search_provider = resolve_search_provider(settings) or "invalid"
     app.state.search_ready = app.state.search_status == "ready"
     app.state.search_worker = build_search_worker_service(settings) if app.state.search_ready else None
+    instrument_app(app, settings)
 
     app.add_middleware(
         CORSMiddleware,

@@ -6,13 +6,16 @@ from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import Settings
+from app.core.tracing import instrument_engine
 
 
 SessionFactory = async_sessionmaker[AsyncSession]
 
 
 def create_engine(settings: Settings) -> AsyncEngine:
-    return create_async_engine(settings.resolved_database_url, future=True)
+    engine = create_async_engine(settings.resolved_database_url, future=True)
+    instrument_engine(engine, settings)
+    return engine
 
 
 def create_session_factory(settings: Settings) -> SessionFactory:

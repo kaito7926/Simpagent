@@ -38,7 +38,8 @@ class FirecrawlSearchClient:
         if not bounded_query:
             bounded_query = "websearch"
 
-        timeout = httpx.Timeout(self.settings.search_worker_timeout_seconds)
+        timeout_seconds = max(self.settings.search_worker_timeout_seconds, 30.0)
+        timeout = httpx.Timeout(timeout_seconds)
         owns_client = self.client is None
         client = self.client or httpx.AsyncClient(
             base_url=self.settings.firecrawl_api_base.rstrip("/"),
@@ -52,7 +53,7 @@ class FirecrawlSearchClient:
                     "query": bounded_query,
                     "limit": self.settings.firecrawl_search_limit,
                     "sources": ["web"],
-                    "timeout": int(self.settings.search_worker_timeout_seconds * 1000),
+                    "timeout": int(timeout_seconds * 1000),
                     "ignoreInvalidURLs": True,
                 },
             )

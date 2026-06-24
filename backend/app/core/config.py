@@ -6,6 +6,8 @@ from ipaddress import ip_network
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
+import base64
+import binascii
 
 from pydantic import AliasChoices, Field, SecretStr, computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -40,6 +42,17 @@ def _resolve_secret_value(secret: SecretStr | None, file_path: str | None) -> st
         if value:
             return value
     return _read_secret_file(file_path)
+
+
+def _decode_urlsafe_b64_secret(value: str, *, field_name: str) -> bytes:
+    try:
+        padding = "=" * ((4 - len(value) % 4) % 4)
+        decoded = base64.urlsafe_b64decode(f"{value}{padding}".encode("ascii"))
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError(f"{field_name} must be valid URL-safe base64.") from exc
+    if len(decoded) != 32:
+        raise ValueError(f"{field_name} must decode to exactly 32 bytes.")
+    return decoded
 
 
 def _looks_like_utc_offset(value: str) -> bool:
@@ -120,6 +133,11 @@ class Settings(BaseSettings):
     debug: bool = False
     log_level: str = "INFO"
     log_file_path: str | None = None
+    otel_tracing_enabled: bool = False
+    otel_service_name: str = "simpagent-backend"
+    otel_exporter_otlp_traces_endpoint: str | None = None
+    otel_exporter_otlp_timeout_seconds: int = Field(default=5, ge=1, le=60)
+    otel_sample_ratio: float = Field(default=1.0, ge=0.0, le=1.0)
     database_url: SecretStr | None = None
     database_url_file: str | None = None
     allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
@@ -141,6 +159,8 @@ class Settings(BaseSettings):
     csrf_hmac_key_file: str | None = None
     registration_invite_code: SecretStr | None = None
     registration_invite_code_file: str | None = None
+    message_encryption_key: SecretStr | None = None
+    message_encryption_key_file: str | None = None
 
     access_token_ttl_seconds: int = 600
     refresh_idle_ttl_seconds: int = 7 * 24 * 60 * 60
@@ -210,6 +230,20 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("SIMPAGENT_GITHUB_REDIRECT_URI", "GITHUB_REDIRECT_URI"),
     )
+    websearch_provider: str = "gemini"
+    firecrawl_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_FIRECRAWL_API_KEY", "FIRECRAWL_API_KEY"),
+    )
+    firecrawl_api_key_file: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_FIRECRAWL_API_KEY_FILE", "FIRECRAWL_API_KEY_FILE"),
+    )
+    firecrawl_api_base: str = Field(
+        default="https://api.firecrawl.dev",
+        validation_alias=AliasChoices("SIMPAGENT_FIRECRAWL_API_BASE", "FIRECRAWL_API_BASE"),
+    )
+    firecrawl_search_limit: int = Field(default=5, ge=1, le=10)
     search_model: str | None = None
     websearch_provider: str = Field(
         default="gemini",
@@ -266,6 +300,11 @@ class Settings(BaseSettings):
         db_url = self.resolved_database_url
         if not db_url.startswith("postgresql+psycopg://"):
             raise ValueError("Only PostgreSQL URLs using psycopg are allowed.")
+        if self.otel_tracing_enabled:
+            if not self.otel_exporter_otlp_traces_endpoint:
+                raise ValueError("Tracing requires an OTLP traces endpoint.")
+            if not self.otel_service_name.strip():
+                raise ValueError("Tracing requires a non-empty OTEL service name.")
         if not self.allowed_origins:
             raise ValueError("At least one exact allowed origin is required.")
         for origin in self.allowed_origins:
@@ -303,6 +342,8 @@ class Settings(BaseSettings):
                 raise ValueError("Production requires refresh and CSRF key files.")
             if not _resolve_secret_value(self.registration_invite_code, self.registration_invite_code_file):
                 raise ValueError("Production requires a registration invite code.")
+            if not self.message_encryption_key and not self.message_encryption_key_file:
+                raise ValueError("Production requires a message encryption key.")
             if not self.python_capability_secret and not self.python_capability_secret_file:
                 raise ValueError("Production requires a Python capability secret.")
             for candidate in (self.llm_api_base,):
@@ -357,6 +398,13 @@ class Settings(BaseSettings):
     @property
     def registration_invite_code_value(self) -> str | None:
         return _resolve_secret_value(self.registration_invite_code, self.registration_invite_code_file)
+
+    @property
+    def message_encryption_key_value(self) -> bytes:
+        value = _resolve_secret_value(self.message_encryption_key, self.message_encryption_key_file)
+        if not value:
+            raise ValueError("Message encryption key is required.")
+        return _decode_urlsafe_b64_secret(value, field_name="message_encryption_key")
 
     @property
     def llm_api_key_value(self) -> str | None:

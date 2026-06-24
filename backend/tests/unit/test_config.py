@@ -164,3 +164,17 @@ def test_settings_parse_compose_rendered_test_now() -> None:
 
     assert settings.test_now == datetime(2026, 6, 9, 0, 0, tzinfo=UTC)
     assert settings.now_utc() == datetime(2026, 6, 9, 0, 0, tzinfo=UTC)
+
+
+def test_tracing_requires_otlp_endpoint_when_enabled() -> None:
+    with pytest.raises(ValueError, match="OTLP traces endpoint"):
+        Settings(
+            app_env="test",
+            database_url="postgresql+psycopg://postgres:postgres@db:5432/app",
+            allowed_origins=["http://localhost:3000"],
+            jwt_private_key="secret",
+            jwt_public_key="secret",
+            refresh_hmac_key="refresh",
+            csrf_hmac_key="csrf",
+            otel_tracing_enabled=True,
+        )
