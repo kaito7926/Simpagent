@@ -30,7 +30,7 @@
 
 - email verification
 - password reset
-- MFA / WebAuthn
+- MFA / WebAuthn step-up; Phase 07 chỉ dùng DPoP-style proof trong browser, chưa phải phishing-resistant WebAuthn
 - user-facing session management
 - organization / shared workspace
 - file upload, RAG, knowledge base, hay write-capable external tools
@@ -40,6 +40,14 @@
 
 - Search hiện là service logic trong backend, chưa là container/service tách độc lập trong Compose.
 - Vì vậy tài liệu không nên overclaim “separate search worker container”.
+- Search capability đã được ký bất đối xứng và consume-once, nhưng scope này chỉ áp dụng cho boundary đã review trong Phase 07.
+
+## Sender-constrained session limits
+
+- Browser-held proof material sống trong memory của phiên frontend; mất key do reload hard, xóa site data, hoặc browser reset có thể buộc user re-auth.
+- Hardening hiện feature-flagged qua backend/frontend rollout; không nên tuyên bố mọi endpoint tương lai tự động được bảo vệ nếu chưa đi qua `authorizedJson` hoặc route enforcement tương ứng.
+- DPoP-style proof giảm replay của copied token/cookie, nhưng không thay thế XSS prevention, CSRF/Origin check, hay user education chống relay/phishing thời gian thực.
+- WebAuthn step-up và quản lý nhiều thiết bị/session vẫn là việc deferred, không nằm trong MVP Phase 07.
 
 ## Cloudflare và edge
 

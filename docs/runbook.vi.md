@@ -38,6 +38,33 @@ Xác minh lại:
 powershell -ExecutionPolicy Bypass -File security-tests/attacks/invoke-refresh-replay.ps1
 ```
 
+## 2.1. DPoP / sender-constrained proof mismatch
+
+Nhận biết:
+
+- protected API trả `invalid_dpop_proof`
+- refresh/logout trả `session_invalid` dù CSRF và refresh cookie còn tồn tại
+- security event `dpop_proof_replay` hoặc `dpop_key_mismatch`
+
+Xử lý:
+
+- coi access token hoặc refresh cookie bị copy là không đủ để khôi phục session
+- buộc user đăng nhập lại để tạo browser-held proof key mới
+- kiểm tra correlation id, `family_id`, `expected_key_thumbprint`, và `presented_key_thumbprint`; không cần và không được log raw DPoP proof JWT
+- nếu lỗi xảy ra hàng loạt sau deploy frontend, kiểm tra đường dẫn tạo proof, CORS header `DPoP`, và origin dùng trong `htu`
+
+Khi mất khóa trình duyệt:
+
+- user có thể thấy session expired sau reload, xóa site data, hoặc đổi browser profile
+- đây là behavior đúng: không degrade về bearer-only
+- hướng dẫn user đăng nhập lại; không copy cookie/access token thủ công để “sửa nhanh”
+
+Xác minh lại:
+
+```powershell
+docker compose -f compose.test.yaml run --rm --build backend-test python -m pytest -q tests/integration/auth/test_session_flow.py tests/security/test_jwt_profile.py -x
+```
+
 ## 3. Nghi ngờ BOLA hoặc ownership bypass
 
 Nhận biết:
@@ -126,6 +153,19 @@ Xử lý:
 - xác nhận `.env` hoặc secret file đã được mount đúng
 - không giả lập thành công trong docs hay demo
 - với local demo không cần provider thật, tập trung vào fail-closed behavior và route contract
+
+## 7.1. OAuth PKCE / transaction replay
+
+Nhận biết:
+
+- OAuth callback trả lỗi `oauth_state_invalid`
+- security event `oauth_transaction_replay` hoặc `oauth_transaction_invalid`
+
+Xử lý:
+
+- yêu cầu user bắt đầu lại flow Google/GitHub từ nút đăng nhập
+- không tái sử dụng URL callback cũ hoặc code cũ
+- kiểm tra clock, cookie state, và redirect URI nếu lỗi xuất hiện với mọi provider
 
 ## 8. Secret exposure
 

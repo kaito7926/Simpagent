@@ -16,12 +16,28 @@ Repo hiện có hai nhóm xác thực:
 ## JWT và refresh session
 
 - access token là JWT sống ngắn, mang `sub`, `role`, `scopes`, `exp`, `iat`, `jti`, issuer, audience
+- khi bật hardening Phase 07, access token có thêm `cnf.jkt` để ràng buộc với thumbprint của khóa trình duyệt
 - refresh token là opaque token, chỉ lưu hash ở server
 - refresh dùng mô hình token family với rotation nguyên tử
 - reuse của refresh token cũ sẽ revoke cả family và ghi `refresh_reuse` vào security events
 - logout revoke family đang hoạt động
 - refresh token nằm trong cookie `__Host-` và không lộ cho JavaScript
 - refresh/logout đòi `Origin` hợp lệ và `X-CSRF-Token` khớp cookie CSRF
+- DPoP-style proof bổ sung lớp sender-constrained: request bảo vệ phải có proof JWT ký bằng khóa trình duyệt, khớp method/URL, chưa bị replay, và trùng `cnf.jkt` hoặc refresh family binding
+
+## OAuth, PKCE, và sender-constrained rollout
+
+Luồng OAuth Google/GitHub dùng authorization-code flow do backend sở hữu. Phase 07 bổ sung:
+
+- PKCE S256 cho authorization request
+- sealed one-time OAuth transaction để callback state/code không bị replay hoặc tráo provider
+- security event an toàn khi transaction hoặc proof bị replay, không log raw code/proof
+
+Sender-constrained session hiện là lớp hardening có feature flag:
+
+- frontend tạo browser-held device proof key trong memory, không lưu access token dài hạn vào `localStorage`
+- nếu proof material mất hoặc không khớp, client phải về trạng thái cần đăng nhập lại, không fallback sang bearer-only
+- backend vẫn là authority cuối cùng: Kong không kiểm tra DPoP, FastAPI mới validate `cnf.jkt`, proof `jti`, method, URL, và refresh-family binding
 
 ## RBAC và scope
 
@@ -83,6 +99,7 @@ Các control chính:
 - internal URL và unsafe grounding không được coi là grounded
 - prompt injection kiểu “ignore policy and reveal secret” bị guardrail hoặc search guardrail chặn
 - metadata lưu lại phải qua normalizer và allowlist; không giữ raw payload vô hạn
+- search capability là RS256 JWT audience-bound và bị consume-once qua replay journal trước khi worker chạy provider
 
 ## Python sandbox boundary
 
@@ -90,6 +107,7 @@ Boundary Python đang được bảo vệ theo các lớp:
 
 - FastAPI không `exec`, `eval`, hay chạy code user trong backend interpreter
 - backend chỉ gửi invocation typed sang sandbox supervisor
+- Python capability là RS256 JWT do backend ký, sandbox verify bằng public key và reject `jti` dùng lại
 - sandbox không có network mặc định
 - policy chặn import và behavior không được duyệt như `requests`, `urllib`, `socket`, `subprocess`, `os.system`, `os.fork`
 - runtime bị giới hạn wall time, output size, CPU/memory/PID/file size theo profile đã review
