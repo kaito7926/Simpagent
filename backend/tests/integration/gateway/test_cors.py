@@ -31,7 +31,7 @@ def test_kong_cors_is_strict_for_browser_clients() -> None:
     assert "credentials: true" in config
     for method in ("GET", "POST", "PATCH", "DELETE", "OPTIONS"):
         assert f"- {method}" in config
-    for header in ("Authorization", "Content-Type", "X-CSRF-Token", "X-Correlation-Id"):
+    for header in ("Authorization", "Content-Type", "DPoP", "X-CSRF-Token", "X-Correlation-Id"):
         assert f"- {header}" in config
     assert "exposed_headers:" in config
     assert "- X-Correlation-Id" in config
@@ -62,7 +62,7 @@ async def test_browser_preflight_allows_only_configured_origin_through_kong() ->
             headers={
                 "Origin": DEFAULT_ORIGIN,
                 "Access-Control-Request-Method": "POST",
-                "Access-Control-Request-Headers": "Authorization, Content-Type, X-CSRF-Token, X-Correlation-Id",
+                "Access-Control-Request-Headers": "Authorization, Content-Type, DPoP, X-CSRF-Token, X-Correlation-Id",
             },
         )
         assert allowed.status_code in {200, 204}

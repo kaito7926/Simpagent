@@ -96,6 +96,7 @@ plugins:
       headers:
         - Authorization
         - Content-Type
+        - DPoP
         - X-CSRF-Token
         - X-Correlation-Id
       exposed_headers:

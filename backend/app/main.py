@@ -93,7 +93,7 @@ def create_app(
         allow_origins=settings.allowed_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-CSRF-Token", "X-Correlation-Id"],
+        allow_headers=["Authorization", "Content-Type", "DPoP", "X-CSRF-Token", "X-Correlation-Id"],
         expose_headers=["X-Correlation-Id"],
     )
 

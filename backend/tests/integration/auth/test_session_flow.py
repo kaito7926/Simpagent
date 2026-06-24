@@ -139,7 +139,7 @@ async def _refresh(
 
 
 @pytest.mark.asyncio
-async def test_sender_constrained_access_token_requires_matching_dpop_proof(app, client) -> None:
+async def test_sender_constrained_access_token_requires_matching_dpop_proof(app, client, db_session) -> None:
     app.state.settings = app.state.settings.model_copy(update={"dpop_enabled": True})
     private_key, jwk = _dpop_keypair()
     await _register(
@@ -156,16 +156,26 @@ async def test_sender_constrained_access_token_requires_matching_dpop_proof(app,
     )
 
     missing_proof = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {access_token}"})
+    proof_token = _dpop_proof(
+        private_key=private_key,
+        jwk=jwk,
+        method="GET",
+        url=f"{TESTSERVER}/api/auth/me",
+        jti="dpop-me-proof-replay",
+    )
     valid_proof = await client.get(
         "/api/auth/me",
         headers={
             "Authorization": f"Bearer {access_token}",
-            "DPoP": _dpop_proof(
-                private_key=private_key,
-                jwk=jwk,
-                method="GET",
-                url=f"{TESTSERVER}/api/auth/me",
-            ),
+            "DPoP": proof_token,
+        },
+    )
+    replayed_proof = await client.get(
+        "/api/auth/me",
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "DPoP": proof_token,
+            "X-Correlation-Id": "corr-dpop-me-replay",
         },
     )
 
@@ -173,6 +183,14 @@ async def test_sender_constrained_access_token_requires_matching_dpop_proof(app,
     assert missing_proof.json()["error"]["code"] == "invalid_dpop_proof"
     assert valid_proof.status_code == 200
     assert valid_proof.json()["email"] == "dpop-access@example.test"
+    assert replayed_proof.status_code == 401
+    assert replayed_proof.json()["error"]["code"] == "invalid_dpop_proof"
+
+    event = await db_session.scalar(
+        select(SecurityEvent).where(SecurityEvent.correlation_id == "corr-dpop-me-replay")
+    )
+    assert event is not None
+    assert event.event_type == "dpop_proof_replay"
 
 
 @pytest.mark.asyncio
