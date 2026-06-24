@@ -55,10 +55,20 @@ class GuardrailToggleRequest(BaseModel):
     enabled: bool
 
 
+class WebsearchProviderOverrideRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: Literal["gemini", "firecrawl"] | None = None
+
+
 class OrchestrationSettingsResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     guardrail_safety_enabled: bool
+    websearch_provider_default: Literal["gemini", "firecrawl"]
+    websearch_provider_override: Literal["gemini", "firecrawl"] | None = None
+    websearch_provider_effective: Literal["gemini", "firecrawl"]
+    websearch_provider_readiness: str
 
 
 class AdminUsersPage(BaseModel):

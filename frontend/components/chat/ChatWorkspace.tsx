@@ -9,6 +9,7 @@ import {
   getAdminMetrics,
   getOrchestrationSettings,
   getSecurityEvents,
+  setWebsearchProviderOverride,
   getToolExecutions,
   setGuardrailSafetyEnabled,
 } from "@/lib/admin-api";
@@ -51,6 +52,10 @@ import { StatePanel } from "@/components/admin/StatePanel";
 
 type AdminOrchestrationSettings = {
   guardrailSafetyEnabled: boolean;
+  websearchProviderDefault: "gemini" | "firecrawl";
+  websearchProviderOverride: "gemini" | "firecrawl" | null;
+  websearchProviderEffective: "gemini" | "firecrawl";
+  websearchProviderReadiness: string;
 };
 
 type ChatWorkspaceProps = {
@@ -737,6 +742,10 @@ export function ChatWorkspace({
           });
           setAdminSettings({
             guardrailSafetyEnabled: orchestrationResponse.guardrail_safety_enabled,
+            websearchProviderDefault: orchestrationResponse.websearch_provider_default,
+            websearchProviderOverride: orchestrationResponse.websearch_provider_override,
+            websearchProviderEffective: orchestrationResponse.websearch_provider_effective,
+            websearchProviderReadiness: orchestrationResponse.websearch_provider_readiness,
           });
           setAdminError(null);
         }
@@ -999,6 +1008,10 @@ export function ChatWorkspace({
       const response = await setGuardrailSafetyEnabled(controller, enabled);
       setAdminSettings({
         guardrailSafetyEnabled: response.guardrail_safety_enabled,
+        websearchProviderDefault: response.websearch_provider_default,
+        websearchProviderOverride: response.websearch_provider_override,
+        websearchProviderEffective: response.websearch_provider_effective,
+        websearchProviderReadiness: response.websearch_provider_readiness,
       });
     } catch (error) {
       setAdminError(
@@ -1006,6 +1019,29 @@ export function ChatWorkspace({
           ? error.message
           : "Can't update guardrail safety setting right now.",
       );
+    } finally {
+      setAdminBusy(false);
+    }
+  }
+
+  async function updateWebsearchProvider(provider: "gemini" | "firecrawl" | null) {
+    if (!adminCanWrite) {
+      return;
+    }
+    setAdminBusy(true);
+    setAdminError(null);
+    try {
+      const response = await setWebsearchProviderOverride(controller, provider);
+      setAdminSettings({
+        guardrailSafetyEnabled: response.guardrail_safety_enabled,
+        websearchProviderDefault: response.websearch_provider_default,
+        websearchProviderOverride: response.websearch_provider_override,
+        websearchProviderEffective: response.websearch_provider_effective,
+        websearchProviderReadiness: response.websearch_provider_readiness,
+      });
+    } catch (error) {
+      handleApiError(error);
+      setAdminError("Unable to update the websearch provider override.");
     } finally {
       setAdminBusy(false);
     }
@@ -1105,6 +1141,7 @@ export function ChatWorkspace({
             adminError={adminError}
             searchEnabled={searchEnabled}
             onGuardrailSafetyToggle={(enabled) => void updateGuardrailSafety(enabled)}
+            onWebsearchProviderChange={(provider) => void updateWebsearchProvider(provider)}
           />
         );
       case "chat":

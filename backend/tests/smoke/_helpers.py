@@ -12,16 +12,10 @@ import pytest
 
 PUBLIC_BASE_URL = os.getenv("SIMPAGENT_PUBLIC_BASE_URL", "http://kong:8000")
 LOKI_BASE_URL = os.getenv("SIMPAGENT_LOKI_BASE_URL", "http://loki:3100")
+TEMPO_BASE_URL = os.getenv("SIMPAGENT_TEMPO_BASE_URL", "http://tempo:3200")
 RUN_SMOKE = os.getenv("SIMPAGENT_RUN_SMOKE", "false").lower() == "true"
 DEFAULT_ORIGIN = os.getenv("SIMPAGENT_SMOKE_ORIGIN", "http://localhost:3000")
-EXPECTED_SEARCH_STATE = os.getenv("SIMPAGENT_EXPECT_SEARCH_STATE") or None
-VALID_SEARCH_STATES = {
-    "grounded",
-    "missing_grounding",
-    "search_unavailable",
-    "provider_failed",
-    "timeout",
-}
+EXPECTED_SEARCH_STATE = os.getenv("SIMPAGENT_EXPECT_SEARCH_STATE", "search_unavailable")
 
 DEMO_ADMIN_EMAIL = os.getenv("SIMPAGENT_DEMO_ADMIN_EMAIL", "demo.admin@simpagent.test")
 DEMO_ADMIN_PASSWORD = os.getenv("SIMPAGENT_DEMO_ADMIN_PASSWORD", "ThayDoiMatKhauDemoAdmin123")
@@ -153,12 +147,9 @@ async def submit_search_turn(
 
 def assert_search_contract(payload: dict[str, Any]) -> None:
     search = payload["assistant_message"]["search"]
-    if EXPECTED_SEARCH_STATE is not None:
-        assert search["state"] == EXPECTED_SEARCH_STATE
-    else:
-        assert search["state"] in VALID_SEARCH_STATES
+    assert search["state"] == EXPECTED_SEARCH_STATE
     assert payload["assistant_message"]["id"]
-    if search["state"] == "grounded":
+    if EXPECTED_SEARCH_STATE == "grounded":
         assert search["google_grounded"] is True
         assert search["sources"]
         assert search["citations"]
@@ -225,6 +216,32 @@ async def poll_loki_lines(
             await asyncio.sleep(poll_interval_seconds)
 
 
+async def poll_tempo_trace(
+    trace_id: str,
+    *,
+    timeout_seconds: float = 30.0,
+    poll_interval_seconds: float = 1.0,
+) -> dict[str, Any]:
+    deadline = monotonic() + timeout_seconds
+    last_payload: dict[str, Any] = {}
+
+    async with httpx.AsyncClient(base_url=TEMPO_BASE_URL, timeout=5.0) as client:
+        while True:
+            response = await client.get(f"/api/traces/{trace_id}")
+            if response.status_code == 404:
+                payload: dict[str, Any] = {}
+            else:
+                response.raise_for_status()
+                payload = response.json()
+                last_payload = payload
+                if payload.get("batches"):
+                    return payload
+
+            if monotonic() >= deadline:
+                return last_payload
+            await asyncio.sleep(poll_interval_seconds)
+
+
 def _extract_loki_lines(payload: dict[str, Any]) -> list[str]:
     results = payload.get("data", {}).get("result", [])
     lines: list[str] = []
@@ -243,6 +260,7 @@ __all__ = [
     "OAUTH_PROVIDERS",
     "PUBLIC_BASE_URL",
     "RUN_SMOKE",
+    "TEMPO_BASE_URL",
     "assert_no_secret_markers",
     "assert_oauth_start_contract",
     "assert_readiness_has_oauth_components",
@@ -251,6 +269,7 @@ __all__ = [
     "find_admin_user_by_email",
     "login",
     "poll_loki_lines",
+    "poll_tempo_trace",
     "register_and_login_user",
     "require_smoke",
     "submit_search_turn",

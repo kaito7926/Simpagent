@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 
+from app.core import logging as logging_module
 from app.core.logging import JsonFormatter, reset_correlation_id, set_correlation_id
 from app.identity.redaction import sanitize_admin_evidence
 
@@ -34,6 +35,25 @@ def test_json_formatter_includes_correlation_and_redacts_sensitive_fields() -> N
     assert payload["user_id"] == "user-1"
     assert payload["authorization"] == "[REDACTED]"
     assert payload["database_url"] == "[REDACTED]"
+
+
+def test_json_formatter_includes_trace_context_when_available(monkeypatch) -> None:
+    formatter = JsonFormatter()
+    record = logging.LogRecord(
+        name="simpagent.test",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=10,
+        msg="trace-aware log",
+        args=(),
+        exc_info=None,
+    )
+    monkeypatch.setattr(logging_module, "get_trace_context", lambda: ("a" * 32, "b" * 16))
+
+    payload = json.loads(formatter.format(record))
+
+    assert payload["trace_id"] == "a" * 32
+    assert payload["span_id"] == "b" * 16
 
 
 def test_admin_evidence_sanitizer_matches_logging_redaction_for_sensitive_values() -> None:

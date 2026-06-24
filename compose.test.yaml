@@ -27,6 +27,7 @@ services:
       SIMPAGENT_JWT_PUBLIC_KEY_FILE: /run/secrets/jwt_public_key
       SIMPAGENT_REFRESH_HMAC_KEY_FILE: /run/secrets/refresh_hmac_key
       SIMPAGENT_CSRF_HMAC_KEY_FILE: /run/secrets/csrf_hmac_key
+      SIMPAGENT_MESSAGE_ENCRYPTION_KEY_FILE: /run/secrets/message_encryption_key
       SIMPAGENT_COOKIE_SECURE: true
       SIMPAGENT_COOKIE_SAMESITE: strict
       SIMPAGENT_ACCESS_TOKEN_TTL_SECONDS: 600
@@ -36,8 +37,8 @@ services:
       SIMPAGENT_PROVIDER_CHECK_TIMEOUT_SECONDS: 2
       SIMPAGENT_LLM_API_BASE: https://api.example.test/v1
       SIMPAGENT_LLM_MODEL: fake-model
-      SIMPAGENT_GOOGLE_API_KEY: ""
-      SIMPAGENT_GOOGLE_API_KEY_FILE: ""
+      SIMPAGENT_GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      SIMPAGENT_GOOGLE_API_KEY_FILE: ${GOOGLE_API_KEY_FILE:-}
       SIMPAGENT_SEARCH_MODEL: gemini-2.5-flash
       SIMPAGENT_GUARDRAIL_SAFETY_ENABLED_DEFAULT: true
       SIMPAGENT_PYTHON_SUPERVISOR_BASE_URL: http://sandbox:8080
@@ -57,6 +58,7 @@ services:
       - jwt_public_key
       - refresh_hmac_key
       - csrf_hmac_key
+      - message_encryption_key
 
 secrets:
   jwt_private_key:
@@ -67,3 +69,5 @@ secrets:
     file: ./backend/tests/fixtures/secrets/test_refresh_hmac_key
   csrf_hmac_key:
     file: ./backend/tests/fixtures/secrets/test_csrf_hmac_key
+  message_encryption_key:
+    file: ./backend/tests/fixtures/secrets/test_message_encryption_key

@@ -20,6 +20,7 @@ from app.schemas.admin import (
     OrchestrationSettingsResponse,
     SecurityEventsPage,
     ToolExecutionsPage,
+    WebsearchProviderOverrideRequest,
 )
 from app.services.admin_evidence import (
     AdminAccessDenied,
@@ -156,6 +157,8 @@ async def get_orchestration_settings(
         return await service.get_orchestration_settings(
             principal=principal,
             default_guardrail_enabled=request.app.state.settings.guardrail_safety_enabled_default,
+            default_websearch_provider=request.app.state.settings.websearch_provider,
+            settings=request.app.state.settings,
         )
     except AdminAccessDenied as exc:
         raise _admin_access_error(exc) from exc
@@ -173,7 +176,35 @@ async def update_guardrail_safety(
         return await service.set_guardrail_safety_enabled(
             principal=principal,
             enabled=payload.enabled,
+            default_websearch_provider=request.app.state.settings.websearch_provider,
+            settings=request.app.state.settings,
         )
+    except AdminAccessDenied as exc:
+        raise _admin_access_error(exc) from exc
+
+
+@router.patch("/orchestration/websearch-provider", response_model=OrchestrationSettingsResponse)
+async def update_websearch_provider_override(
+    payload: WebsearchProviderOverrideRequest,
+    request: Request,
+    principal: Annotated[AuthenticatedPrincipal, Depends(resolve_principal)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> OrchestrationSettingsResponse:
+    service = _service(request, session)
+    try:
+        return await service.set_websearch_provider_override(
+            principal=principal,
+            provider=payload.provider,
+            default_guardrail_enabled=request.app.state.settings.guardrail_safety_enabled_default,
+            default_websearch_provider=request.app.state.settings.websearch_provider,
+            settings=request.app.state.settings,
+        )
+    except ValueError as exc:
+        raise ApiError(
+            status_code=422,
+            code="invalid_websearch_provider",
+            message=str(exc),
+        ) from exc
     except AdminAccessDenied as exc:
         raise _admin_access_error(exc) from exc
 

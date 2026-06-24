@@ -23,6 +23,7 @@ SEARCH_MISSING_GROUNDING_NOTE = (
 
 
 TurnMode = Literal["direct_chat", "google_search"]
+SearchProvider = Literal["gemini", "firecrawl"]
 SearchResponseState = Literal[
     "grounded",
     "missing_grounding",
@@ -62,6 +63,7 @@ class SearchWorkerResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     state: SearchResponseState
+    provider: SearchProvider = "gemini"
     answer_markdown: str = Field(min_length=1, max_length=4000)
     google_grounded: bool = False
     tool_executed: bool = True
@@ -76,6 +78,7 @@ class SearchTurnResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mode: Literal["google_search"] = "google_search"
+    provider: SearchProvider = "gemini"
     state: SearchResponseState
     google_grounded: bool = False
     tool_executed: bool = False

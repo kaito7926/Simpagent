@@ -9,6 +9,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.security.message_encryption import EncryptedText
 
 MESSAGE_ROLE_CHECK = "role in ('system', 'user', 'assistant', 'tool')"
 MESSAGE_STATUS_CHECK = "status in ('pending', 'completed', 'failed')"
@@ -69,7 +70,7 @@ class Message(Base):
     client_message_id: Mapped[str | None] = mapped_column(String(128))
     role: Mapped[str] = mapped_column(String(32), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="completed", server_default=text("'completed'"))
-    content: Mapped[str] = mapped_column(Text, nullable=False)
+    content: Mapped[str] = mapped_column(EncryptedText(), nullable=False)
     message_metadata: Mapped[dict[str, Any]] = mapped_column(
         "metadata",
         postgresql.JSONB(astext_type=Text()),
@@ -101,6 +102,7 @@ class AgentRuntimeSetting(Base):
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
+    value: Mapped[str | None] = mapped_column(String(64), nullable=True)
     updated_by_user_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,

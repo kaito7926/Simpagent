@@ -14,6 +14,10 @@ type SettingsPageProps = {
   currentUser: CurrentUser;
   adminSettings: {
     guardrailSafetyEnabled: boolean;
+    websearchProviderDefault: "gemini" | "firecrawl";
+    websearchProviderOverride: "gemini" | "firecrawl" | null;
+    websearchProviderEffective: "gemini" | "firecrawl";
+    websearchProviderReadiness: string;
   } | null;
   adminCanWrite: boolean;
   adminBusy: boolean;
@@ -22,10 +26,11 @@ type SettingsPageProps = {
   initialSection?: SettingsSectionId;
   initialConfirmingSetting?: OrchestrationSettingId | null;
   onGuardrailSafetyToggle: (enabled: boolean) => void;
+  onWebsearchProviderChange: (provider: "gemini" | "firecrawl" | null) => void;
 };
 
 type SettingsSectionId = "profile" | "roles" | "tools" | "readiness";
-type OrchestrationSettingId = "guardrail";
+type OrchestrationSettingId = "guardrail" | "websearch-provider";
 
 const settingsNavigation: Array<{
   id: SettingsSectionId;
@@ -48,6 +53,7 @@ export function SettingsPage({
   initialSection = "profile",
   initialConfirmingSetting = null,
   onGuardrailSafetyToggle,
+  onWebsearchProviderChange,
   searchEnabled,
 }: SettingsPageProps) {
   const [activeSection, setActiveSection] = React.useState<SettingsSectionId>(initialSection);
@@ -79,6 +85,7 @@ export function SettingsPage({
             currentUser={currentUser}
             onConfirmingSettingChange={setConfirmingSetting}
             onGuardrailSafetyToggle={onGuardrailSafetyToggle}
+            onWebsearchProviderChange={onWebsearchProviderChange}
             searchEnabled={searchEnabled}
           />
         );
@@ -202,11 +209,16 @@ function ToolsSection({
   confirmingSetting,
   onConfirmingSettingChange,
   onGuardrailSafetyToggle,
+  onWebsearchProviderChange,
   searchEnabled,
 }: {
   currentUser: CurrentUser;
   adminSettings: {
     guardrailSafetyEnabled: boolean;
+    websearchProviderDefault: "gemini" | "firecrawl";
+    websearchProviderOverride: "gemini" | "firecrawl" | null;
+    websearchProviderEffective: "gemini" | "firecrawl";
+    websearchProviderReadiness: string;
   } | null;
   adminCanWrite: boolean;
   adminBusy: boolean;
@@ -214,6 +226,7 @@ function ToolsSection({
   confirmingSetting: OrchestrationSettingId | null;
   onConfirmingSettingChange: (setting: OrchestrationSettingId | null) => void;
   onGuardrailSafetyToggle: (enabled: boolean) => void;
+  onWebsearchProviderChange: (provider: "gemini" | "firecrawl" | null) => void;
   searchEnabled: boolean;
 }) {
   const pythonEnabled = currentUser.scopes.includes("tool:python");
@@ -237,6 +250,42 @@ function ToolsSection({
             <span className="scope-code">
               Allows real-time searches with verifiable citations.
             </span>
+              {currentUser.role === "admin" && adminSettings ? (
+                <div className="admin-card-actions">
+                  <ActionButton
+                    type="button"
+                    variant={adminSettings.websearchProviderEffective === "gemini" ? "secondary" : "quiet"}
+                    fullWidth={false}
+                    disabled={adminBusy}
+                    onClick={() => onWebsearchProviderChange("gemini")}
+                  >
+                    Use Gemini
+                  </ActionButton>
+                  <ActionButton
+                    type="button"
+                    variant={adminSettings.websearchProviderEffective === "firecrawl" ? "secondary" : "quiet"}
+                    fullWidth={false}
+                    disabled={adminBusy}
+                    onClick={() => onWebsearchProviderChange("firecrawl")}
+                  >
+                    Use Firecrawl
+                  </ActionButton>
+                  <ActionButton
+                    type="button"
+                    variant={adminSettings.websearchProviderOverride === null ? "secondary" : "quiet"}
+                    fullWidth={false}
+                    disabled={adminBusy}
+                    onClick={() => onWebsearchProviderChange(null)}
+                  >
+                    Use default
+                  </ActionButton>
+                </div>
+              ) : null}
+              {adminSettings ? (
+                <span className="scope-code">
+                  Effective provider: {adminSettings.websearchProviderEffective} · Readiness: {adminSettings.websearchProviderReadiness}
+                </span>
+              ) : null}
           </div>
 
           <div className="scope-list-item">

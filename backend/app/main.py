@@ -13,12 +13,12 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.ai.search_worker.service import GoogleSearchWorkerService
+from app.ai.search_worker.service import build_search_worker_service
 from app.api.routes import admin, auth, auth_oauth, chat, conversations, health, python
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError, install_error_handlers
 from app.core.logging import configure_logging, reset_correlation_id, set_correlation_id
-from app.core.provider_status import search_status
+from app.core.provider_status import resolve_search_provider, search_status
 from app.db.session import create_session_factory
 
 Clock = Callable[[], datetime]
@@ -77,10 +77,9 @@ def create_app(
     app.state.session_factory = resolved_session_factory
     app.state.provider_checkers = {}
     app.state.search_status = search_status(settings)
+    app.state.search_provider = resolve_search_provider(settings) or "invalid"
     app.state.search_ready = app.state.search_status == "ready"
-    app.state.search_worker = (
-        GoogleSearchWorkerService(settings=settings) if app.state.search_ready else None
-    )
+    app.state.search_worker = build_search_worker_service(settings) if app.state.search_ready else None
 
     app.add_middleware(
         CORSMiddleware,

@@ -24,10 +24,15 @@ os.environ.setdefault("SIMPAGENT_APP_ENV", "test")
 os.environ.setdefault("SIMPAGENT_LLM_API_BASE", "https://api.example.test/v1")
 os.environ.setdefault("SIMPAGENT_LLM_MODEL", "fake-model")
 os.environ.setdefault("SIMPAGENT_SEARCH_MODEL", "configured-search-model")
+os.environ.setdefault("SIMPAGENT_WEBSEARCH_PROVIDER", "gemini")
+os.environ.setdefault("SIMPAGENT_GOOGLE_API_KEY", "")
+os.environ.setdefault("SIMPAGENT_FIRECRAWL_API_KEY", "")
+os.environ.setdefault("SIMPAGENT_GUARDRAIL_SAFETY_ENABLED_DEFAULT", "true")
 os.environ.setdefault("SIMPAGENT_JWT_PRIVATE_KEY_FILE", str(SECRETS / "test_jwt_private.pem"))
 os.environ.setdefault("SIMPAGENT_JWT_PUBLIC_KEY_FILE", str(SECRETS / "test_jwt_public.pem"))
 os.environ.setdefault("SIMPAGENT_REFRESH_HMAC_KEY_FILE", str(SECRETS / "test_refresh_hmac_key"))
 os.environ.setdefault("SIMPAGENT_CSRF_HMAC_KEY_FILE", str(SECRETS / "test_csrf_hmac_key"))
+os.environ.setdefault("SIMPAGENT_MESSAGE_ENCRYPTION_KEY_FILE", str(SECRETS / "test_message_encryption_key"))
 
 from app.core.config import Settings
 from app.main import create_app
@@ -58,6 +63,11 @@ def settings() -> Settings:
         refresh_hmac_key_file=os.getenv("SIMPAGENT_REFRESH_HMAC_KEY_FILE", str(SECRETS / "test_refresh_hmac_key")),
         csrf_hmac_key=os.getenv("SIMPAGENT_CSRF_HMAC_KEY"),
         csrf_hmac_key_file=os.getenv("SIMPAGENT_CSRF_HMAC_KEY_FILE", str(SECRETS / "test_csrf_hmac_key")),
+        message_encryption_key=os.getenv("SIMPAGENT_MESSAGE_ENCRYPTION_KEY"),
+        message_encryption_key_file=os.getenv(
+            "SIMPAGENT_MESSAGE_ENCRYPTION_KEY_FILE",
+            str(SECRETS / "test_message_encryption_key"),
+        ),
         cookie_secure=os.getenv("SIMPAGENT_COOKIE_SECURE", "true").lower() == "true",
         cookie_samesite=os.getenv("SIMPAGENT_COOKIE_SAMESITE", "strict"),
         access_token_ttl_seconds=int(os.getenv("SIMPAGENT_ACCESS_TOKEN_TTL_SECONDS", "600")),
@@ -66,9 +76,14 @@ def settings() -> Settings:
         demo_seed_enabled=os.getenv("SIMPAGENT_DEMO_SEED_ENABLED", "false").lower() == "true",
         llm_api_base=os.getenv("SIMPAGENT_LLM_API_BASE", "https://api.example.test/v1"),
         llm_model=os.getenv("SIMPAGENT_LLM_MODEL", "fake-model"),
+        websearch_provider=os.getenv("SIMPAGENT_WEBSEARCH_PROVIDER", "gemini"),
         search_model=os.getenv("SIMPAGENT_SEARCH_MODEL", "configured-search-model"),
         google_api_key=os.getenv("SIMPAGENT_GOOGLE_API_KEY"),
         google_api_key_file=os.getenv("SIMPAGENT_GOOGLE_API_KEY_FILE"),
+        firecrawl_api_key=os.getenv("SIMPAGENT_FIRECRAWL_API_KEY"),
+        firecrawl_api_key_file=os.getenv("SIMPAGENT_FIRECRAWL_API_KEY_FILE"),
+        firecrawl_api_base=os.getenv("SIMPAGENT_FIRECRAWL_API_BASE", "https://api.firecrawl.dev"),
+        guardrail_safety_enabled_default=os.getenv("SIMPAGENT_GUARDRAIL_SAFETY_ENABLED_DEFAULT", "true").lower() == "true",
         provider_check_timeout_seconds=int(os.getenv("SIMPAGENT_PROVIDER_CHECK_TIMEOUT_SECONDS", "2")),
         python_supervisor_base_url=os.getenv("SIMPAGENT_PYTHON_SUPERVISOR_BASE_URL", "http://sandbox:8080"),
         python_supervisor_request_timeout_seconds=int(

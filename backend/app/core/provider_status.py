@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Literal
 
 from app.core.config import Settings
 
 
 ProviderChecker = Callable[[], Awaitable[str]]
+SearchProvider = Literal["gemini", "firecrawl"]
+SEARCH_PROVIDER_ALLOWLIST: frozenset[str] = frozenset({"gemini", "firecrawl"})
 
 
 @dataclass(frozen=True)
@@ -20,6 +22,14 @@ class ProviderSnapshot:
 
 SUPPORTED_SEARCH_MODELS = {"gemini-2.5-flash"}
 SUPPORTED_SEARCH_MODEL_PREVIEW_PREFIXES = ("gemini-2.5-flash-preview-",)
+
+
+def resolve_search_provider(settings: Settings, *, runtime_override: str | None = None) -> SearchProvider | None:
+    provider_source = runtime_override if runtime_override is not None else settings.websearch_provider
+    provider = provider_source.strip().casefold()
+    if provider not in SEARCH_PROVIDER_ALLOWLIST:
+        return None
+    return provider  # type: ignore[return-value]
 
 
 def llm_status(settings: Settings, *, override: str | None = None) -> str:
@@ -38,9 +48,21 @@ def supports_google_search_model(model: str | None) -> bool:
     )
 
 
-def search_status(settings: Settings, *, override: str | None = None) -> str:
+def search_status(
+    settings: Settings,
+    *,
+    override: str | None = None,
+    runtime_override: str | None = None,
+) -> str:
     if override:
         return override
+    provider = resolve_search_provider(settings, runtime_override=runtime_override)
+    if provider is None:
+        return "invalid_provider"
+    if provider == "firecrawl":
+        if not settings.firecrawl_api_key_value:
+            return "unconfigured"
+        return "ready"
     if not settings.search_model or not settings.google_api_key_value:
         return "unconfigured"
     if not supports_google_search_model(settings.search_model):

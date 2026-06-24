@@ -9,6 +9,8 @@ from app.models.domain import AgentRuntimeSetting
 
 
 GUARDRAIL_SETTING_KEY = "guardrail_safety_agent"
+WEBSEARCH_PROVIDER_OVERRIDE_KEY = "websearch_provider_override"
+WEBSEARCH_PROVIDER_ALLOWLIST = frozenset({"gemini", "firecrawl"})
 
 
 class AgentRuntimeSettingsRepository:
@@ -29,6 +31,47 @@ class AgentRuntimeSettingsRepository:
             enabled=enabled,
             updated_by_user_id=updated_by_user_id,
         )
+
+    async def get_websearch_provider_override(self) -> str | None:
+        setting = await self.session.scalar(
+            select(AgentRuntimeSetting).where(AgentRuntimeSetting.key == WEBSEARCH_PROVIDER_OVERRIDE_KEY)
+        )
+        if setting is None or setting.value is None:
+            return None
+        provider = setting.value.strip().casefold()
+        return provider if provider in WEBSEARCH_PROVIDER_ALLOWLIST else None
+
+    async def set_websearch_provider_override(
+        self,
+        *,
+        provider: str | None,
+        updated_by_user_id: UUID,
+    ) -> AgentRuntimeSetting:
+        normalized: str | None = None
+        if provider is not None:
+            candidate = provider.strip().casefold()
+            if candidate not in WEBSEARCH_PROVIDER_ALLOWLIST:
+                raise ValueError("Unsupported websearch provider override.")
+            normalized = candidate
+        setting = await self.session.scalar(
+            select(AgentRuntimeSetting)
+            .where(AgentRuntimeSetting.key == WEBSEARCH_PROVIDER_OVERRIDE_KEY)
+            .with_for_update()
+        )
+        if setting is None:
+            setting = AgentRuntimeSetting(
+                key=WEBSEARCH_PROVIDER_OVERRIDE_KEY,
+                enabled=True,
+                value=normalized,
+                updated_by_user_id=updated_by_user_id,
+            )
+            self.session.add(setting)
+        else:
+            setting.enabled = True
+            setting.value = normalized
+            setting.updated_by_user_id = updated_by_user_id
+        await self.session.flush()
+        return setting
 
     async def _is_enabled(self, *, key: str, default: bool) -> bool:
         setting = await self.session.scalar(

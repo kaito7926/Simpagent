@@ -31,8 +31,10 @@ async def submit_turn(
         settings=request.app.state.settings,
         now=request.app.state.clock(),
         correlation_id=getattr(request.state, "correlation_id", None),
+        search_provider=str(getattr(request.app.state, "search_provider", "gemini")),
         search_status=str(resolved_search_status),
         search_worker=getattr(request.app.state, "search_worker", None),
+        search_runtime_worker_factory=getattr(request.app.state, "search_runtime_worker_factory", None),
     )
     try:
         return await service.submit_turn(

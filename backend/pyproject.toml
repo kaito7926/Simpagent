@@ -20,6 +20,11 @@ dependencies = [
   "openai>=2,<3",
   "python-multipart>=0.0.20,<1",
   "Authlib>=1.7,<2",
+  "opentelemetry-sdk>=1.36,<2",
+  "opentelemetry-exporter-otlp-proto-http>=1.36,<2",
+  "opentelemetry-instrumentation-fastapi>=0.57b0,<1",
+  "opentelemetry-instrumentation-httpx>=0.57b0,<1",
+  "opentelemetry-instrumentation-sqlalchemy>=0.57b0,<1",
 ]
 
 [project.optional-dependencies]
