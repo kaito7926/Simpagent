@@ -210,7 +210,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   3. Search and Python capability credentials are signed asymmetrically, bound to their reviewed audience and request context, and rejected on replay within their short-lived validity window.
   4. Security evidence, rollout docs, and operational guidance truthfully describe the new sender-constrained behavior, key-loss re-auth expectations, and remaining prototype limits.
 
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
 **Wave 1**
 
 - [x] 07-01-PLAN.md - Establish replay-journal storage, config flags, and shared cryptographic hardening helpers.
@@ -218,7 +218,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 07-02-PLAN.md - Add PKCE S256 and sealed one-time OAuth transaction hardening for Google and GitHub callbacks.
-- [ ] 07-03-PLAN.md - Convert search and Python capability credentials to asymmetric one-time trust artifacts.
+- [x] 07-03-PLAN.md - Convert search and Python capability credentials to asymmetric one-time trust artifacts.
 
 **Wave 3** *(blocked on Wave 1-2 completion where referenced)*
 
@@ -245,4 +245,4 @@ Note: PR #2 ships the Phase 4 Python slice before Phase 3 planning metadata was 
 | 4. Isolated Python Execution | 5/5 | Shipped (PR #2) | 2026-06-13 |
 | 5. Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 8/8 | Complete | 2026-06-17 |
 | 6. Adversarial Verification and Vietnamese Delivery | 5/5 | Complete | 2026-06-19 |
-| 7. Sender-Constrained Sessions and Cryptographic Hardening | 2/5 | In Progress|  |
+| 7. Sender-Constrained Sessions and Cryptographic Hardening | 3/5 | In Progress|  |
