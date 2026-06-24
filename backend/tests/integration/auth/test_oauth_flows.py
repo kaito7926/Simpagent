@@ -93,4 +93,7 @@ async def test_google_start_redirects_only_when_configured(google_client) -> Non
     parsed = urlparse(location)
     assert parsed.scheme == "https"
     assert "accounts.google.com" in parsed.netloc
-    assert parse_qs(parsed.query).get("state")
+    query = parse_qs(parsed.query)
+    assert query.get("state")
+    assert query.get("code_challenge")
+    assert query.get("code_challenge_method") == ["S256"]

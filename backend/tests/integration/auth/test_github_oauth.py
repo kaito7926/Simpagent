@@ -17,10 +17,15 @@ from app.security.refresh_tokens import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME
 class FakeGitHubProvider:
     identity: GitHubOAuthIdentity
 
-    def authorization_url(self, *, state: str) -> str:
-        return f"https://github.com/login/oauth/authorize?state={state}&client_id=test"
+    def authorization_url(self, *, state: str, code_challenge: str | None = None) -> str:
+        return (
+            "https://github.com/login/oauth/authorize"
+            f"?state={state}&client_id=test&code_challenge={code_challenge}"
+            "&code_challenge_method=S256"
+        )
 
     async def authenticate(self, request) -> GitHubOAuthIdentity:
+        assert request.code_verifier
         return self.identity
 
 
@@ -98,7 +103,10 @@ async def test_github_start_redirects_only_when_configured(github_settings, sess
     parsed = urlparse(location)
     assert parsed.scheme == "https"
     assert "github.com" in parsed.netloc
-    assert parse_qs(parsed.query).get("state")
+    query = parse_qs(parsed.query)
+    assert query.get("state")
+    assert query.get("code_challenge")
+    assert query.get("code_challenge_method") == ["S256"]
 
 
 @pytest.mark.asyncio
