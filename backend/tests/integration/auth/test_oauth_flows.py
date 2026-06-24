@@ -18,6 +18,7 @@ def google_settings(settings):
             "google_client_secret": "google-client-secret",
             "google_redirect_uri": "http://testserver/api/auth/oauth/google/callback",
             "public_app_origin": "http://testserver",
+            "cookie_secure": False,
         }
     )
 

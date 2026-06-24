@@ -37,6 +37,7 @@ def github_settings(settings):
             "github_client_secret": "github-client-secret",
             "github_redirect_uri": "http://testserver/api/auth/oauth/github/callback",
             "public_app_origin": "http://testserver",
+            "cookie_secure": False,
         }
     )
 

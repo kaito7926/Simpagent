@@ -11,6 +11,7 @@ from app.identity.providers.google import GOOGLE_ISSUER, GoogleOAuthIdentity
 from app.main import create_app
 from app.models.account import Identity, User
 from app.models.evidence import SecurityEvent
+from app.api.routes.auth_oauth import OAUTH_STATE_COOKIE_NAMES
 from app.security.refresh_tokens import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME
 
 
@@ -38,6 +39,7 @@ def google_settings(settings):
             "google_client_secret": "google-client-secret",
             "google_redirect_uri": "http://testserver/api/auth/oauth/google/callback",
             "public_app_origin": "http://testserver",
+            "cookie_secure": False,
         }
     )
 
@@ -173,10 +175,13 @@ async def test_google_callback_replay_is_denied_with_security_evidence(
     async for client in _client_with_identity(google_settings, session_factory, identity):
         start = await client.get("/api/auth/oauth/google/start")
         state = parse_qs(urlparse(start.headers["location"]).query)["state"][0]
+        transaction_cookie = client.cookies.get(OAUTH_STATE_COOKIE_NAMES["google"])
+        assert transaction_cookie
         first = await client.get(
             "/api/auth/oauth/google/callback",
             params={"state": state, "code": "auth-code"},
         )
+        client.cookies.set(OAUTH_STATE_COOKIE_NAMES["google"], transaction_cookie)
         replay = await client.get(
             "/api/auth/oauth/google/callback",
             params={"state": state, "code": "auth-code"},
