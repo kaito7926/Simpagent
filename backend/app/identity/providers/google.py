@@ -19,6 +19,7 @@ GOOGLE_SCOPE = "openid email profile"
 class GoogleOAuthRequest:
     code: str
     redirect_uri: str
+    code_verifier: str | None = None
 
 
 @dataclass(frozen=True)
@@ -56,7 +57,7 @@ class GoogleOAuthProvider:
             timeout_seconds=float(settings.provider_check_timeout_seconds),
         )
 
-    def authorization_url(self, *, state: str) -> str:
+    def authorization_url(self, *, state: str, code_challenge: str | None = None) -> str:
         client = AsyncOAuth2Client(
             client_id=self.client_id,
             client_secret=self.client_secret,
@@ -69,6 +70,8 @@ class GoogleOAuthProvider:
             state=state,
             access_type="online",
             prompt="select_account",
+            code_challenge=code_challenge,
+            code_challenge_method="S256" if code_challenge else None,
         )
         return str(authorization_url)
 
@@ -84,6 +87,7 @@ class GoogleOAuthProvider:
                 GOOGLE_TOKEN_URL,
                 code=request.code,
                 grant_type="authorization_code",
+                code_verifier=request.code_verifier,
             )
             response = await client.get(GOOGLE_USERINFO_URL)
             response.raise_for_status()

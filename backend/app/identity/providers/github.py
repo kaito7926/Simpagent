@@ -20,6 +20,7 @@ GITHUB_SCOPE = "read:user user:email"
 class GitHubOAuthRequest:
     code: str
     redirect_uri: str
+    code_verifier: str | None = None
 
 
 @dataclass(frozen=True)
@@ -57,7 +58,7 @@ class GitHubOAuthProvider:
             timeout_seconds=float(settings.provider_check_timeout_seconds),
         )
 
-    def authorization_url(self, *, state: str) -> str:
+    def authorization_url(self, *, state: str, code_challenge: str | None = None) -> str:
         client = AsyncOAuth2Client(
             client_id=self.client_id,
             client_secret=self.client_secret,
@@ -69,6 +70,8 @@ class GitHubOAuthProvider:
             GITHUB_AUTHORIZATION_URL,
             state=state,
             allow_signup="true",
+            code_challenge=code_challenge,
+            code_challenge_method="S256" if code_challenge else None,
         )
         return str(authorization_url)
 
@@ -84,6 +87,7 @@ class GitHubOAuthProvider:
                 GITHUB_TOKEN_URL,
                 code=request.code,
                 grant_type="authorization_code",
+                code_verifier=request.code_verifier,
             )
             user_response = await client.get(GITHUB_USER_URL)
             user_response.raise_for_status()
