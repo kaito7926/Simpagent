@@ -96,6 +96,8 @@ async def test_refresh_rotation_replay_revokes_family_and_records_security_event
     family = await db_session.scalar(select(RefreshTokenFamily))
     assert family is not None
     assert family.revoked_at is None
+    assert family.auth_binding_method == "bearer"
+    assert family.key_thumbprint is None
 
     replay, _, _ = await _refresh(
         client,
@@ -126,6 +128,7 @@ async def test_refresh_rotation_replay_revokes_family_and_records_security_event
     assert event.event_type == "refresh_reuse"
     assert event.severity == "high"
     assert event.event_metadata["family_id"] == str(family.id)
+    assert event.event_metadata["auth_binding_method"] == "bearer"
 
 
 @pytest.mark.asyncio
