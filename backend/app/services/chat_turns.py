@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from time import perf_counter
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -131,15 +131,19 @@ class ChatTurnsService:
         settings: Settings,
         now: datetime,
         correlation_id: str | None,
+        search_provider: str = "gemini",
         search_status: str,
         search_worker: SearchWorker | None,
+        search_runtime_worker_factory: Callable[[str], SearchWorker | None] | None = None,
     ) -> None:
         self.session = session
         self.settings = settings
         self.now = now
         self.correlation_id = correlation_id
+        self.search_provider = search_provider
         self.search_status = search_status
         self.search_worker = search_worker
+        self.search_runtime_worker_factory = search_runtime_worker_factory
         self.conversations = ConversationsRepository(session)
         self.agent_settings = AgentRuntimeSettingsRepository(session)
 
