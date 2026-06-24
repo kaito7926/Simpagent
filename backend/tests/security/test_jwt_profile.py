@@ -15,6 +15,22 @@ from app.security.access_tokens import (
 )
 
 
+def test_access_token_can_carry_sender_constrained_cnf_claim(settings) -> None:
+    issued_at = datetime(2026, 1, 1, tzinfo=UTC)
+    token = issue_access_token(
+        user_id=UUID("00000000-0000-0000-0000-000000000004"),
+        role="user",
+        scopes=STANDARD_USER_SCOPES,
+        settings=settings,
+        now=issued_at,
+        key_thumbprint="test-client-key-thumbprint",
+    )
+
+    claims = decode_access_token(token, settings=settings, now=issued_at)
+
+    assert claims.cnf_jkt == "test-client-key-thumbprint"
+
+
 def test_decode_rejects_malformed_token(settings) -> None:
     with pytest.raises(AccessTokenError):
         decode_access_token("not-a-token", settings=settings)
