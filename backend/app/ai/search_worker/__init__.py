@@ -4,11 +4,13 @@ from .grounding import (
     grounding_to_search_result,
     is_public_web_uri,
     normalize_grounding_evidence,
+    sanitize_source_uri,
 )
 from .schemas import SearchGroundingEvidence, SearchWorkerReply
-from .service import GoogleSearchWorkerService
+from .service import FirecrawlSearchWorkerService, GoogleSearchWorkerService, build_search_worker_service
 
 __all__ = [
+    "FirecrawlSearchWorkerService",
     "GoogleSearchWorkerService",
     "SEARCH_WORKER_INSTRUCTION",
     "SearchGroundingEvidence",
@@ -18,4 +20,6 @@ __all__ = [
     "grounding_to_search_result",
     "is_public_web_uri",
     "normalize_grounding_evidence",
+    "sanitize_source_uri",
+    "build_search_worker_service",
 ]

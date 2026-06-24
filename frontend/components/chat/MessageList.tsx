@@ -2,7 +2,9 @@ import React from "react";
 import Image from "next/image";
 
 import type { ChatMessage } from "@/lib/chat-types";
+import { assistantTurnFromMessage } from "@/lib/chat-session";
 
+import { AssistantMessageCard } from "./AssistantMessageCard";
 import { AssistantStateRows } from "./AssistantStateRows";
 import { MessageMarkdown } from "./MessageMarkdown";
 
@@ -58,6 +60,10 @@ export function MessageList({
 
         const retryClientMessageId = retryIdFor(messages, index);
         const isUser = message.role === "user";
+        const assistantTurn =
+          message.role === "assistant" && message.status === "completed"
+            ? assistantTurnFromMessage(message)
+            : null;
 
         return (
           <li className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`} key={message.id}>
@@ -68,6 +74,17 @@ export function MessageList({
                 retryClientMessageId={retryClientMessageId}
                 retrying={retryingClientMessageId === retryClientMessageId}
                 onRetry={onRetry}
+              />
+            ) : assistantTurn && assistantTurn.state !== "direct" ? (
+              <AssistantMessageCard
+                turn={assistantTurn}
+                retryDisabled={retryingClientMessageId === retryClientMessageId}
+                onPrefillSuggestion={() => undefined}
+                onRetry={() => {
+                  if (retryClientMessageId) {
+                    onRetry(retryClientMessageId);
+                  }
+                }}
               />
             ) : (
               <article

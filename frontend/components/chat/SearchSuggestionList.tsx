@@ -17,8 +17,8 @@ export function SearchSuggestionList({
   }
 
   return (
-    <section className="search-evidence-section" aria-label="Suggested follow-up searches">
-      <h3 className="small-label">Suggested follow-up searches</h3>
+    <section className="search-evidence-section" aria-label="Gợi ý tìm kiếm tiếp theo">
+      <h3 className="small-label">Gợi ý tìm kiếm tiếp theo</h3>
       <div className="search-suggestion-list">
         {suggestions.map((suggestion) => (
           <ActionButton
@@ -27,7 +27,7 @@ export function SearchSuggestionList({
             variant="quiet"
             fullWidth={false}
             className="search-suggestion-button"
-            aria-label={`${suggestion.label}. Fill the composer without auto-submitting.`}
+            aria-label={`${suggestion.label}. Điền vào ô soạn, không tự gửi.`}
             onClick={() => onPrefillSuggestion(suggestion.query)}
           >
             {suggestion.label}

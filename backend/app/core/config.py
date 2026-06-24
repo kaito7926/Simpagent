@@ -13,6 +13,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 AppEnv = Literal["development", "test", "production"]
 CookieSameSite = Literal["strict", "lax", "none"]
+WebsearchProvider = Literal["gemini", "firecrawl"]
 
 
 COMMON_PASSWORD_BLOCKLIST = {
@@ -210,6 +211,23 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SIMPAGENT_GITHUB_REDIRECT_URI", "GITHUB_REDIRECT_URI"),
     )
     search_model: str | None = None
+    websearch_provider: str = Field(
+        default="gemini",
+        validation_alias=AliasChoices("SIMPAGENT_WEBSEARCH_PROVIDER", "WEBSEARCH_PROVIDER"),
+    )
+    firecrawl_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_FIRECRAWL_API_KEY", "FIRECRAWL_API_KEY"),
+    )
+    firecrawl_api_key_file: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SIMPAGENT_FIRECRAWL_API_KEY_FILE", "FIRECRAWL_API_KEY_FILE"),
+    )
+    firecrawl_api_base: str = Field(
+        default="https://api.firecrawl.dev",
+        validation_alias=AliasChoices("SIMPAGENT_FIRECRAWL_API_BASE", "FIRECRAWL_API_BASE"),
+    )
+    firecrawl_search_limit: int = Field(default=5, ge=1, le=10)
     search_worker_timeout_seconds: float = Field(default=8.0, gt=0)
     search_max_prompt_chars: int = Field(default=2000, ge=128, le=4000)
     search_max_output_tokens: int = Field(default=1536, ge=128, le=4096)
@@ -347,6 +365,10 @@ class Settings(BaseSettings):
     @property
     def google_api_key_value(self) -> str | None:
         return _resolve_secret_value(self.google_api_key, self.google_api_key_file)
+
+    @property
+    def firecrawl_api_key_value(self) -> str | None:
+        return _resolve_secret_value(self.firecrawl_api_key, self.firecrawl_api_key_file)
 
     @property
     def google_oauth_configured(self) -> bool:

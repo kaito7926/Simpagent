@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import React from "react";
 
 import { StatusBadge } from "@/components/account-access/StatusBadge";
-import type { CitationReference, SearchSource, SearchSuggestion } from "@/lib/chat-session";
+import type { CitationReference, SearchSource, SearchSuggestion, WebsearchProvider } from "@/lib/chat-session";
 
 import { CitationMarker } from "./CitationMarker";
 import { SearchSourceList } from "./SearchSourceList";
@@ -10,6 +10,7 @@ import { SearchSuggestionList } from "./SearchSuggestionList";
 
 type GroundedAnswerProps = {
   answer: string;
+  provider: WebsearchProvider;
   citations: CitationReference[];
   sources: SearchSource[];
   suggestions: SearchSuggestion[];
@@ -35,7 +36,7 @@ function renderAnswerWithCitations(
         <CitationMarker
           key={citation.id}
           marker={citation.marker}
-          label={citation.label}
+          label={`Nguồn ${citation.marker}`}
           sourceId={citation.source_id}
         />
       )),
@@ -52,7 +53,7 @@ function renderAnswerWithCitations(
       <CitationMarker
         key={citation.id}
         marker={citation.marker}
-        label={citation.label}
+        label={`Nguồn ${citation.marker}`}
         sourceId={citation.source_id}
       />,
     );
@@ -68,22 +69,26 @@ function renderAnswerWithCitations(
 
 export function GroundedAnswer({
   answer,
+  provider,
   citations,
   sources,
   suggestions,
   onPrefillSuggestion,
 }: GroundedAnswerProps) {
+  const badgeLabel = provider === "firecrawl" ? "Nguồn web" : "Google-grounded";
+  const trustedSuggestions = provider === "gemini" ? suggestions : [];
+
   return (
     <div className="grounded-answer">
       <div className="assistant-badge-row">
-        <StatusBadge tone="success">Google-grounded</StatusBadge>
+        <StatusBadge tone="success">{badgeLabel}</StatusBadge>
       </div>
       <div className="assistant-answer">
         <p className="body-copy">{renderAnswerWithCitations(answer, citations)}</p>
       </div>
       <SearchSourceList sources={sources} />
       <SearchSuggestionList
-        suggestions={suggestions}
+        suggestions={trustedSuggestions}
         onPrefillSuggestion={onPrefillSuggestion}
       />
     </div>

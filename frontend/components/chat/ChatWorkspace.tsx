@@ -11,6 +11,7 @@ import {
   getSecurityEvents,
   getToolExecutions,
   setGuardrailSafetyEnabled,
+  setWebsearchProviderOverride,
 } from "@/lib/admin-api";
 import type {
   AdminMetricsResponse,
@@ -18,6 +19,7 @@ import type {
   GatewayEvidencePage,
   SecurityEventsPage,
   ToolExecutionsPage,
+  WebsearchProvider,
 } from "@/lib/admin-api";
 import type { AuthSessionController, CurrentUser } from "@/lib/auth-session";
 import {
@@ -44,14 +46,10 @@ import { ChatMobileBar } from "./ChatMobileBar";
 import { ChatSidebar, type AppWorkspaceView, type ChatNavigationProps } from "./ChatSidebar";
 import { ChatThread } from "./ChatThread";
 import { UndoToast } from "./UndoToast";
-import { SettingsPage } from "@/components/settings/SettingsPage";
+import { SettingsPage, type AdminOrchestrationSettings } from "@/components/settings/SettingsPage";
 import { EvidenceDetailDrawer } from "@/components/admin/EvidenceDetailDrawer";
 import { EvidenceTable, type EvidenceRow } from "@/components/admin/EvidenceTable";
 import { StatePanel } from "@/components/admin/StatePanel";
-
-type AdminOrchestrationSettings = {
-  guardrailSafetyEnabled: boolean;
-};
 
 type ChatWorkspaceProps = {
   controller: AuthSessionController;
@@ -118,6 +116,44 @@ function temporaryMessage(options: {
 
 function formatCount(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
+}
+
+function normalizeWebsearchProvider(value: unknown): WebsearchProvider {
+  return value === "firecrawl" ? "firecrawl" : "gemini";
+}
+
+function formatWebsearchProvider(provider: WebsearchProvider | null | undefined): string {
+  if (provider === "firecrawl") {
+    return "Firecrawl";
+  }
+  if (provider === "gemini") {
+    return "Gemini";
+  }
+  return "None";
+}
+
+function adminSettingsFromResponse(response: {
+  guardrail_safety_enabled: boolean;
+  websearch_provider_default?: WebsearchProvider;
+  websearch_provider_override?: WebsearchProvider | null;
+  websearch_provider_effective?: WebsearchProvider;
+  websearch_provider_readiness?: string;
+}): AdminOrchestrationSettings {
+  const defaultProvider = normalizeWebsearchProvider(response.websearch_provider_default);
+  const overrideProvider =
+    response.websearch_provider_override === null || response.websearch_provider_override === undefined
+      ? null
+      : normalizeWebsearchProvider(response.websearch_provider_override);
+
+  return {
+    guardrailSafetyEnabled: response.guardrail_safety_enabled,
+    websearchProviderDefault: defaultProvider,
+    websearchProviderOverride: overrideProvider,
+    websearchProviderEffective: normalizeWebsearchProvider(
+      response.websearch_provider_effective ?? overrideProvider ?? defaultProvider,
+    ),
+    websearchProviderReadiness: response.websearch_provider_readiness ?? "unknown",
+  };
 }
 
 function formatDateTime(value: string) {
@@ -333,6 +369,7 @@ function OverviewView(props: {
         <p className="body-copy">
           Metrics are loaded from the backend admin evidence contract and stay limited to bounded aggregate counts.
           Guardrail safety is {props.adminSettings?.guardrailSafetyEnabled ? "enabled" : "disabled"}.
+          Websearch provider is {formatWebsearchProvider(props.adminSettings?.websearchProviderEffective)}.
         </p>
       </Card>
     </div>
@@ -542,6 +579,15 @@ function OrchestrationView(props: {
             <BadgeLikeStatus enabled={props.adminSettings?.guardrailSafetyEnabled ?? false} />
             <span className="scope-code">One layer of safety checks before tool orchestration.</span>
           </div>
+          <div className="scope-list-item">
+            <span className="scope-label">Effective websearch provider</span>
+            <BadgeLikeStatus enabled={props.adminSettings !== null} />
+            <span className="scope-code">
+              {formatWebsearchProvider(props.adminSettings?.websearchProviderEffective)}
+              {" · "}
+              readiness {props.adminSettings?.websearchProviderReadiness ?? "loading"}
+            </span>
+          </div>
         </div>
         <div className="admin-card-actions">
           <ActionButton type="button" variant="secondary" fullWidth={false} onClick={props.onOpenSettings}>
@@ -735,9 +781,7 @@ export function ChatWorkspace({
             toolExecutions: toolExecutionsResponse,
             gatewayEvidence: gatewayEvidenceResponse,
           });
-          setAdminSettings({
-            guardrailSafetyEnabled: orchestrationResponse.guardrail_safety_enabled,
-          });
+          setAdminSettings(adminSettingsFromResponse(orchestrationResponse));
           setAdminError(null);
         }
       } catch (error) {
@@ -997,14 +1041,32 @@ export function ChatWorkspace({
     setAdminError(null);
     try {
       const response = await setGuardrailSafetyEnabled(controller, enabled);
-      setAdminSettings({
-        guardrailSafetyEnabled: response.guardrail_safety_enabled,
-      });
+      setAdminSettings(adminSettingsFromResponse(response));
     } catch (error) {
       setAdminError(
         error instanceof ApiError
           ? error.message
           : "Can't update guardrail safety setting right now.",
+      );
+    } finally {
+      setAdminBusy(false);
+    }
+  }
+
+  async function updateWebsearchProviderOverride(provider: WebsearchProvider | null) {
+    if (!adminCanWrite) {
+      return;
+    }
+    setAdminBusy(true);
+    setAdminError(null);
+    try {
+      const response = await setWebsearchProviderOverride(controller, provider);
+      setAdminSettings(adminSettingsFromResponse(response));
+    } catch (error) {
+      setAdminError(
+        error instanceof ApiError
+          ? error.message
+          : "Can't update websearch provider setting right now.",
       );
     } finally {
       setAdminBusy(false);
@@ -1105,6 +1167,7 @@ export function ChatWorkspace({
             adminError={adminError}
             searchEnabled={searchEnabled}
             onGuardrailSafetyToggle={(enabled) => void updateGuardrailSafety(enabled)}
+            onWebsearchProviderOverrideChange={(provider) => void updateWebsearchProviderOverride(provider)}
           />
         );
       case "chat":

@@ -121,6 +121,10 @@ void test("admin API wrappers call backend metrics and orchestration endpoints t
       }
       return {
         guardrail_safety_enabled: false,
+        websearch_provider_default: "gemini",
+        websearch_provider_override: "firecrawl",
+        websearch_provider_effective: "firecrawl",
+        websearch_provider_readiness: "ready",
       };
     },
   } as unknown as AuthSessionController;
@@ -133,6 +137,7 @@ void test("admin API wrappers call backend metrics and orchestration endpoints t
   assert.equal(typeof adminApi.getOrchestrationSettings, "function");
   assert.equal(typeof adminApi.updateUserAccess, "function");
   assert.equal(typeof adminApi.setGuardrailSafetyEnabled, "function");
+  assert.equal(typeof (adminApi as { setWebsearchProviderOverride?: unknown }).setWebsearchProviderOverride, "function");
 
   await adminApi.getAdminMetrics(controller);
   await adminApi.getAdminUsers(controller, { limit: 25, offset: 0 });
@@ -142,6 +147,12 @@ void test("admin API wrappers call backend metrics and orchestration endpoints t
   await adminApi.getOrchestrationSettings(controller);
   await adminApi.updateUserAccess(controller, "user-1", { role: "admin" });
   await adminApi.setGuardrailSafetyEnabled(controller, false);
+  await (adminApi as {
+    setWebsearchProviderOverride: (
+      controller: AuthSessionController,
+      provider: "gemini" | "firecrawl" | null,
+    ) => Promise<adminApi.OrchestrationSettingsResponse>;
+  }).setWebsearchProviderOverride(controller, null);
 
   assert.deepEqual(calls, [
     { url: "/api/admin/metrics", method: "GET", body: null },
@@ -152,6 +163,7 @@ void test("admin API wrappers call backend metrics and orchestration endpoints t
     { url: "/api/admin/orchestration", method: "GET", body: null },
     { url: "/api/admin/users/user-1", method: "PATCH", body: { role: "admin" } },
     { url: "/api/admin/orchestration/guardrail", method: "PATCH", body: { enabled: false } },
+    { url: "/api/admin/orchestration/websearch-provider", method: "PATCH", body: { provider: null } },
   ]);
 });
 
@@ -224,6 +236,10 @@ void test("orchestration settings show guardrail confirmation copy before destru
       currentUser: adminUser,
       adminSettings: {
         guardrailSafetyEnabled: true,
+        websearchProviderDefault: "gemini",
+        websearchProviderOverride: null,
+        websearchProviderEffective: "gemini",
+        websearchProviderReadiness: "ready",
       },
       adminCanWrite: true,
       adminBusy: false,
@@ -238,6 +254,39 @@ void test("orchestration settings show guardrail confirmation copy before destru
   assert.match(guardrailHtml, /Guardrail safety/);
   assert.match(guardrailHtml, /Disable guardrail safety\?/);
   assert.match(guardrailHtml, /You are removing one layer of safety checks before tool orchestration\./);
+});
+
+void test("settings render provider default, override, effective provider, readiness, and clear action without secrets", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(SettingsPage, {
+      currentUser: adminUser,
+      adminSettings: {
+        guardrailSafetyEnabled: true,
+        websearchProviderDefault: "gemini",
+        websearchProviderOverride: "firecrawl",
+        websearchProviderEffective: "firecrawl",
+        websearchProviderReadiness: "ready",
+      },
+      adminCanWrite: true,
+      adminBusy: false,
+      adminError: null,
+      initialSection: "tools",
+      searchEnabled: true,
+      onGuardrailSafetyToggle: () => undefined,
+      onWebsearchProviderOverrideChange: () => undefined,
+    } as React.ComponentProps<typeof SettingsPage>),
+  );
+
+  assert.match(html, /Websearch provider/);
+  assert.match(html, /Default provider/);
+  assert.match(html, /Gemini/);
+  assert.match(html, /Runtime override/);
+  assert.match(html, /Firecrawl/);
+  assert.match(html, /Effective provider/);
+  assert.match(html, /Readiness/);
+  assert.match(html, /ready/);
+  assert.match(html, /Clear provider override/);
+  assert.doesNotMatch(html, /api[_-]?key|secret|token|credential|FIRECRAWL_API_KEY|SIMPAGENT_FIRECRAWL_API_KEY/i);
 });
 
 void test("evidence table wheel input is converted into bounded horizontal scroll updates", () => {

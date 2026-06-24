@@ -1,10 +1,11 @@
 import { ActionButton } from "@/components/account-access/ActionButton";
-import type { ChatMode } from "@/lib/chat-session";
+import type { ChatMode, WebsearchProvider } from "@/lib/chat-session";
 
 type ToolModeSwitchProps = {
   mode: ChatMode;
   disabled: boolean;
   searchEnabled: boolean;
+  provider?: WebsearchProvider | null;
   onChange: (mode: ChatMode) => void;
 };
 
@@ -12,8 +13,11 @@ export function ToolModeSwitch({
   mode,
   disabled,
   searchEnabled,
+  provider = null,
   onChange,
 }: ToolModeSwitchProps) {
+  const searchLabel = provider === "gemini" ? "Google Search" : provider === "firecrawl" ? "Firecrawl Search" : "Web Search";
+
   return (
     <div className="chat-mode-switch" role="group" aria-label="Response mode">
       <ActionButton
@@ -35,7 +39,7 @@ export function ToolModeSwitch({
           disabled={disabled}
           onClick={() => onChange("search")}
         >
-          Google Search
+          {searchLabel}
         </ActionButton>
       ) : null}
     </div>

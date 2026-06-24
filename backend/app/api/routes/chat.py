@@ -106,7 +106,9 @@ def _chat_coordinator(
         python_planner=getattr(request.app.state, "python_planner", None),
         python_client=getattr(request.app.state, "python_client", None),
         search_worker=getattr(request.app.state, "search_worker", None),
+        search_provider=str(getattr(request.app.state, "search_provider", "gemini")),
         search_status=str(resolved_search_status),
+        search_runtime_worker_factory=getattr(request.app.state, "search_runtime_worker_factory", None),
     )
 
 

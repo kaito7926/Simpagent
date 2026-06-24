@@ -55,6 +55,63 @@ async def test_grounded_turn_persists_allowlisted_metadata_and_lifecycle(client,
     assert "sdk_blob" not in search
 
 
+async def test_firecrawl_turn_persists_provider_and_retention_allowlist(client, app, db_session, settings) -> None:
+    user = await create_user(
+        db_session,
+        email="firecrawl-persistence@example.test",
+        scopes=["chat:read", "chat:write", "tool:websearch"],
+    )
+    conversation = await create_conversation(db_session, user_id=user.id)
+    await db_session.commit()
+
+    app.state.search_provider = "firecrawl"
+    app.state.search_status = "ready"
+    app.state.search_ready = True
+    app.state.search_worker = RecordingSearchWorker(
+        grounded_result().model_copy(
+            update={
+                "provider": "firecrawl",
+                "google_grounded": False,
+                "web_search_queries": ["firecrawl query"],
+            }
+        )
+    )
+
+    token = issue_token(
+        user=user,
+        scopes=["chat:read", "chat:write", "tool:websearch"],
+        settings=settings,
+    )
+    response = await client.post(
+        f"/api/conversations/{conversation.id}/turns",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-Correlation-Id": "corr-firecrawl-persistence",
+        },
+        json={"mode": "google_search", "prompt": "Firecrawl persistence"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["assistant_message"]["search"]["provider"] == "firecrawl"
+    assert payload["assistant_message"]["search"]["google_grounded"] is False
+
+    await db_session.rollback()
+    assistant = (
+        await db_session.execute(
+            select(Message)
+            .where(Message.conversation_id == conversation.id, Message.role == "assistant")
+        )
+    ).scalar_one()
+    search = assistant.message_metadata["search"]
+    assert search["provider"] == "firecrawl"
+    assert search["web_search_queries"] == ["firecrawl query"]
+    assert [event["event"] for event in search["lifecycle"]] == ["requested", "started", "succeeded"]
+    assert "click_tracking_id" not in str(search)
+    assert "redirect_url" not in str(search)
+    assert "utm_source" not in str(search)
+
+
 async def test_retry_reuses_same_assistant_message_and_adds_a_second_tool_execution(client, app, db_session, settings) -> None:
     user = await create_user(
         db_session,

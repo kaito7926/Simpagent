@@ -21,10 +21,12 @@ from app.agent.policy import (
     tool_execution_output_summary,
     tool_execution_terminal_status,
 )
+from app.ai.search_worker.service import build_search_worker_service
 from app.ai.chat_adapter import ChatProviderError
 from app.ai.schemas import ChatCompletionResult, ChatTurn
 from app.authorization.policy import PolicyResult, Scope, evaluate_required_scopes
 from app.db.repositories.agent_settings import AgentRuntimeSettingsRepository
+from app.core.provider_status import resolve_search_provider, search_status as resolve_search_status
 from app.models.domain import ToolExecution
 from app.python_contract import PythonDeniedReason, PythonExecutionProfile, PythonExecutionStatus
 from app.schemas.python import PythonExecutionResult
@@ -108,7 +110,9 @@ class ChatCoordinator:
         python_planner: PythonPlannerLike | None = None,
         python_client: PythonClientLike | None = None,
         search_worker: SearchWorkerLike | None = None,
+        search_provider: str = "gemini",
         search_status: str = "unconfigured",
+        search_runtime_worker_factory=None,
         guardrail_enabled: bool | None = None,
         agent_settings: AgentRuntimeSettingsRepository | None = None,
     ) -> None:
@@ -120,7 +124,10 @@ class ChatCoordinator:
         self._python_planner = python_planner
         self._python_client = python_client
         self.search_worker = search_worker
+        self.search_provider = search_provider if search_provider in {"gemini", "firecrawl"} else "gemini"
+        self._startup_search_provider = self.search_provider
         self.search_status = search_status
+        self.search_runtime_worker_factory = search_runtime_worker_factory
         self._guardrail_enabled = guardrail_enabled
         self.agent_settings = agent_settings or AgentRuntimeSettingsRepository(session)
         self.python_sessions = PythonSessionsService(session, settings=settings, clock=clock)
@@ -263,10 +270,12 @@ class ChatCoordinator:
         correlation_id: str | None,
         trace: OrchestrationTrace,
     ) -> CoordinatedAssistantTurn:
+        await self._refresh_search_runtime()
         started_at = perf_counter()
         if not self._search_scope_allowed():
             trace.add("WebSearchAgent", "authorize", "denied", "missing tool:websearch")
             search = SearchTurnResult(
+                provider=self.search_provider,
                 state="denied",
                 google_grounded=False,
                 tool_executed=False,
@@ -292,6 +301,7 @@ class ChatCoordinator:
         if self.search_status not in SEARCH_READY_STATES or self.search_worker is None:
             trace.add("WebSearchAgent", "execute", "failed", "search_unavailable")
             search = SearchTurnResult(
+                provider=self.search_provider,
                 state="search_unavailable",
                 google_grounded=False,
                 tool_executed=False,
@@ -333,6 +343,7 @@ class ChatCoordinator:
         tool_status = TOOL_STATUS_BY_SEARCH_STATE[normalized.state]
         trace.add("WebSearchAgent", "execute", tool_status, normalized.state)
         search = SearchTurnResult(
+            provider=normalized.provider,
             state=normalized.state,
             google_grounded=normalized.google_grounded,
             tool_executed=normalized.tool_executed,
@@ -577,6 +588,38 @@ class ChatCoordinator:
         )
         return result is PolicyResult.allow
 
+    async def _refresh_search_runtime(self) -> None:
+        provider_override = await self.agent_settings.get_websearch_provider_override()
+        if (
+            provider_override is None
+            and self.search_worker is not None
+            and self.search_status in SEARCH_READY_STATES
+            and self.search_provider in {"gemini", "firecrawl"}
+        ):
+            return
+
+        resolved_provider = resolve_search_provider(self.settings, runtime_override=provider_override)
+        if resolved_provider is None:
+            self.search_status = "invalid_provider"
+            self.search_worker = None
+            return
+
+        self.search_provider = resolved_provider
+        self.search_status = resolve_search_status(self.settings, runtime_override=provider_override)
+        if self.search_status not in SEARCH_READY_STATES:
+            self.search_worker = None
+            return
+
+        if callable(self.search_runtime_worker_factory):
+            self.search_worker = self.search_runtime_worker_factory(resolved_provider, self.settings)
+            return
+        if resolved_provider == self._startup_search_provider and self.search_worker is not None:
+            return
+        self.search_worker = build_search_worker_service(
+            self.settings,
+            runtime_override=resolved_provider,
+        )
+
     def _current_datetime(self) -> datetime:
         now = self.clock()
         return now if isinstance(now, datetime) else self.settings.now_utc()
@@ -624,9 +667,10 @@ class ChatCoordinator:
 
 def _normalize_search_result(result: SearchWorkerResult) -> SearchWorkerResult:
     if result.state == "grounded" and (
-        not result.google_grounded or not result.sources or not result.citations
+        (result.provider == "gemini" and not result.google_grounded) or not result.sources or not result.citations
     ):
         return SearchWorkerResult(
+            provider=result.provider,
             state="missing_grounding",
             answer_markdown=result.answer_markdown,
             google_grounded=False,
@@ -636,6 +680,7 @@ def _normalize_search_result(result: SearchWorkerResult) -> SearchWorkerResult:
         )
     if result.state == "provider_failed":
         return SearchWorkerResult(
+            provider=result.provider,
             state="provider_failed",
             answer_markdown=result.answer_markdown or SEARCH_PROVIDER_FAILED_COPY,
             google_grounded=False,
@@ -645,6 +690,7 @@ def _normalize_search_result(result: SearchWorkerResult) -> SearchWorkerResult:
         )
     if result.state == "timeout":
         return SearchWorkerResult(
+            provider=result.provider,
             state="timeout",
             answer_markdown=result.answer_markdown or SEARCH_TIMEOUT_COPY,
             google_grounded=False,
@@ -654,6 +700,7 @@ def _normalize_search_result(result: SearchWorkerResult) -> SearchWorkerResult:
         )
     if result.state == "search_unavailable":
         return SearchWorkerResult(
+            provider=result.provider,
             state="search_unavailable",
             answer_markdown=result.answer_markdown or SEARCH_UNAVAILABLE_COPY,
             google_grounded=False,

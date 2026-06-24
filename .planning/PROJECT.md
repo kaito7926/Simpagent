@@ -29,6 +29,7 @@ Users can safely authenticate and use an AI chatbot with controlled agent tools 
 - [ ] Docker Compose starts the frontend, backend, PostgreSQL, Kong, and Python sandbox foundation with `docker compose up --build`.
 - [ ] Automated tests and attack simulations demonstrate controls against BOLA, brute force, token replay, SSRF, prompt injection, tool abuse, and sandbox escape attempts.
 - [ ] Vietnamese documentation explains architecture, setup, operation, security controls, Cloudflare deployment assumptions, and SAST/DAST testing.
+- [ ] Sender-constrained session proofs, OAuth anti-replay transactions, and one-time asymmetric internal capabilities prevent copied browser or worker artifacts from acting as an unofficial API bridge.
 
 ### Out of Scope
 
@@ -52,6 +53,7 @@ Users can safely authenticate and use an AI chatbot with controlled agent tools 
 - Because ADK built-in tools have composition constraints, orchestration separates the Google Search worker from the custom Python sandbox worker behind a policy-enforcing coordinator.
 - Cloudflare is documented as an optional edge layer in front of Kong, using Free-plan-compatible Tunnel, WAF, Turnstile, Bot Fight Mode, and TLS guidance where available.
 - Security evidence is a product deliverable: controls need tests, logs, attack simulations, and clear documentation rather than configuration claims alone.
+- Post-v1 hardening now extends the prototype beyond bearer-style trust by binding browser sessions, OAuth callback artifacts, and internal capability credentials to modern cryptographic proof and replay-resistant boundaries.
 
 ## Constraints
 

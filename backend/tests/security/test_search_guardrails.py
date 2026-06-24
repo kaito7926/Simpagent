@@ -52,6 +52,56 @@ async def test_search_worker_receives_no_bearer_token_and_only_one_call(client, 
     assert isinstance(worker.call_kwargs[0]["capability_token"], str)
 
 
+async def test_firecrawl_worker_reuses_websearch_guardrails_and_capability_token(
+    client,
+    app,
+    db_session,
+    settings,
+) -> None:
+    user = await create_user(
+        db_session,
+        email="firecrawl-guardrails@example.test",
+        scopes=["chat:read", "chat:write", "tool:websearch"],
+    )
+    conversation = await create_conversation(db_session, user_id=user.id)
+    await db_session.commit()
+
+    worker = RecordingSearchWorker(
+        grounded_result().model_copy(update={"provider": "firecrawl", "google_grounded": False})
+    )
+    app.state.search_provider = "firecrawl"
+    app.state.search_status = "ready"
+    app.state.search_ready = True
+    app.state.search_worker = worker
+
+    token = issue_token(
+        user=user,
+        scopes=["chat:read", "chat:write", "tool:websearch"],
+        settings=settings,
+    )
+    response = await client.post(
+        f"/api/conversations/{conversation.id}/turns",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-Correlation-Id": "corr-firecrawl-guardrails",
+        },
+        json={"mode": "google_search", "prompt": "Firecrawl must stay behind websearch"},
+    )
+
+    assert response.status_code == 200
+    assert worker.calls == 1
+    assert set(worker.call_kwargs[0]) == {
+        "user_id",
+        "conversation_id",
+        "prompt",
+        "correlation_id",
+        "capability_token",
+    }
+    assert "access_token" not in worker.call_kwargs[0]
+    assert "authorization" not in worker.call_kwargs[0]
+    assert isinstance(worker.call_kwargs[0]["capability_token"], str)
+
+
 async def test_turn_route_guardrail_blocks_before_search_worker(client, app, db_session, settings) -> None:
     user = await create_user(
         db_session,

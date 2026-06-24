@@ -9,10 +9,13 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.orchestration import CoordinatorAgent, SafetyDecision
+from app.ai.search_worker.service import build_search_worker_service
 from app.ai.schemas import ChatTurn
+from app.ai.search_worker.grounding import sanitize_source_uri
 from app.authorization.policy import PolicyResult, evaluate_required_scopes
 from app.authorization.principal import AuthenticatedPrincipal
 from app.core.config import Settings
+from app.core.provider_status import resolve_search_provider, search_status as resolve_search_status
 from app.db.repositories.agent_settings import AgentRuntimeSettingsRepository
 from app.db.repositories.conversations import ConversationsRepository
 from app.models.domain import (
@@ -100,6 +103,14 @@ def allowlist_search_metadata(payload: dict[str, Any]) -> dict[str, Any]:
                 for source in value
                 if isinstance(source, dict)
             ]
+            for source in filtered[key]:
+                if "uri" not in source:
+                    continue
+                sanitized_uri = sanitize_source_uri(source.get("uri"))
+                if sanitized_uri:
+                    source["uri"] = sanitized_uri
+                else:
+                    source.pop("uri", None)
             continue
         if key == "citations" and isinstance(value, list):
             filtered[key] = [
@@ -131,15 +142,20 @@ class ChatTurnsService:
         settings: Settings,
         now: datetime,
         correlation_id: str | None,
+        search_provider: str,
         search_status: str,
         search_worker: SearchWorker | None,
+        search_runtime_worker_factory=None,
     ) -> None:
         self.session = session
         self.settings = settings
         self.now = now
         self.correlation_id = correlation_id
+        self.search_provider = search_provider if search_provider in {"gemini", "firecrawl"} else "gemini"
+        self._startup_search_provider = self.search_provider
         self.search_status = search_status
         self.search_worker = search_worker
+        self.search_runtime_worker_factory = search_runtime_worker_factory
         self.conversations = ConversationsRepository(session)
         self.agent_settings = AgentRuntimeSettingsRepository(session)
 
@@ -414,6 +430,7 @@ class ChatTurnsService:
         prompt: str,
         retry_target: RetryTarget | None,
     ) -> SearchTurnOutcome:
+        await self._refresh_search_runtime()
         started_at = perf_counter()
         search_policy = evaluate_required_scopes(
             principal_scopes=set(principal.scopes),
@@ -422,6 +439,7 @@ class ChatTurnsService:
         if search_policy is not PolicyResult.allow:
             search = self._search_result(
                 state="denied",
+                provider=self.search_provider,
                 tool_executed=False,
                 retry_of_message_id=retry_target.assistant_message.id if retry_target else None,
             )
@@ -448,6 +466,7 @@ class ChatTurnsService:
         if self.search_status not in SEARCH_READY_STATES or self.search_worker is None:
             search = self._search_result(
                 state="search_unavailable",
+                provider=self.search_provider,
                 tool_executed=False,
                 retry_of_message_id=retry_target.assistant_message.id if retry_target else None,
             )
@@ -489,6 +508,7 @@ class ChatTurnsService:
         duration_ms = max(0, int((perf_counter() - started_at) * 1000))
         search = self._search_result(
             state=normalized.state,
+            provider=normalized.provider,
             google_grounded=normalized.google_grounded,
             tool_executed=normalized.tool_executed,
             retry_of_message_id=retry_target.assistant_message.id if retry_target else None,
@@ -517,6 +537,45 @@ class ChatTurnsService:
             duration_ms=duration_ms,
         )
 
+    async def _refresh_search_runtime(self) -> None:
+        provider_override = await self.agent_settings.get_websearch_provider_override()
+        if provider_override is None and self.search_provider in {"gemini", "firecrawl"}:
+            if self.search_status not in SEARCH_READY_STATES:
+                self.search_worker = None
+                return
+            if self.search_worker is not None:
+                return
+
+        if (
+            provider_override is None
+            and self.search_worker is not None
+            and self.search_status in SEARCH_READY_STATES
+            and self.search_provider in {"gemini", "firecrawl"}
+        ):
+            return
+
+        resolved_provider = resolve_search_provider(self.settings, runtime_override=provider_override)
+        if resolved_provider is None:
+            self.search_status = "invalid_provider"
+            self.search_worker = None
+            return
+
+        self.search_provider = resolved_provider
+        self.search_status = resolve_search_status(self.settings, runtime_override=provider_override)
+        if self.search_status not in SEARCH_READY_STATES:
+            self.search_worker = None
+            return
+
+        if callable(self.search_runtime_worker_factory):
+            self.search_worker = self.search_runtime_worker_factory(resolved_provider, self.settings)
+            return
+        if resolved_provider == self._startup_search_provider and self.search_worker is not None:
+            return
+        self.search_worker = build_search_worker_service(
+            self.settings,
+            runtime_override=resolved_provider,
+        )
+
     async def _guardrail_decision(self, *, prompt: str) -> SafetyDecision:
         enabled = await self.agent_settings.is_guardrail_enabled(
             default=self.settings.guardrail_safety_enabled_default,
@@ -533,8 +592,9 @@ class ChatTurnsService:
 
     def _normalize_worker_result(self, result: SearchWorkerResult) -> SearchWorkerResult:
         if result.state == "grounded":
-            if not result.google_grounded or not result.sources or not result.citations:
+            if (result.provider == "gemini" and not result.google_grounded) or not result.sources or not result.citations:
                 return SearchWorkerResult(
+                    provider=result.provider,
                     state="missing_grounding",
                     answer_markdown=result.answer_markdown,
                     google_grounded=False,
@@ -546,6 +606,7 @@ class ChatTurnsService:
 
         if result.state == "missing_grounding":
             return SearchWorkerResult(
+                provider=result.provider,
                 state="missing_grounding",
                 answer_markdown=result.answer_markdown,
                 google_grounded=False,
@@ -556,6 +617,7 @@ class ChatTurnsService:
 
         if result.state == "provider_failed":
             return SearchWorkerResult(
+                provider=result.provider,
                 state="provider_failed",
                 answer_markdown=result.answer_markdown or SEARCH_PROVIDER_FAILED_COPY,
                 google_grounded=False,
@@ -566,6 +628,7 @@ class ChatTurnsService:
 
         if result.state == "timeout":
             return SearchWorkerResult(
+                provider=result.provider,
                 state="timeout",
                 answer_markdown=result.answer_markdown or SEARCH_TIMEOUT_COPY,
                 google_grounded=False,
@@ -576,6 +639,7 @@ class ChatTurnsService:
 
         if result.state == "search_unavailable":
             return SearchWorkerResult(
+                provider=result.provider,
                 state="search_unavailable",
                 answer_markdown=result.answer_markdown or SEARCH_UNAVAILABLE_COPY,
                 google_grounded=False,
@@ -590,6 +654,7 @@ class ChatTurnsService:
         self,
         *,
         state: str,
+        provider: str,
         tool_executed: bool,
         retry_of_message_id: UUID | None,
         google_grounded: bool = False,
@@ -598,6 +663,7 @@ class ChatTurnsService:
         suggestions=None,
     ) -> SearchTurnResult:
         return SearchTurnResult(
+            provider=provider if provider in {"gemini", "firecrawl"} else "gemini",
             state=state,
             google_grounded=google_grounded,
             tool_executed=tool_executed,

@@ -14,9 +14,11 @@ from google.adk.runners import InMemoryRunner
 from google.genai import types
 
 from app.ai.search_worker.agent import build_google_search_agent
+from app.ai.search_worker.firecrawl_client import FirecrawlSearchClient
 from app.ai.search_worker.grounding import grounding_to_search_result
 from app.ai.search_worker.schemas import SearchWorkerReply
 from app.core.config import Settings
+from app.core.provider_status import resolve_search_provider
 from app.schemas.search import (
     SEARCH_PROVIDER_FAILED_COPY,
     SEARCH_TIMEOUT_COPY,
@@ -48,6 +50,10 @@ class SearchRunnerFactory(Protocol):
 
 class SearchAgentFactory(Protocol):
     def __call__(self, settings: Settings) -> Agent: ...
+
+
+class FirecrawlClientFactory(Protocol):
+    def __call__(self, settings: Settings) -> FirecrawlSearchClient: ...
 
 
 def _default_runner_factory(agent: Agent) -> SearchRunner:
@@ -262,3 +268,57 @@ class GoogleSearchWorkerService:
                 os.environ.pop("GEMINI_API_KEY", None)
             else:
                 os.environ["GEMINI_API_KEY"] = previous_gemini_api_key
+
+
+class FirecrawlSearchWorkerService:
+    def __init__(
+        self,
+        *,
+        settings: Settings,
+        client_factory: FirecrawlClientFactory | None = None,
+    ) -> None:
+        self.settings = settings
+        self._client_factory = client_factory or FirecrawlSearchClient
+
+    async def run(
+        self,
+        *,
+        user_id: str,
+        conversation_id: str,
+        prompt: str,
+        correlation_id: str | None,
+        capability_token: str | None = None,
+    ) -> SearchWorkerResult:
+        try:
+            claims = validate_search_capability(
+                capability_token or "",
+                settings=self.settings,
+                now=self.settings.now_utc(),
+            )
+            if claims.sub != UUID(user_id):
+                raise SearchCapabilityError("Capability subject does not match the user")
+            if claims.conversation_id != UUID(conversation_id):
+                raise SearchCapabilityError("Capability conversation does not match")
+            if claims.correlation_id != correlation_id:
+                raise SearchCapabilityError("Capability correlation does not match")
+        except (SearchCapabilityError, ValueError):
+            return SearchWorkerResult(
+                provider="firecrawl",
+                state="search_unavailable",
+                answer_markdown=SEARCH_UNAVAILABLE_COPY,
+                google_grounded=False,
+                tool_executed=False,
+                output_summary="search_unavailable",
+            )
+
+        client = self._client_factory(self.settings)
+        return await client.search(query=prompt)
+
+
+def build_search_worker_service(settings: Settings, *, runtime_override: str | None = None):
+    provider = resolve_search_provider(settings, runtime_override=runtime_override)
+    if provider == "firecrawl":
+        return FirecrawlSearchWorkerService(settings=settings)
+    if provider == "gemini":
+        return GoogleSearchWorkerService(settings=settings)
+    return None

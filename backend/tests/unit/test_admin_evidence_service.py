@@ -135,6 +135,7 @@ class FakeAsyncSession:
 @dataclass
 class FakeAgentSettingsRepository:
     guardrail_enabled: bool | None = True
+    websearch_provider_override: str | None = None
     writes: list[dict] = field(default_factory=list)
 
     async def is_guardrail_enabled(self, *, default: bool) -> bool:
@@ -150,6 +151,20 @@ class FakeAgentSettingsRepository:
             }
         )
         return type("Setting", (), {"enabled": enabled})()
+
+    async def get_websearch_provider_override(self) -> str | None:
+        return self.websearch_provider_override
+
+    async def set_websearch_provider_override(self, *, provider: str | None, updated_by_user_id):
+        self.websearch_provider_override = provider
+        self.writes.append(
+            {
+                "setting": "websearch_provider_override",
+                "provider": provider,
+                "updated_by_user_id": updated_by_user_id,
+            }
+        )
+        return type("Setting", (), {"value": provider})()
 
 
 def _principal(*, role: str, scopes: tuple[str, ...]) -> AuthenticatedPrincipal:
@@ -325,9 +340,41 @@ async def test_admin_read_can_view_orchestration_settings() -> None:
     result = await service.get_orchestration_settings(
         principal=_principal(role="admin", scopes=("admin:read",)),
         default_guardrail_enabled=True,
+        websearch_provider_default="gemini",
+        websearch_provider_readiness="ready",
     )
 
     assert result.guardrail_safety_enabled is False
+    assert result.websearch_provider_default == "gemini"
+    assert result.websearch_provider_override is None
+    assert result.websearch_provider_effective == "gemini"
+    assert result.websearch_provider_readiness == "ready"
+
+
+@pytest.mark.asyncio
+async def test_admin_read_uses_runtime_websearch_provider_override() -> None:
+    service = AdminEvidenceService(
+        None,
+        correlation_id="corr-admin-orch-provider-read",
+        now=datetime.now(UTC),
+        repository=FakeAdminRepository(),
+        security_events=FakeSecurityEventSink(),
+        agent_settings=FakeAgentSettingsRepository(
+            guardrail_enabled=True,
+            websearch_provider_override="firecrawl",
+        ),
+    )
+
+    result = await service.get_orchestration_settings(
+        principal=_principal(role="admin", scopes=("admin:read",)),
+        default_guardrail_enabled=True,
+        websearch_provider_default="gemini",
+        websearch_provider_readiness="ready",
+    )
+
+    assert result.websearch_provider_default == "gemini"
+    assert result.websearch_provider_override == "firecrawl"
+    assert result.websearch_provider_effective == "firecrawl"
 
 
 @pytest.mark.asyncio
@@ -366,6 +413,96 @@ async def test_admin_write_can_toggle_guardrail_safety_agent() -> None:
         "guardrail_safety_enabled": False,
     }
     assert session.commit_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_admin_write_can_set_and_clear_websearch_provider_override() -> None:
+    session = FakeAsyncSession()
+    sink = FakeSecurityEventSink()
+    agent_settings = FakeAgentSettingsRepository(
+        guardrail_enabled=True,
+        websearch_provider_override=None,
+    )
+    principal = _principal(role="admin", scopes=("admin:write",))
+    service = AdminEvidenceService(
+        session,
+        correlation_id="corr-admin-provider-override",
+        now=datetime.now(UTC),
+        repository=FakeAdminRepository(),
+        security_events=sink,
+        agent_settings=agent_settings,
+    )
+
+    set_result = await service.set_websearch_provider_override(
+        principal=principal,
+        provider="firecrawl",
+        websearch_provider_default="gemini",
+        websearch_provider_readiness="ready",
+    )
+    clear_result = await service.set_websearch_provider_override(
+        principal=principal,
+        provider=None,
+        websearch_provider_default="gemini",
+        websearch_provider_readiness="ready",
+    )
+
+    assert set_result.websearch_provider_override == "firecrawl"
+    assert set_result.websearch_provider_effective == "firecrawl"
+    assert clear_result.websearch_provider_override is None
+    assert clear_result.websearch_provider_effective == "gemini"
+    assert agent_settings.writes == [
+        {
+            "setting": "websearch_provider_override",
+            "provider": "firecrawl",
+            "updated_by_user_id": principal.user_id,
+        },
+        {
+            "setting": "websearch_provider_override",
+            "provider": None,
+            "updated_by_user_id": principal.user_id,
+        },
+    ]
+    assert [call["event_type"] for call in sink.calls] == [
+        "websearch_provider_override_set",
+        "websearch_provider_override_cleared",
+    ]
+    assert sink.calls[0]["metadata"] == {
+        "resource": "orchestration",
+        "websearch_provider_default": "gemini",
+        "websearch_provider_override": "firecrawl",
+        "websearch_provider_effective": "firecrawl",
+        "websearch_provider_readiness": "ready",
+    }
+    assert sink.calls[1]["metadata"] == {
+        "resource": "orchestration",
+        "websearch_provider_default": "gemini",
+        "websearch_provider_override": None,
+        "websearch_provider_effective": "gemini",
+        "websearch_provider_readiness": "ready",
+    }
+    assert session.commit_calls == 2
+
+
+@pytest.mark.asyncio
+async def test_admin_write_rejects_invalid_websearch_provider_override() -> None:
+    service = AdminEvidenceService(
+        FakeAsyncSession(),
+        correlation_id="corr-admin-provider-invalid",
+        now=datetime.now(UTC),
+        repository=FakeAdminRepository(),
+        security_events=FakeSecurityEventSink(),
+        agent_settings=FakeAgentSettingsRepository(),
+    )
+
+    with pytest.raises(AdminWriteRejected) as exc_info:
+        await service.set_websearch_provider_override(
+            principal=_principal(role="admin", scopes=("admin:write",)),
+            provider="serpapi",
+            websearch_provider_default="gemini",
+            websearch_provider_readiness="ready",
+        )
+
+    assert exc_info.value.reason == "invalid_websearch_provider"
 
 
 @pytest.mark.asyncio

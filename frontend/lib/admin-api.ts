@@ -102,8 +102,14 @@ export type AdminMetricsResponse = {
   rate_limit_events_total: number;
 };
 
+export type WebsearchProvider = "gemini" | "firecrawl";
+
 export type OrchestrationSettingsResponse = {
   guardrail_safety_enabled: boolean;
+  websearch_provider_default: WebsearchProvider;
+  websearch_provider_override: WebsearchProvider | null;
+  websearch_provider_effective: WebsearchProvider;
+  websearch_provider_readiness: string;
 };
 
 export type AdminPageRequest = {
@@ -213,6 +219,23 @@ export async function setGuardrailSafetyEnabled(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ enabled }),
+    },
+  );
+}
+
+export async function setWebsearchProviderOverride(
+  controller: AuthSessionController,
+  provider: WebsearchProvider | null,
+): Promise<OrchestrationSettingsResponse> {
+  return controller.authorizedJson<OrchestrationSettingsResponse>(
+    "/api/admin/orchestration/websearch-provider",
+    {
+      method: "PATCH",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ provider }),
     },
   );
 }

@@ -41,10 +41,10 @@
 - [x] **AUTHZ-01**: Every protected endpoint rejects inactive users and tokens missing the required authenticated principal.
 - [x] **AUTHZ-02**: Admin APIs require the Admin role and the corresponding `admin:read` or `admin:write` scope.
 - [x] **AUTHZ-03**: Chat read operations require `chat:read`, and chat mutation operations require `chat:write`.
-- [ ] **AUTHZ-04**: Web Search execution requires `tool:websearch`, and Python execution requires `tool:python`.
+- [x] **AUTHZ-04**: Web Search execution requires `tool:websearch`, and Python execution requires `tool:python`.
 - [x] **AUTHZ-05**: Conversation and message queries constrain resource ID and authenticated owner in the same data-access operation.
 - [x] **AUTHZ-06**: User cannot infer, read, modify, append to, or delete another user's conversations or messages.
-- [ ] **AUTHZ-07**: Tool authorization is checked immediately before execution and cannot be granted or overridden by model output.
+- [x] **AUTHZ-07**: Tool authorization is checked immediately before execution and cannot be granted or overridden by model output.
 - [x] **AUTHZ-08**: Unknown roles, scopes, tools, and policy states fail closed and produce a redacted authorization or security event.
 
 ### Conversations and Chat
@@ -64,24 +64,24 @@
 
 ### Agent Coordination
 
-- [ ] **AGNT-01**: A deterministic coordinator can select only direct chat, Google Search, or Python from an explicit allowlist.
-- [ ] **AGNT-02**: The model may propose a tool action but cannot authorize it, alter its execution policy, or select arbitrary commands, images, networks, mounts, or external APIs.
-- [ ] **AGNT-03**: v1 permits at most one bounded tool invocation per user turn and enforces request, output, retry, wall-time, concurrency, and cost budgets.
-- [ ] **AGNT-04**: Search and Python use separate workers and credential boundaries behind typed internal contracts.
-- [ ] **AGNT-05**: Internal tool requests use short-lived audience-bound capability credentials rather than forwarding the user's bearer token.
-- [ ] **AGNT-06**: Every requested, denied, started, succeeded, failed, or timed-out tool action has a persisted state and correlation ID.
-- [ ] **AGNT-07**: System prompts and coordinator policy explicitly treat user input, model output, and tool content as untrusted and never expose secrets to model context.
+- [x] **AGNT-01**: A deterministic coordinator can select only direct chat, Google Search, or Python from an explicit allowlist.
+- [x] **AGNT-02**: The model may propose a tool action but cannot authorize it, alter its execution policy, or select arbitrary commands, images, networks, mounts, or external APIs.
+- [x] **AGNT-03**: v1 permits at most one bounded tool invocation per user turn and enforces request, output, retry, wall-time, concurrency, and cost budgets.
+- [x] **AGNT-04**: Search and Python use separate workers and credential boundaries behind typed internal contracts.
+- [x] **AGNT-05**: Internal tool requests use short-lived audience-bound capability credentials rather than forwarding the user's bearer token.
+- [x] **AGNT-06**: Every requested, denied, started, succeeded, failed, or timed-out tool action has a persisted state and correlation ID.
+- [x] **AGNT-07**: System prompts and coordinator policy explicitly treat user input, model output, and tool content as untrusted and never expose secrets to model context.
 
 ### Google Search
 
 - [ ] **SRCH-01**: A dedicated Google ADK worker invokes built-in Google Search using a deployment-configured, currently available compatible Gemini 2 model.
-- [ ] **SRCH-02**: Search startup or deployment performs a capability check for model availability, Google Search support, and expected grounding metadata.
-- [ ] **SRCH-03**: A live grounded response transports answer text and required grounding fields without falsely labeling an ungrounded response as grounded.
-- [ ] **SRCH-04**: Frontend renders claim-to-source citations and required Google Search Suggestions safely for the same end user.
-- [ ] **SRCH-05**: Grounding persistence and telemetry retain only fields allowed by Google terms effective at implementation time and do not perform source-link click tracking.
-- [ ] **SRCH-06**: Search requests apply input limits, timeout, result/output limits, user budgets, and safe failure behavior.
-- [ ] **SRCH-07**: Search failures, missing grounding, and model unavailability are visibly distinguished from successful grounded answers.
-- [ ] **SRCH-08**: Search content cannot cause internal URL fetching, scope escalation, arbitrary tool execution, or policy changes.
+- [x] **SRCH-02**: Search startup or deployment performs a capability check for model availability, Google Search support, and expected grounding metadata.
+- [x] **SRCH-03**: A live grounded response transports answer text and required grounding fields without falsely labeling an ungrounded response as grounded.
+- [x] **SRCH-04**: Frontend renders claim-to-source citations and required Google Search Suggestions safely for the same end user.
+- [x] **SRCH-05**: Grounding persistence and telemetry retain only fields allowed by Google terms effective at implementation time and do not perform source-link click tracking.
+- [x] **SRCH-06**: Search requests apply input limits, timeout, result/output limits, user budgets, and safe failure behavior.
+- [x] **SRCH-07**: Search failures, missing grounding, and model unavailability are visibly distinguished from successful grounded answers.
+- [x] **SRCH-08**: Search content cannot cause internal URL fetching, scope escalation, arbitrary tool execution, or policy changes.
 
 ### Python Sandbox
 
@@ -248,23 +248,23 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | CHAT-09 | Phase 2 | Complete |
 | CHAT-10 | Phase 2 | Complete |
 | CHAT-11 | Phase 2 | Complete |
-| AUTHZ-04 | Phase 3 | Pending |
-| AUTHZ-07 | Phase 3 | Pending |
-| AGNT-01 | Phase 3 | Pending |
-| AGNT-02 | Phase 3 | Pending |
-| AGNT-03 | Phase 3 | Pending |
-| AGNT-04 | Phase 3 | Pending |
-| AGNT-05 | Phase 3 | Pending |
-| AGNT-06 | Phase 3 | Pending |
-| AGNT-07 | Phase 3 | Pending |
+| AUTHZ-04 | Phase 3 | Complete |
+| AUTHZ-07 | Phase 3 | Complete |
+| AGNT-01 | Phase 3 | Complete |
+| AGNT-02 | Phase 3 | Complete |
+| AGNT-03 | Phase 3 | Complete |
+| AGNT-04 | Phase 3 | Complete |
+| AGNT-05 | Phase 3 | Complete |
+| AGNT-06 | Phase 3 | Complete |
+| AGNT-07 | Phase 3 | Complete |
 | SRCH-01 | Phase 3 | Pending |
-| SRCH-02 | Phase 3 | Pending |
-| SRCH-03 | Phase 3 | Pending |
-| SRCH-04 | Phase 3 | Pending |
-| SRCH-05 | Phase 3 | Pending |
-| SRCH-06 | Phase 3 | Pending |
-| SRCH-07 | Phase 3 | Pending |
-| SRCH-08 | Phase 3 | Pending |
+| SRCH-02 | Phase 3 | Complete |
+| SRCH-03 | Phase 3 | Complete |
+| SRCH-04 | Phase 3 | Complete |
+| SRCH-05 | Phase 3 | Complete |
+| SRCH-06 | Phase 3 | Complete |
+| SRCH-07 | Phase 3 | Complete |
+| SRCH-08 | Phase 3 | Complete |
 | CHAT-12 | Phase 4 | Complete |
 | SBOX-01 | Phase 4 | Complete |
 | SBOX-02 | Phase 4 | Complete |
@@ -315,11 +315,18 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | DOCS-04 | Phase 6 | Complete |
 | DOCS-05 | Phase 6 | Complete |
 | DOCS-06 | Phase 6 | Complete |
+| AUTH-11 | Phase 7 | Planned |
+| AUTH-12 | Phase 7 | Planned |
+| IDEN-09 | Phase 7 | Planned |
+| AGNT-08 | Phase 7 | Planned |
+| AGNT-09 | Phase 7 | Planned |
+| OBS-08 | Phase 7 | Planned |
+| PRODREADY-06 | Phase 7 | Planned |
 
 **Coverage:**
 
-- v1 requirements: 99 total
-- Mapped to phases: 99
+- v1 requirements: 106 total
+- Mapped to phases: 106
 - Unmapped: 0
 
 **Phase allocation:**
@@ -330,6 +337,7 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 - Phase 4: 9 requirements
 - Phase 5: 25 requirements
 - Phase 6: 16 requirements
+- Phase 7: 7 requirements
 
 ---
 *Requirements defined: 2026-06-08*

@@ -32,6 +32,13 @@ Deliver a bounded Google-grounded search path for authorized users inside the ch
 - Choose the precise copy, iconography, and component structure for denied, degraded, and retry states while preserving the distinctions locked above.
 - Choose capability-check mechanics, grounding-metadata persistence shape, audit/event fields, and coordinator request/output/retry/time/cost budgets consistent with `AUTHZ-04`, `AUTHZ-07`, `AGNT-*`, and `SRCH-*` requirements.
 
+### Provider Extension Addendum (2026-06-22)
+- **D-10:** Phase 3 now supports a bounded websearch provider allowlist of `gemini` and `firecrawl`. Any other configured provider value must fail closed.
+- **D-11:** If the selected provider is `firecrawl`, the backend may execute websearch only when a Firecrawl Cloud API key is configured. Missing Firecrawl credentials must return a visible unavailable state and must not silently fall back to Gemini.
+- **D-12:** Websearch provider selection must be configurable by environment variables and by an admin-only dashboard control. The environment value acts as the default; an admin runtime override may change the effective provider until it is cleared.
+- **D-13:** User-visible search status, badges, and copy must remain provider-honest. Google-specific labels or evidence affordances must not appear when the active provider is Firecrawl.
+- **D-14:** Firecrawl integration remains inside the same `tool:websearch` policy boundary, one-tool-per-turn budget, persisted correlation model, and prompt-injection/SSRF defenses already required for Gemini search.
+
 </decisions>
 
 <canonical_refs>

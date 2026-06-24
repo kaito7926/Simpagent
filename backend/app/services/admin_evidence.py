@@ -20,6 +20,7 @@ from app.db.repositories.admin import (
 from app.db.repositories.agent_settings import AgentRuntimeSettingsRepository
 from app.db.repositories.sessions import SessionsRepository
 from app.identity.redaction import REDACTED, sanitize_admin_evidence, summarize_admin_evidence
+from app.core.provider_status import SEARCH_PROVIDER_ALLOWLIST
 from app.schemas.admin import (
     AdminMetricsResponse,
     AdminPage,
@@ -87,7 +88,7 @@ class AdminAccessDenied(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class AdminWriteRejected(ValueError):
-    reason: Literal["self_mutation_forbidden"]
+    reason: Literal["self_mutation_forbidden", "invalid_websearch_provider"]
 
 
 class AdminEvidenceService:
@@ -228,6 +229,8 @@ class AdminEvidenceService:
         *,
         principal: AuthenticatedPrincipal,
         default_guardrail_enabled: bool = True,
+        websearch_provider_default: str = "gemini",
+        websearch_provider_readiness: str = "unconfigured",
     ) -> OrchestrationSettingsResponse:
         await self._require_admin_scope(
             principal=principal,
@@ -235,8 +238,14 @@ class AdminEvidenceService:
             resource="orchestration",
         )
         guardrail_enabled = await self.agent_settings.is_guardrail_enabled(default=default_guardrail_enabled)
+        provider_override = await self.agent_settings.get_websearch_provider_override()
+        effective_provider = provider_override or websearch_provider_default
         return OrchestrationSettingsResponse(
             guardrail_safety_enabled=guardrail_enabled,
+            websearch_provider_default=websearch_provider_default,
+            websearch_provider_override=provider_override,
+            websearch_provider_effective=effective_provider,
+            websearch_provider_readiness=websearch_provider_readiness,
         )
 
     async def set_guardrail_safety_enabled(
@@ -244,6 +253,8 @@ class AdminEvidenceService:
         *,
         principal: AuthenticatedPrincipal,
         enabled: bool,
+        websearch_provider_default: str = "gemini",
+        websearch_provider_readiness: str = "unconfigured",
     ) -> OrchestrationSettingsResponse:
         await self._require_admin_scope(
             principal=principal,
@@ -274,8 +285,76 @@ class AdminEvidenceService:
             if self.session.in_transaction():
                 await self.session.rollback()
             raise
+        provider_override = await self.agent_settings.get_websearch_provider_override()
+        effective_provider = provider_override or websearch_provider_default
         return OrchestrationSettingsResponse(
             guardrail_safety_enabled=enabled,
+            websearch_provider_default=websearch_provider_default,
+            websearch_provider_override=provider_override,
+            websearch_provider_effective=effective_provider,
+            websearch_provider_readiness=websearch_provider_readiness,
+        )
+
+    async def set_websearch_provider_override(
+        self,
+        *,
+        principal: AuthenticatedPrincipal,
+        provider: str | None,
+        websearch_provider_default: str = "gemini",
+        websearch_provider_readiness: str = "unconfigured",
+        default_guardrail_enabled: bool = True,
+    ) -> OrchestrationSettingsResponse:
+        await self._require_admin_scope(
+            principal=principal,
+            required_scope="admin:write",
+            resource="orchestration",
+        )
+        if self.session is None:
+            raise RuntimeError("An active database session is required for orchestration writes.")
+        if provider is not None and provider not in SEARCH_PROVIDER_ALLOWLIST:
+            await self._record_admin_write_denial(
+                principal=principal,
+                resource="orchestration",
+                reason="invalid_websearch_provider",
+            )
+            raise AdminWriteRejected(reason="invalid_websearch_provider")
+
+        try:
+            setting = await self.agent_settings.set_websearch_provider_override(
+                provider=provider,  # type: ignore[arg-type]
+                updated_by_user_id=principal.user_id,
+            )
+            provider_override = setting.value if setting.value in SEARCH_PROVIDER_ALLOWLIST else None
+            effective_provider = provider_override or websearch_provider_default
+            await self.security_events.add_security_event(
+                event_type="websearch_provider_override_set"
+                if provider_override is not None
+                else "websearch_provider_override_cleared",
+                severity="info",
+                user_id=principal.user_id,
+                description="Admin updated websearch provider runtime override.",
+                correlation_id=self.correlation_id,
+                metadata={
+                    "resource": "orchestration",
+                    "websearch_provider_default": websearch_provider_default,
+                    "websearch_provider_override": provider_override,
+                    "websearch_provider_effective": effective_provider,
+                    "websearch_provider_readiness": websearch_provider_readiness,
+                },
+            )
+            await self.session.commit()
+        except Exception:
+            if self.session.in_transaction():
+                await self.session.rollback()
+            raise
+
+        guardrail_enabled = await self.agent_settings.is_guardrail_enabled(default=default_guardrail_enabled)
+        return OrchestrationSettingsResponse(
+            guardrail_safety_enabled=guardrail_enabled,
+            websearch_provider_default=websearch_provider_default,
+            websearch_provider_override=provider_override,
+            websearch_provider_effective=effective_provider,
+            websearch_provider_readiness=websearch_provider_readiness,
         )
 
     async def update_user_access(

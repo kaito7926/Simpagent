@@ -155,29 +155,62 @@ async def test_public_stack_admin_flow_covers_search_evidence_and_role_changes()
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert orchestration_response.status_code == 200
-        assert orchestration_response.json()["trusted_supervisor_enabled"] is False
+        orchestration_payload = orchestration_response.json()
+        assert set(orchestration_payload) == {
+            "guardrail_safety_enabled",
+            "websearch_provider_default",
+            "websearch_provider_override",
+            "websearch_provider_effective",
+            "websearch_provider_readiness",
+        }
+        original_guardrail_enabled = orchestration_payload["guardrail_safety_enabled"]
+        toggled_guardrail_enabled = not original_guardrail_enabled
+        try:
+            guardrail_response = await client.patch(
+                "/api/admin/orchestration/guardrail",
+                headers={
+                    "Authorization": f"Bearer {admin_token}",
+                    "X-Correlation-Id": unique_correlation_id("corr-smk-guardrail"),
+                },
+                json={"enabled": toggled_guardrail_enabled},
+            )
+            assert guardrail_response.status_code == 200
+            assert guardrail_response.json()["guardrail_safety_enabled"] is toggled_guardrail_enabled
+        finally:
+            restore_guardrail_response = await client.patch(
+                "/api/admin/orchestration/guardrail",
+                headers={
+                    "Authorization": f"Bearer {admin_token}",
+                    "X-Correlation-Id": unique_correlation_id("corr-smk-guardrail-restore"),
+                },
+                json={"enabled": original_guardrail_enabled},
+            )
+            assert restore_guardrail_response.status_code == 200
+            assert restore_guardrail_response.json()["guardrail_safety_enabled"] is original_guardrail_enabled
 
-        trusted_supervisor_response = await client.patch(
-            "/api/admin/orchestration/trusted-supervisor",
+        provider_set_response = await client.patch(
+            "/api/admin/orchestration/websearch-provider",
             headers={
                 "Authorization": f"Bearer {admin_token}",
-                "X-Correlation-Id": unique_correlation_id("corr-smk-supervisor"),
+                "X-Correlation-Id": unique_correlation_id("corr-smk-provider-set"),
             },
-            json={"enabled": True},
+            json={"provider": "firecrawl"},
         )
-        assert trusted_supervisor_response.status_code == 200
-        assert trusted_supervisor_response.json()["trusted_supervisor_enabled"] is True
+        assert provider_set_response.status_code == 200
+        assert provider_set_response.json()["websearch_provider_override"] == "firecrawl"
+        assert provider_set_response.json()["websearch_provider_effective"] == "firecrawl"
 
-        guardrail_response = await client.patch(
-            "/api/admin/orchestration/guardrail",
+        provider_clear_response = await client.patch(
+            "/api/admin/orchestration/websearch-provider",
             headers={
                 "Authorization": f"Bearer {admin_token}",
-                "X-Correlation-Id": unique_correlation_id("corr-smk-guardrail"),
+                "X-Correlation-Id": unique_correlation_id("corr-smk-provider-clear"),
             },
-            json={"enabled": False},
+            json={"provider": None},
         )
-        assert guardrail_response.status_code == 200
-        assert guardrail_response.json()["guardrail_safety_enabled"] is False
+        assert provider_clear_response.status_code == 200
+        assert provider_clear_response.json()["websearch_provider_override"] is None
+        assert provider_clear_response.json()["websearch_provider_effective"] == "gemini"
 
         promote_response = await client.patch(
             f"/api/admin/users/{user_record['id']}",
