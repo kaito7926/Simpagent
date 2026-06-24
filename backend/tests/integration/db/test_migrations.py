@@ -39,7 +39,7 @@ async def test_alembic_upgrade_creates_phase_one_and_python_tables(db_session) -
 @pytest.mark.integration
 def test_alembic_head_matches_latest_python_revision(alembic_config) -> None:
     script = ScriptDirectory.from_config(alembic_config)
-    assert script.get_current_head() == "0005_encrypt_message_content"
+    assert script.get_current_head() == "0006_encrypt_message_content"
 
 
 @pytest.mark.integration
@@ -105,7 +105,7 @@ async def test_message_content_migration_encrypts_plaintext_rows_and_restores_on
             },
         )
 
-        command.upgrade(alembic_config, "0005_encrypt_message_content")
+        command.upgrade(alembic_config, "0006_encrypt_message_content")
         encrypted_content = (
             await _execute(
                 "SELECT content FROM messages WHERE id = :id",
