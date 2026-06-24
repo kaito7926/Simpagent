@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Added Phase 07 sender-constrained session hardening workflow after Phase 06 closeout
-last_updated: "2026-06-24T23:33:00.000Z"
+status: Phase 07 complete
+stopped_at: Completed Phase 07 sender-constrained session and cryptographic hardening
+last_updated: "2026-06-24T23:40:00.000Z"
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 46
-  completed_plans: 45
-  percent: 98
+  completed_plans: 46
+  percent: 100
 ---
 
 # Project State
@@ -20,17 +20,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-08)
 
 **Core value:** Users can safely authenticate and use an AI chatbot with controlled agent tools without crossing tenant, role, scope, network, or host-execution boundaries.
-**Current focus:** Phase 07 — sender-constrained-sessions-and-cryptographic-hardening
+**Current focus:** Phase 07 complete — sender-constrained-sessions-and-cryptographic-hardening
 
 ## Current Position
 
-Phase: 07 (sender-constrained-sessions-and-cryptographic-hardening) — EXECUTING
+Phase: 07 (sender-constrained-sessions-and-cryptographic-hardening) — COMPLETE
 Plan: 5 of 5
 Plan pack: Phase 07 workflow artifacts are being seeded after Phase 06 verification closeout
 Known shipped slice: Phase 06 remains the last fully verified delivery slice; Phase 07 is the next hardening continuation
 Latest verification: `06-VERIFICATION.md` passed on 2026-06-19 with 5/5 must-haves verified and 4/4 human checks passed
 
-Progress: Phase 06 is fully verified; Phase 07 now captures the next cryptographic hardening slice while the historical Phase 03 planning/verification debt remains explicitly documented
+Progress: Phase 07 hardening is complete; the historical Phase 03 planning/verification debt remains explicitly documented
 
 ## Performance Metrics
 
@@ -50,7 +50,7 @@ Progress: Phase 06 is fully verified; Phase 07 now captures the next cryptograph
 | 04 Isolated Python Execution | 5/5 | Shipped | PR #2 integrated slice; `04-VERIFICATION.md` passed |
 | 05 Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 8/8 | Complete | `05-VERIFICATION.md` passed on 2026-06-17 |
 | 06 Adversarial Verification and Vietnamese Delivery | 5/5 | Verified | `06-VERIFICATION.md` passed on 2026-06-19; matrix and attack summaries regenerated |
-| 07 Sender-Constrained Sessions and Cryptographic Hardening | 4/5 | In Progress | Replay foundations, OAuth PKCE transactions, asymmetric one-time tool capabilities, and DPoP auth binding shipped |
+| 07 Sender-Constrained Sessions and Cryptographic Hardening | 5/5 | Complete | Replay foundations, OAuth PKCE transactions, asymmetric one-time tool capabilities, DPoP auth binding, and frontend proof rollout shipped |
 
 **Recent Trend:**
 
@@ -64,6 +64,7 @@ Progress: Phase 06 is fully verified; Phase 07 now captures the next cryptograph
 | Phase 07 P02 | 35 min | 3 tasks | 8 files |
 | Phase 07 P03 | 50 min | 3 tasks | 14 files |
 | Phase 07 P04 | 42 min | 3 tasks | 13 files |
+| Phase 07 P05 | 32 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,7 @@ Recent decisions affecting current work:
 - Phase 07 scopes MVP cryptographic hardening to PKCE + sealed OAuth transactions, asymmetric one-time capability tokens, and DPoP-style sender-constrained sessions; WebAuthn step-up remains deferred beyond this phase.
 - Phase 07 internal tool capabilities now use one-time asymmetric trust artifacts: search consumes `jti` values through the replay journal, and Python sandbox requests verify backend-issued RS256 JWTs with a public key.
 - Phase 07 DPoP hardening is backend-feature-flagged: `cnf.jkt` access tokens and refresh-family thumbprints are enforced when `dpop_enabled` is true, leaving frontend rollout to 07-05.
+- Phase 07 frontend rollout keeps device proof keys memory-only and sends DPoP headers through `AuthSessionController`; proof loss forces re-auth instead of bearer fallback.
 - [Phase ?]: Keep Firecrawl behind existing google_search turn mode — Provider identity is metadata behind tool:websearch, not a new client-visible tool surface.
 - [Phase ?]: Use HTTPX directly for Firecrawl Cloud — The plan required no new SDK; existing HTTPX keeps the provider boundary small and auditable.
 - [Phase 03-policy-controlled-google-search]: Keep provider override in existing runtime settings — Plan 03-06 reuses agent_runtime_settings as nullable value data instead of introducing a new table.

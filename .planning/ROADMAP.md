@@ -19,7 +19,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 - [x] **Phase 4: Isolated Python Execution** - Authorized users can run bounded Python without host, secret, or network access.
 - [x] **Phase 5: Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence** - The assembled application supports local, Google, and GitHub login, hardened ingress, redacted observability, protected admin evidence, and a small production deployment profile. (verified 2026-06-17)
 - [x] **Phase 6: Adversarial Verification and Vietnamese Delivery** - Evaluators can verify the claimed controls and operate the documented prototype.
-- [ ] **Phase 7: Sender-Constrained Sessions and Cryptographic Hardening** - Browser sessions, OAuth artifacts, and internal tool capabilities become replay-resistant and proof-of-possession bound instead of reusable bearer-style credentials.
+- [x] **Phase 7: Sender-Constrained Sessions and Cryptographic Hardening** - Browser sessions, OAuth artifacts, and internal tool capabilities become replay-resistant and proof-of-possession bound instead of reusable bearer-style credentials.
 
 ## Phase Details
 
@@ -210,7 +210,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
   3. Search and Python capability credentials are signed asymmetrically, bound to their reviewed audience and request context, and rejected on replay within their short-lived validity window.
   4. Security evidence, rollout docs, and operational guidance truthfully describe the new sender-constrained behavior, key-loss re-auth expectations, and remaining prototype limits.
 
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans executed
 **Wave 1**
 
 - [x] 07-01-PLAN.md - Establish replay-journal storage, config flags, and shared cryptographic hardening helpers.
@@ -226,7 +226,7 @@ This roadmap delivers the prototype as dependency-ordered vertical slices: estab
 
 **Wave 4** *(blocked on Wave 3 completion and relevant Wave 2 capability work)*
 
-- [ ] 07-05-PLAN.md - Integrate frontend device proofs, rollout guidance, and final hardening verification updates.
+- [x] 07-05-PLAN.md - Integrate frontend device proofs, rollout guidance, and final hardening verification updates.
 
 **UI hint:** yes
 
@@ -245,4 +245,4 @@ Note: PR #2 ships the Phase 4 Python slice before Phase 3 planning metadata was 
 | 4. Isolated Python Execution | 5/5 | Shipped (PR #2) | 2026-06-13 |
 | 5. Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 8/8 | Complete | 2026-06-17 |
 | 6. Adversarial Verification and Vietnamese Delivery | 5/5 | Complete | 2026-06-19 |
-| 7. Sender-Constrained Sessions and Cryptographic Hardening | 4/5 | In Progress|  |
+| 7. Sender-Constrained Sessions and Cryptographic Hardening | 5/5 | Complete | 2026-06-25 |
