@@ -83,7 +83,11 @@ class SessionsService:
                     user_id=family.user_id,
                     description="Refresh-token replay detected.",
                     correlation_id=correlation_id,
-                    metadata={"family_id": str(family.id)},
+                    metadata={
+                        "family_id": str(family.id),
+                        "auth_binding_method": family.auth_binding_method,
+                        "key_thumbprint": family.key_thumbprint,
+                    },
                 )
                 return RefreshOutcome(status=RefreshStatus.replay)
             if token.expires_at <= now:

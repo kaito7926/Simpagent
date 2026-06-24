@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 import logging
 from uuid import UUID
@@ -8,7 +9,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.evidence import SecurityEvent
-from app.models.session import RefreshToken, RefreshTokenFamily
+from app.models.session import RefreshToken, RefreshTokenFamily, SecurityReplayRecord
+
+
+@dataclass(frozen=True)
+class ReplayConsumeResult:
+    accepted: bool
+    record: SecurityReplayRecord | None
+    event: SecurityEvent | None = None
 
 
 class SessionsRepository:
@@ -52,6 +60,78 @@ class SessionsRepository:
         token.used_at = now
         token.replaced_by_id = replacement.id
         await self.session.flush()
+
+    async def consume_security_artifact_once(
+        self,
+        *,
+        artifact_type: str,
+        jti: str,
+        subject: str | None,
+        audience: str,
+        conversation_id: str | UUID | None,
+        binding_key_thumbprint: str | None,
+        expires_at: datetime,
+        now: datetime,
+        correlation_id: str | None,
+        replay_event_type: str,
+    ) -> ReplayConsumeResult:
+        normalized_conversation_id = UUID(str(conversation_id)) if conversation_id else None
+        stmt = (
+            select(SecurityReplayRecord)
+            .where(
+                SecurityReplayRecord.artifact_type == artifact_type,
+                SecurityReplayRecord.audience == audience,
+                SecurityReplayRecord.jti == jti,
+            )
+            .with_for_update()
+        )
+        existing = await self.session.scalar(stmt)
+        if existing is None:
+            record = SecurityReplayRecord(
+                artifact_type=artifact_type,
+                jti=jti,
+                subject=subject,
+                audience=audience,
+                conversation_id=normalized_conversation_id,
+                binding_key_thumbprint=binding_key_thumbprint,
+                first_correlation_id=correlation_id,
+                consumed_at=now,
+                expires_at=expires_at,
+                event_metadata={
+                    "artifact_type": artifact_type,
+                    "jti": jti,
+                    "subject": subject,
+                    "audience": audience,
+                    "conversation_id": str(normalized_conversation_id) if normalized_conversation_id else None,
+                    "binding_key_thumbprint": binding_key_thumbprint,
+                },
+            )
+            self.session.add(record)
+            await self.session.flush()
+            return ReplayConsumeResult(accepted=True, record=record)
+
+        existing.replay_count += 1
+        existing.replayed_at = now
+        existing.last_replay_correlation_id = correlation_id
+        event = await self.add_security_event(
+            event_type=replay_event_type,
+            severity="high",
+            user_id=None,
+            description=f"Replay detected for {artifact_type} security artifact.",
+            correlation_id=correlation_id,
+            metadata={
+                "artifact_type": artifact_type,
+                "jti": jti,
+                "subject": subject,
+                "audience": audience,
+                "conversation_id": str(normalized_conversation_id) if normalized_conversation_id else None,
+                "binding_key_thumbprint": binding_key_thumbprint,
+                "first_correlation_id": existing.first_correlation_id,
+                "replay_count": existing.replay_count,
+            },
+        )
+        await self.session.flush()
+        return ReplayConsumeResult(accepted=False, record=existing, event=event)
 
     async def add_security_event(self, *, event_type: str, severity: str, user_id: UUID | None, description: str, correlation_id: str | None, metadata: dict | None = None) -> SecurityEvent:
         event = SecurityEvent(
