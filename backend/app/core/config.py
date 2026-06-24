@@ -165,6 +165,13 @@ class Settings(BaseSettings):
     access_token_ttl_seconds: int = 600
     refresh_idle_ttl_seconds: int = 7 * 24 * 60 * 60
     refresh_absolute_ttl_seconds: int = 30 * 24 * 60 * 60
+    dpop_enabled: bool = False
+    dpop_nonce_ttl_seconds: int = Field(default=120, ge=30, le=600)
+    dpop_proof_leeway_seconds: int = Field(default=5, ge=0, le=60)
+    oauth_pkce_enabled: bool = True
+    oauth_transaction_ttl_seconds: int = Field(default=300, ge=60, le=900)
+    capability_replay_protection_enabled: bool = True
+    replay_journal_ttl_seconds: int = Field(default=300, ge=60, le=3600)
     cookie_secure: bool = True
     cookie_samesite: CookieSameSite = "strict"
 
