@@ -93,9 +93,10 @@ def test_supervisor_rejects_replayed_asymmetric_python_capability(settings, monk
         code=code,
     )
 
-    server.verify_capability_token(token, request=request)
+    reference_now = int(settings.now_utc().timestamp())
+    server.verify_capability_token(token, request=request, now=reference_now)
     with pytest.raises(ValueError, match="replay|already used"):
-        server.verify_capability_token(token, request=request)
+        server.verify_capability_token(token, request=request, now=reference_now)
 
 
 @pytest.mark.security

@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import tempfile
+from threading import Lock
 import time
 from dataclasses import asdict, dataclass, field
 from http import HTTPStatus
@@ -15,13 +16,18 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+import jwt
+
 
 HEALTH_STATUS = "foundation_ready"
 RUNTIME_IMAGE = os.getenv("SIMPAGENT_SANDBOX_RUNTIME_IMAGE", "simpagent-python-runtime:local")
 DOCKER_BIN = os.getenv("SIMPAGENT_SANDBOX_DOCKER_BIN", "docker")
 CAPABILITY_AUDIENCE = "sandbox-worker"
 CAPABILITY_TYPE = "tool-capability+jwt"
+CAPABILITY_ALGORITHM = "RS256"
+CAPABILITY_TOOL = "python"
 CAPABILITY_SECRET_FILE = os.getenv("SIMPAGENT_SANDBOX_CAPABILITY_SECRET_FILE")
+CAPABILITY_PUBLIC_KEY_FILE = os.getenv("SIMPAGENT_SANDBOX_CAPABILITY_PUBLIC_KEY_FILE")
 
 
 def _read_secret_file(path: str | None) -> str | None:
@@ -38,7 +44,13 @@ CAPABILITY_SECRET = (
     or _read_secret_file(CAPABILITY_SECRET_FILE)
     or "sandbox-dev-secret"
 )
+CAPABILITY_PUBLIC_KEY = os.getenv("SIMPAGENT_SANDBOX_CAPABILITY_PUBLIC_KEY") or _read_secret_file(
+    CAPABILITY_PUBLIC_KEY_FILE
+)
 CAPABILITY_TTL_SECONDS = 60
+CAPABILITY_LEEWAY_SECONDS = 5
+_CONSUMED_CAPABILITY_JTIS: set[str] = set()
+_CONSUMED_CAPABILITY_LOCK = Lock()
 MAX_CODE_CHARS = 16_000
 MAX_REQUEST_BYTES = 96 * 1024
 MAX_STDIO_EXCERPT_CHARS = 8_192
@@ -232,25 +244,57 @@ def verify_capability_token(
     *,
     request: ExecutionRequest,
     now: int | None = None,
-    secret: str = CAPABILITY_SECRET,
+    public_key: str | None = None,
 ) -> None:
     try:
-        body, signature = token.split(".", 1)
-    except ValueError as exc:
+        header = jwt.get_unverified_header(token)
+    except jwt.InvalidTokenError as exc:
         raise ValueError("Malformed capability token.") from exc
+    if header.get("typ") != CAPABILITY_TYPE:
+        raise ValueError("Capability type mismatch.")
+    if header.get("alg") != CAPABILITY_ALGORITHM:
+        raise ValueError("Capability algorithm mismatch.")
 
-    expected_signature = hmac.new(secret.encode("utf-8"), body.encode("ascii"), hashlib.sha256).digest()
-    actual_signature = _base64url_decode(signature)
-    if not hmac.compare_digest(expected_signature, actual_signature):
-        raise ValueError("Capability signature mismatch.")
+    verifier_key = public_key or CAPABILITY_PUBLIC_KEY
+    if not verifier_key:
+        raise ValueError("Capability public key is not configured.")
 
-    payload = json.loads(_base64url_decode(body).decode("utf-8"))
+    try:
+        payload = jwt.decode(
+            token,
+            verifier_key,
+            algorithms=[CAPABILITY_ALGORITHM],
+            audience=CAPABILITY_AUDIENCE,
+            options={
+                "require": [
+                    "iss",
+                    "aud",
+                    "tool",
+                    "jti",
+                    "execution_id",
+                    "profile_name",
+                    "code_hash",
+                    "state_snapshot_hash",
+                    "iat",
+                    "nbf",
+                    "exp",
+                ],
+                "verify_signature": True,
+                "verify_exp": False,
+                "verify_iat": False,
+                "verify_nbf": False,
+                "verify_aud": True,
+            },
+        )
+    except jwt.InvalidTokenError as exc:
+        raise ValueError("Invalid capability token.") from exc
+
     current_time = int(time.time() if now is None else now)
 
-    if payload.get("typ") != CAPABILITY_TYPE:
-        raise ValueError("Capability type mismatch.")
     if payload.get("aud") != CAPABILITY_AUDIENCE:
         raise ValueError("Capability audience mismatch.")
+    if payload.get("tool") != CAPABILITY_TOOL:
+        raise ValueError("Capability tool mismatch.")
     if payload.get("execution_id") != request.execution_id:
         raise ValueError("Capability execution_id mismatch.")
     if payload.get("profile_name") != request.profile_name:
@@ -259,8 +303,26 @@ def verify_capability_token(
         raise ValueError("Capability code hash mismatch.")
     if payload.get("state_snapshot_hash") != _sha256_text(request.state_snapshot_b64 or ""):
         raise ValueError("Capability state snapshot hash mismatch.")
-    if not isinstance(payload.get("exp"), int) or payload["exp"] < current_time:
+    if not isinstance(payload.get("jti"), str) or not payload["jti"].strip():
+        raise ValueError("Capability jti is required.")
+    for claim_name in ("iat", "nbf", "exp"):
+        if not isinstance(payload.get(claim_name), int):
+            raise ValueError(f"Capability {claim_name} must be an integer numeric date.")
+    if payload["exp"] <= payload["iat"]:
+        raise ValueError("Capability expiry ordering mismatch.")
+    if payload["exp"] - payload["iat"] > CAPABILITY_TTL_SECONDS:
+        raise ValueError("Capability lifetime exceeds policy.")
+    if payload["nbf"] > current_time + CAPABILITY_LEEWAY_SECONDS:
+        raise ValueError("Capability token is not yet valid.")
+    if payload["iat"] > current_time + CAPABILITY_LEEWAY_SECONDS:
+        raise ValueError("Capability issued-at is too far in the future.")
+    if payload["exp"] < current_time - CAPABILITY_LEEWAY_SECONDS:
         raise ValueError("Capability token expired.")
+
+    with _CONSUMED_CAPABILITY_LOCK:
+        if payload["jti"] in _CONSUMED_CAPABILITY_JTIS:
+            raise ValueError("Capability replay detected; token was already used.")
+        _CONSUMED_CAPABILITY_JTIS.add(payload["jti"])
 
 
 def build_runtime_launch_spec(

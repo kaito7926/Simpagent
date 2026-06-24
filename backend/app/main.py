@@ -81,7 +81,11 @@ def create_app(
     app.state.search_status = search_status(settings)
     app.state.search_provider = resolve_search_provider(settings) or "invalid"
     app.state.search_ready = app.state.search_status == "ready"
-    app.state.search_worker = build_search_worker_service(settings) if app.state.search_ready else None
+    app.state.search_worker = (
+        build_search_worker_service(settings, session_factory=resolved_session_factory)
+        if app.state.search_ready
+        else None
+    )
     instrument_app(app, settings)
 
     app.add_middleware(

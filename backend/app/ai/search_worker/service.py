@@ -19,13 +19,14 @@ from app.ai.search_worker.grounding import grounding_to_search_result
 from app.ai.search_worker.schemas import SearchWorkerReply
 from app.core.config import Settings
 from app.core.provider_status import resolve_search_provider
+from app.db.session import SessionFactory, create_session_factory
 from app.schemas.search import (
     SEARCH_PROVIDER_FAILED_COPY,
     SEARCH_TIMEOUT_COPY,
     SEARCH_UNAVAILABLE_COPY,
     SearchWorkerResult,
 )
-from app.security.search_capability import SearchCapabilityError, validate_search_capability
+from app.security.search_capability import SearchCapabilityError, consume_search_capability_once
 
 
 class SearchRunner(Protocol):
@@ -155,10 +156,12 @@ class GoogleSearchWorkerService:
         settings: Settings,
         runner_factory: SearchRunnerFactory | None = None,
         agent_factory: SearchAgentFactory | None = None,
+        session_factory: SessionFactory | None = None,
     ) -> None:
         self.settings = settings
         self._runner_factory = runner_factory or _default_runner_factory
         self._agent_factory = agent_factory or build_google_search_agent
+        self._session_factory = session_factory
 
     async def run(
         self,
@@ -169,6 +172,24 @@ class GoogleSearchWorkerService:
         correlation_id: str | None,
         capability_token: str | None = None,
     ) -> SearchWorkerResult:
+        try:
+            await _consume_worker_capability(
+                settings=self.settings,
+                session_factory=self._session_factory,
+                capability_token=capability_token,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                correlation_id=correlation_id,
+            )
+        except (SearchCapabilityError, ValueError):
+            return SearchWorkerResult(
+                state="search_unavailable",
+                answer_markdown=SEARCH_UNAVAILABLE_COPY,
+                google_grounded=False,
+                tool_executed=False,
+                output_summary="search_unavailable",
+            )
+
         previous_google_api_key = os.environ.get("GOOGLE_API_KEY")
         previous_gemini_api_key = os.environ.get("GEMINI_API_KEY")
         google_api_key = self.settings.google_api_key_value
@@ -177,27 +198,6 @@ class GoogleSearchWorkerService:
             os.environ["GEMINI_API_KEY"] = google_api_key
 
         try:
-            try:
-                claims = validate_search_capability(
-                    capability_token or "",
-                    settings=self.settings,
-                    now=self.settings.now_utc(),
-                )
-                if claims.sub != UUID(user_id):
-                    raise SearchCapabilityError("Capability subject does not match the user")
-                if claims.conversation_id != UUID(conversation_id):
-                    raise SearchCapabilityError("Capability conversation does not match")
-                if claims.correlation_id != correlation_id:
-                    raise SearchCapabilityError("Capability correlation does not match")
-            except (SearchCapabilityError, ValueError):
-                return SearchWorkerResult(
-                    state="search_unavailable",
-                    answer_markdown=SEARCH_UNAVAILABLE_COPY,
-                    google_grounded=False,
-                    tool_executed=False,
-                    output_summary="search_unavailable",
-                )
-
             agent = self._agent_factory(self.settings)
             runner = self._runner_factory(agent)
             bounded_prompt = prompt.strip()[: self.settings.search_max_prompt_chars].strip()
@@ -276,9 +276,11 @@ class FirecrawlSearchWorkerService:
         *,
         settings: Settings,
         client_factory: FirecrawlClientFactory | None = None,
+        session_factory: SessionFactory | None = None,
     ) -> None:
         self.settings = settings
         self._client_factory = client_factory or FirecrawlSearchClient
+        self._session_factory = session_factory
 
     async def run(
         self,
@@ -290,17 +292,14 @@ class FirecrawlSearchWorkerService:
         capability_token: str | None = None,
     ) -> SearchWorkerResult:
         try:
-            claims = validate_search_capability(
-                capability_token or "",
+            await _consume_worker_capability(
                 settings=self.settings,
-                now=self.settings.now_utc(),
+                session_factory=self._session_factory,
+                capability_token=capability_token,
+                user_id=user_id,
+                conversation_id=conversation_id,
+                correlation_id=correlation_id,
             )
-            if claims.sub != UUID(user_id):
-                raise SearchCapabilityError("Capability subject does not match the user")
-            if claims.conversation_id != UUID(conversation_id):
-                raise SearchCapabilityError("Capability conversation does not match")
-            if claims.correlation_id != correlation_id:
-                raise SearchCapabilityError("Capability correlation does not match")
         except (SearchCapabilityError, ValueError):
             return SearchWorkerResult(
                 provider="firecrawl",
@@ -315,10 +314,43 @@ class FirecrawlSearchWorkerService:
         return await client.search(query=prompt)
 
 
-def build_search_worker_service(settings: Settings, *, runtime_override: str | None = None):
+def build_search_worker_service(
+    settings: Settings,
+    *,
+    runtime_override: str | None = None,
+    session_factory: SessionFactory | None = None,
+):
     provider = resolve_search_provider(settings, runtime_override=runtime_override)
     if provider == "firecrawl":
-        return FirecrawlSearchWorkerService(settings=settings)
+        return FirecrawlSearchWorkerService(settings=settings, session_factory=session_factory)
     if provider == "gemini":
-        return GoogleSearchWorkerService(settings=settings)
+        return GoogleSearchWorkerService(settings=settings, session_factory=session_factory)
     return None
+
+
+async def _consume_worker_capability(
+    *,
+    settings: Settings,
+    session_factory: SessionFactory | None,
+    capability_token: str | None,
+    user_id: str,
+    conversation_id: str,
+    correlation_id: str | None,
+) -> None:
+    resolved_session_factory = session_factory or create_session_factory(settings)
+    owns_factory = session_factory is None
+    try:
+        await consume_search_capability_once(
+            capability_token or "",
+            settings=settings,
+            session_factory=resolved_session_factory,
+            expected_user_id=UUID(user_id),
+            expected_conversation_id=UUID(conversation_id),
+            expected_correlation_id=correlation_id,
+            now=settings.now_utc(),
+        )
+    finally:
+        if owns_factory:
+            bind = resolved_session_factory.kw.get("bind")
+            if bind is not None:
+                await bind.dispose()

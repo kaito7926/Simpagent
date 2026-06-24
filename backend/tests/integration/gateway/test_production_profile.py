@@ -26,7 +26,6 @@ def _base_settings(**overrides):
         "refresh_hmac_key_file": "/run/secrets/refresh_hmac_key",
         "csrf_hmac_key_file": "/run/secrets/csrf_hmac_key",
         "registration_invite_code": "invite-prod-test",
-        "python_capability_secret_file": "/run/secrets/python_capability_secret",
         "public_app_origin": "https://app.example.test",
         "public_api_origin": "https://api.example.test",
         "trusted_proxy_cidrs": ["10.0.0.0/8", "172.16.0.0/12"],
@@ -108,7 +107,7 @@ def test_compose_exposes_small_production_profile_and_proxy_environment() -> Non
 def test_compose_sandbox_boundary_uses_secret_file_and_trusted_runtime_control() -> None:
     contents = COMPOSE_FILE.read_text(encoding="utf-8")
 
-    assert "SIMPAGENT_PYTHON_CAPABILITY_SECRET_FILE: /run/secrets/python_capability_secret" in contents
+    assert "SIMPAGENT_SANDBOX_CAPABILITY_PUBLIC_KEY_FILE: /run/secrets/jwt_public_key" in contents
     assert "SIMPAGENT_SANDBOX_CAPABILITY_SECRET_FILE: /run/secrets/python_capability_secret" in contents
     assert "SIMPAGENT_PYTHON_CAPABILITY_SECRET: sandbox-dev-secret" not in contents
     assert "SIMPAGENT_SANDBOX_CAPABILITY_SECRET: sandbox-dev-secret" not in contents

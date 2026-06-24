@@ -21,6 +21,7 @@ from app.python_contract import PythonExecutionProfile, PythonExecutionStatus, P
 from app.schemas.auth import STANDARD_USER_SCOPES
 from app.schemas.python import PythonExecutionResult
 from app.security.access_tokens import issue_access_token
+from app.security.tool_capabilities import issue_python_capability
 from app.tools.python_client import PythonExecutionInvocation, PythonExecutionResponse
 
 
@@ -169,17 +170,22 @@ async def test_policy_error_creates_execution_evidence_without_session_or_artifa
     assert list(tmp_path.iterdir()) == []
 
 
-def test_supervisor_timeout_kills_and_removes_runtime_container(monkeypatch) -> None:
+def test_supervisor_timeout_kills_and_removes_runtime_container(settings, monkeypatch) -> None:
+    monkeypatch.setenv("SIMPAGENT_SANDBOX_CAPABILITY_PUBLIC_KEY", settings.jwt_public_key_value)
     server = load_module("server.py", "sandbox_server_side_effects")
+    execution_id = UUID("00000000-0000-0000-0000-000000000301")
+    code = "print('slow')"
     request = server.ExecutionRequest(
-        execution_id="exec-timeout-001",
-        capability=server.issue_capability_token(
-            execution_id="exec-timeout-001",
-            profile_name="python-basic-v1",
-            code="print('slow')",
+        execution_id=str(execution_id),
+        capability=issue_python_capability(
+            execution_id=execution_id,
+            profile_name=PythonExecutionProfile.basic,
+            code=code,
+            settings=settings,
+            now=datetime.now(UTC),
         ),
-        profile_name="python-basic-v1",
-        code="print('slow')",
+        profile_name=PythonExecutionProfile.basic.value,
+        code=code,
     )
     spec = server.build_runtime_launch_spec(request)
     commands: list[list[str]] = []

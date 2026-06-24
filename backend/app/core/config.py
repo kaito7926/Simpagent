@@ -351,8 +351,6 @@ class Settings(BaseSettings):
                 raise ValueError("Production requires a registration invite code.")
             if not self.message_encryption_key and not self.message_encryption_key_file:
                 raise ValueError("Production requires a message encryption key.")
-            if not self.python_capability_secret and not self.python_capability_secret_file:
-                raise ValueError("Production requires a Python capability secret.")
             for candidate in (self.llm_api_base,):
                 if candidate and (candidate.startswith("http://127.") or candidate.startswith("http://localhost")):
                     raise ValueError("Loopback provider URLs are forbidden in production.")

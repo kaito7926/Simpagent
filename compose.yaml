@@ -355,6 +355,7 @@ services:
     environment:
       SIMPAGENT_SANDBOX_RUNTIME_IMAGE: simpagent-python-runtime:local
       SIMPAGENT_SANDBOX_CAPABILITY_SECRET_FILE: /run/secrets/python_capability_secret
+      SIMPAGENT_SANDBOX_CAPABILITY_PUBLIC_KEY_FILE: /run/secrets/jwt_public_key
     volumes:
       - dev-secrets:/run/secrets:ro
       - /var/run/docker.sock:/var/run/docker.sock
