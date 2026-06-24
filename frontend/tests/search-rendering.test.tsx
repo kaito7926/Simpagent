@@ -91,7 +91,7 @@ void test("Gemini grounded turns retain Google badge, citations, sources, and tr
   assert.match(markup, /&lt;b&gt;HTML must not render&lt;\/b&gt;/);
 });
 
-void test("Firecrawl grounded turns use provider-honest labels and omit Google-only suggestions", () => {
+void test("Firecrawl grounded turns use neutral sourced-web labels and omit Google-only suggestions", () => {
   const markup = renderAssistantTurn({
     id: "assistant-firecrawl",
     role: "assistant",
@@ -104,10 +104,15 @@ void test("Firecrawl grounded turns use provider-honest labels and omit Google-o
     suggestions: [],
   });
 
-  assert.match(markup, /Firecrawl-grounded/);
+  assert.match(markup, /Nguồn web/);
   assert.match(markup, /Firecrawl returned a sourced summary\./);
   assert.match(markup, /Nguồn tham khảo/);
-  assert.doesNotMatch(markup, /Google-grounded|Google Search|Gợi ý tìm kiếm tiếp theo|Suggested follow-up searches/);
+  assert.notEqual(markup.indexOf('aria-label="Nguồn 1"'), -1);
+  assert.match(markup, /search-source-link/);
+  assert.doesNotMatch(
+    markup,
+    /Firecrawl-grounded|Google-grounded|Google Search|Gợi ý tìm kiếm tiếp theo|Suggested follow-up searches/,
+  );
 });
 
 void test("missing-grounding turns show a tentative note without badge, citations, sources, or suggestions", () => {

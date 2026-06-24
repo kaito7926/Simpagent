@@ -75,7 +75,7 @@ export function GroundedAnswer({
   suggestions,
   onPrefillSuggestion,
 }: GroundedAnswerProps) {
-  const badgeLabel = provider === "firecrawl" ? "Firecrawl-grounded" : "Google-grounded";
+  const badgeLabel = provider === "firecrawl" ? "Nguồn web" : "Google-grounded";
   const trustedSuggestions = provider === "gemini" ? suggestions : [];
 
   return (

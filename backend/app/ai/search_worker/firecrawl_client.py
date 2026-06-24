@@ -98,22 +98,17 @@ class FirecrawlSearchClient:
         if not isinstance(web_results, list):
             web_results = []
 
-        sources: list[SearchSource] = []
-        answer_lines: list[str] = []
+        source_summaries: list[tuple[SearchSource, str]] = []
         for item in web_results[: self.settings.firecrawl_search_limit]:
             if not isinstance(item, Mapping):
                 continue
-            source = self._source_from_item(item, index=len(sources) + 1)
+            source = self._source_from_item(item, index=len(source_summaries) + 1)
             if source is None:
                 continue
-            sources.append(source)
             description = str(item.get("description") or "").strip()
-            if description:
-                answer_lines.append(f"[{source.index}] {source.title}: {description[:300]}")
-            else:
-                answer_lines.append(f"[{source.index}] {source.title}")
+            source_summaries.append((source, description))
 
-        if not sources:
+        if not source_summaries:
             return SearchWorkerResult(
                 provider="firecrawl",
                 state="missing_grounding",
@@ -124,15 +119,11 @@ class FirecrawlSearchClient:
                 output_summary="missing_grounding",
             )
 
-        citations = [
-            SearchCitation(index=index, source_index=source.index)
-            for index, source in enumerate(sources, start=1)
-        ]
-        answer = "\n".join(answer_lines)[: self.settings.search_max_output_chars].strip()
+        sources, citations, answer = self._build_sourced_answer(source_summaries)
         return SearchWorkerResult(
             provider="firecrawl",
             state="grounded",
-            answer_markdown=answer or "Firecrawl trả về nguồn web phù hợp.",
+            answer_markdown=answer,
             google_grounded=False,
             tool_executed=True,
             sources=sources,
@@ -141,6 +132,45 @@ class FirecrawlSearchClient:
             web_search_queries=[query],
             output_summary="grounded",
         )
+
+    def _build_sourced_answer(
+        self,
+        source_summaries: list[tuple[SearchSource, str]],
+    ) -> tuple[list[SearchSource], list[SearchCitation], str]:
+        max_chars = self.settings.search_max_output_chars
+        answer = "Tôi tìm thấy các nguồn web liên quan. Hãy mở từng nguồn để kiểm tra chi tiết:"
+        sources: list[SearchSource] = []
+        citations: list[SearchCitation] = []
+
+        for source, description in source_summaries:
+            summary = " ".join(description.split())[:240].strip()
+            if summary:
+                line = f"\n{source.title}: {summary}"
+            else:
+                line = f"\n{source.title}: Nguồn này có thông tin liên quan đến truy vấn."
+            if len(answer) + len(line) > max_chars:
+                break
+            start = len(answer) + 1
+            answer += line
+            sources.append(source)
+            citations.append(
+                SearchCitation(
+                    index=len(citations) + 1,
+                    source_index=source.index,
+                    start=start,
+                    end=len(answer),
+                )
+            )
+
+        if sources:
+            return sources, citations, answer
+
+        source, description = source_summaries[0]
+        summary = " ".join(description.split())[:120].strip()
+        fallback = f"{source.title}: {summary}" if summary else source.title
+        answer = fallback[:max_chars].strip() or "Firecrawl trả về nguồn web phù hợp."
+        citations = [SearchCitation(index=1, source_index=source.index, start=0, end=len(answer))]
+        return [source], citations, answer
 
     def _source_from_item(self, item: Mapping[str, Any], *, index: int) -> SearchSource | None:
         uri = sanitize_source_uri(str(item.get("url") or "").strip() or None)

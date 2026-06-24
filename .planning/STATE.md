@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 03-policy-controlled-google-search-06-PLAN.md
-last_updated: "2026-06-23T06:55:16.120Z"
+status: Ready to plan Phase 07
+stopped_at: Added Phase 07 sender-constrained session hardening workflow after Phase 06 closeout
+last_updated: "2026-06-23T07:15:00Z"
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 41
+  completed_phases: 6
+  total_plans: 46
   completed_plans: 39
-  percent: 71
+  percent: 85
 ---
 
 # Project State
@@ -20,17 +20,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-08)
 
 **Core value:** Users can safely authenticate and use an AI chatbot with controlled agent tools without crossing tenant, role, scope, network, or host-execution boundaries.
-**Current focus:** Phase 03 — policy-controlled-google-search
+**Current focus:** Phase 07 — sender-constrained-sessions-and-cryptographic-hardening
 
 ## Current Position
 
-Phase: 03 (policy-controlled-google-search) — EXECUTING
-Plan: 3 of 8
-Plan pack: 5/5 plans completed, summarized, and closed with final verification/UAT
-Known shipped slice: Phase 04 (isolated Python execution) - PR #2 remains the latest code-shipping milestone; Phase 06 is proof/delivery closeout work
+Phase: 07 (sender-constrained-sessions-and-cryptographic-hardening) — PLANNING READY
+Plan: 0 of 5
+Plan pack: Phase 07 workflow artifacts are being seeded after Phase 06 verification closeout
+Known shipped slice: Phase 06 remains the last fully verified delivery slice; Phase 07 is the next hardening continuation
 Latest verification: `06-VERIFICATION.md` passed on 2026-06-19 with 5/5 must-haves verified and 4/4 human checks passed
 
-Progress: Phase 06 verified and delivered; historical Phase 03 planning/verification debt remains explicitly documented
+Progress: Phase 06 is fully verified; Phase 07 now captures the next cryptographic hardening slice while the historical Phase 03 planning/verification debt remains explicitly documented
 
 ## Performance Metrics
 
@@ -50,11 +50,12 @@ Progress: Phase 06 verified and delivered; historical Phase 03 planning/verifica
 | 04 Isolated Python Execution | 5/5 | Shipped | PR #2 integrated slice; `04-VERIFICATION.md` passed |
 | 05 Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 8/8 | Complete | `05-VERIFICATION.md` passed on 2026-06-17 |
 | 06 Adversarial Verification and Vietnamese Delivery | 5/5 | Verified | `06-VERIFICATION.md` passed on 2026-06-19; matrix and attack summaries regenerated |
+| 07 Sender-Constrained Sessions and Cryptographic Hardening | 0/5 | Planned | Next hardening slice focused on DPoP, PKCE, and asymmetric anti-replay boundaries |
 
 **Recent Trend:**
 
 - Most recent completed plans: 06-01, 06-02, 06-03, 06-04, 06-05
-- Trend: Stable; Phase 06 verification and delivery passed, with only the historical Phase 03 artifact debt still called out
+- Trend: Stable; Phase 06 verification and delivery passed, and Phase 07 has been opened as the next cryptographic hardening slice while the historical Phase 03 artifact debt remains called out
 
 | Phase 03-policy-controlled-google-search P05 | 14 min | 3 tasks | 20 files |
 | Phase 03-policy-controlled-google-search P06 | 11 min | 3 tasks | 15 files |
@@ -75,6 +76,7 @@ Recent decisions affecting current work:
 - Phase 06 uses dedicated `security-tests/` attack assets and `docs/` Vietnamese delivery docs instead of treating scanner output or `.planning` alone as the evaluator deliverable.
 - Phase 06 verified the shipped search behavior without erasing the historical Phase 03 planning/verification debt.
 - Public gateway routing now includes `undo-delete` so adversarial verification hits the real backend authorization path instead of a frontend 404.
+- Phase 07 scopes MVP cryptographic hardening to PKCE + sealed OAuth transactions, asymmetric one-time capability tokens, and DPoP-style sender-constrained sessions; WebAuthn step-up remains deferred beyond this phase.
 - [Phase ?]: Keep Firecrawl behind existing google_search turn mode — Provider identity is metadata behind tool:websearch, not a new client-visible tool surface.
 - [Phase ?]: Use HTTPX directly for Firecrawl Cloud — The plan required no new SDK; existing HTTPX keeps the provider boundary small and auditable.
 - [Phase 03-policy-controlled-google-search]: Keep provider override in existing runtime settings — Plan 03-06 reuses agent_runtime_settings as nullable value data instead of introducing a new table.
@@ -101,6 +103,7 @@ See `.planning/quick/` for the completed quick-task history from 2026-06-14 thro
 |---|-------------|------|--------|-----------|
 | 260620-klg | Soạn brief nội dung và thiết kế slide thuyết trình phân tích bảo mật dự án SimpAgent | 2026-06-20 | 8fd7d05 | [260620-klg](./quick/260620-klg-so-n-brief-n-i-dung-v-thi-t-k-slide-thuy/) |
 | 260620-l8q | Bổ sung giao tiếp mạng Docker an toàn và chống XSS trong Account Takeover | 2026-06-20 | 26a4fe8 | [260620-l8q](./quick/260620-l8q-b-sung-brief-slide-v-giao-ti-p-m-ng-an-t/) |
+| 260624-3t5 | Fix Phase 03 Firecrawl websearch UAT UI issue report | 2026-06-24 | pending | [260624-3t5](./quick/260624-3t5-fix-phase-03-firecrawl-websearch-uat-ui-/) |
 
 ## Deferred Items
 
@@ -108,6 +111,6 @@ None currently tracked.
 
 ## Session Continuity
 
-Last session: 2026-06-23T06:55:16.102Z
-Stopped at: Completed 03-policy-controlled-google-search-06-PLAN.md
-Resume file: None
+Last session: 2026-06-23T07:15:00Z
+Stopped at: Added Phase 07 sender-constrained session hardening workflow after Phase 06 closeout
+Resume file: `.planning/phases/07-sender-constrained-sessions-and-cryptographic-hardening/07-CONTEXT.md`

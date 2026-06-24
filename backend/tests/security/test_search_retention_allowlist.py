@@ -140,5 +140,7 @@ def test_firecrawl_normalizer_refuses_redirect_wrappers_and_strips_tracking_quer
     assert result.state == "grounded"
     assert [source.title for source in result.sources] == ["Clean source"]
     assert result.sources[0].uri == "https://example.test/source?safe=1"
+    assert "[1]" not in result.answer_markdown
+    assert result.citations[0].end is not None
     assert "tracker.example" not in result.model_dump_json()
     assert "utm_source" not in result.model_dump_json()

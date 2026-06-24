@@ -315,11 +315,18 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 | DOCS-04 | Phase 6 | Complete |
 | DOCS-05 | Phase 6 | Complete |
 | DOCS-06 | Phase 6 | Complete |
+| AUTH-11 | Phase 7 | Planned |
+| AUTH-12 | Phase 7 | Planned |
+| IDEN-09 | Phase 7 | Planned |
+| AGNT-08 | Phase 7 | Planned |
+| AGNT-09 | Phase 7 | Planned |
+| OBS-08 | Phase 7 | Planned |
+| PRODREADY-06 | Phase 7 | Planned |
 
 **Coverage:**
 
-- v1 requirements: 99 total
-- Mapped to phases: 99
+- v1 requirements: 106 total
+- Mapped to phases: 106
 - Unmapped: 0
 
 **Phase allocation:**
@@ -330,6 +337,7 @@ Roadmap generation maps every v1 requirement to exactly one phase.
 - Phase 4: 9 requirements
 - Phase 5: 25 requirements
 - Phase 6: 16 requirements
+- Phase 7: 7 requirements
 
 ---
 *Requirements defined: 2026-06-08*
