@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: Phase 07 complete
 stopped_at: Completed Phase 07 sender-constrained session and cryptographic hardening
-last_updated: "2026-06-24T23:40:00.000Z"
+last_updated: "2026-06-25T22:20:01+07:00"
 progress:
   total_phases: 7
   completed_phases: 7
@@ -112,6 +112,7 @@ See `.planning/quick/` for the completed quick-task history from 2026-06-14 thro
 | 260620-klg | Soạn brief nội dung và thiết kế slide thuyết trình phân tích bảo mật dự án SimpAgent | 2026-06-20 | 8fd7d05 | [260620-klg](./quick/260620-klg-so-n-brief-n-i-dung-v-thi-t-k-slide-thuy/) |
 | 260620-l8q | Bổ sung giao tiếp mạng Docker an toàn và chống XSS trong Account Takeover | 2026-06-20 | 26a4fe8 | [260620-l8q](./quick/260620-l8q-b-sung-brief-slide-v-giao-ti-p-m-ng-an-t/) |
 | 260624-3t5 | Fix Phase 03 Firecrawl websearch UAT UI issue report | 2026-06-24 | pending | [260624-3t5](./quick/260624-3t5-fix-phase-03-firecrawl-websearch-uat-ui-/) |
+| 260625-fix | Fix Compose Firecrawl duplicate environment keys | 2026-06-25 | pending | [260625-fix](./quick/260625-fix-fix-compose-firecrawl-duplicate-env/) |
 
 ## Deferred Items
 
@@ -119,6 +120,7 @@ None currently tracked.
 
 ## Session Continuity
 
+Last activity: 2026-06-25 - Completed quick task 260625-fix: Fix Compose Firecrawl duplicate environment keys
 Last session: 2026-06-23T07:15:00Z
 Stopped at: Added Phase 07 sender-constrained session hardening workflow after Phase 06 closeout
 Resume file: `.planning/phases/07-sender-constrained-sessions-and-cryptographic-hardening/07-CONTEXT.md`
