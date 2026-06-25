@@ -165,6 +165,13 @@ class Settings(BaseSettings):
     access_token_ttl_seconds: int = 600
     refresh_idle_ttl_seconds: int = 7 * 24 * 60 * 60
     refresh_absolute_ttl_seconds: int = 30 * 24 * 60 * 60
+    dpop_enabled: bool = False
+    dpop_nonce_ttl_seconds: int = Field(default=120, ge=30, le=600)
+    dpop_proof_leeway_seconds: int = Field(default=5, ge=0, le=60)
+    oauth_pkce_enabled: bool = True
+    oauth_transaction_ttl_seconds: int = Field(default=300, ge=60, le=900)
+    capability_replay_protection_enabled: bool = True
+    replay_journal_ttl_seconds: int = Field(default=300, ge=60, le=3600)
     cookie_secure: bool = True
     cookie_samesite: CookieSameSite = "strict"
 
@@ -230,21 +237,6 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("SIMPAGENT_GITHUB_REDIRECT_URI", "GITHUB_REDIRECT_URI"),
     )
-    websearch_provider: str = "gemini"
-    firecrawl_api_key: SecretStr | None = Field(
-        default=None,
-        validation_alias=AliasChoices("SIMPAGENT_FIRECRAWL_API_KEY", "FIRECRAWL_API_KEY"),
-    )
-    firecrawl_api_key_file: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices("SIMPAGENT_FIRECRAWL_API_KEY_FILE", "FIRECRAWL_API_KEY_FILE"),
-    )
-    firecrawl_api_base: str = Field(
-        default="https://api.firecrawl.dev",
-        validation_alias=AliasChoices("SIMPAGENT_FIRECRAWL_API_BASE", "FIRECRAWL_API_BASE"),
-    )
-    firecrawl_search_limit: int = Field(default=5, ge=1, le=10)
-    search_model: str | None = None
     websearch_provider: str = Field(
         default="gemini",
         validation_alias=AliasChoices("SIMPAGENT_WEBSEARCH_PROVIDER", "WEBSEARCH_PROVIDER"),
@@ -262,6 +254,7 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SIMPAGENT_FIRECRAWL_API_BASE", "FIRECRAWL_API_BASE"),
     )
     firecrawl_search_limit: int = Field(default=5, ge=1, le=10)
+    search_model: str | None = None
     search_worker_timeout_seconds: float = Field(default=8.0, gt=0)
     search_max_prompt_chars: int = Field(default=2000, ge=128, le=4000)
     search_max_output_tokens: int = Field(default=1536, ge=128, le=4096)
@@ -344,8 +337,6 @@ class Settings(BaseSettings):
                 raise ValueError("Production requires a registration invite code.")
             if not self.message_encryption_key and not self.message_encryption_key_file:
                 raise ValueError("Production requires a message encryption key.")
-            if not self.python_capability_secret and not self.python_capability_secret_file:
-                raise ValueError("Production requires a Python capability secret.")
             for candidate in (self.llm_api_base,):
                 if candidate and (candidate.startswith("http://127.") or candidate.startswith("http://localhost")):
                     raise ValueError("Loopback provider URLs are forbidden in production.")

@@ -55,6 +55,7 @@ class SessionsService:
         origin: str | None,
         now: datetime,
         correlation_id: str | None,
+        key_thumbprint: str | None = None,
     ) -> RefreshOutcome:
         require_allowed_origin(origin, self.settings)
         if not refresh_token:
@@ -73,6 +74,13 @@ class SessionsService:
                 family_id=family.id,
                 settings=self.settings,
             )
+            if not await self._validate_family_binding(
+                family=family,
+                key_thumbprint=key_thumbprint,
+                now=now,
+                correlation_id=correlation_id,
+            ):
+                return RefreshOutcome(status=RefreshStatus.invalid)
             if family.revoked_at is not None or family.absolute_expires_at <= now or token.revoked_at is not None:
                 return RefreshOutcome(status=RefreshStatus.invalid)
             if token.used_at is not None or token.replaced_by_id is not None:
@@ -83,7 +91,11 @@ class SessionsService:
                     user_id=family.user_id,
                     description="Refresh-token replay detected.",
                     correlation_id=correlation_id,
-                    metadata={"family_id": str(family.id)},
+                    metadata={
+                        "family_id": str(family.id),
+                        "auth_binding_method": family.auth_binding_method,
+                        "key_thumbprint": family.key_thumbprint,
+                    },
                 )
                 return RefreshOutcome(status=RefreshStatus.replay)
             if token.expires_at <= now:
@@ -113,6 +125,7 @@ class SessionsService:
                 scopes=scopes,
                 settings=self.settings,
                 now=now,
+                key_thumbprint=family.key_thumbprint if family.auth_binding_method == "dpop" else None,
             )
         from app.security.csrf import issue_csrf_token
 
@@ -139,6 +152,8 @@ class SessionsService:
         csrf_header: str | None,
         origin: str | None,
         now: datetime,
+        correlation_id: str | None = None,
+        key_thumbprint: str | None = None,
     ) -> None:
         require_allowed_origin(origin, self.settings)
         if not refresh_token:
@@ -157,6 +172,41 @@ class SessionsService:
                 family_id=family.id,
                 settings=self.settings,
             )
+            if not await self._validate_family_binding(
+                family=family,
+                key_thumbprint=key_thumbprint,
+                now=now,
+                correlation_id=correlation_id,
+            ):
+                return None
             if family.revoked_at is None:
                 await self.sessions.revoke_family(family, now=now, reason="logout")
         return None
+
+    async def _validate_family_binding(
+        self,
+        *,
+        family,
+        key_thumbprint: str | None,
+        now: datetime,
+        correlation_id: str | None,
+    ) -> bool:
+        if not self.settings.dpop_enabled:
+            return True
+        if family.auth_binding_method != "dpop" or not family.key_thumbprint or family.key_thumbprint != key_thumbprint:
+            await self.sessions.add_security_event(
+                event_type="dpop_key_mismatch",
+                severity="high",
+                user_id=family.user_id,
+                description="DPoP key binding mismatch denied session artifact use.",
+                correlation_id=correlation_id,
+                metadata={
+                    "family_id": str(family.id),
+                    "auth_binding_method": family.auth_binding_method,
+                    "expected_key_thumbprint": family.key_thumbprint,
+                    "presented_key_thumbprint": key_thumbprint,
+                },
+            )
+            return False
+        family.last_rotated_at = now
+        return True

@@ -1,4 +1,5 @@
 import { ApiError, requestJson, requestNoContent } from "@/lib/api";
+import { browserDeviceProof, deviceProofThumbprint, type DeviceProofProvider } from "@/lib/device-proof";
 
 export type AuthMode = "login" | "register";
 export type SessionState =
@@ -69,6 +70,7 @@ export type BeginOAuthDependencies = {
   navigate?: (url: string) => void;
   localStorage?: OAuthStorageTrap;
   sessionStorage?: OAuthStorageTrap;
+  deviceProofThumbprint?: () => Promise<string>;
 };
 
 export type DemoConfig = {
@@ -103,6 +105,7 @@ export type LoginPayload = {
 export type AuthSessionDependencies = {
   fetchImpl?: typeof fetch;
   getCsrfToken?: () => string | null;
+  deviceProof?: DeviceProofProvider;
 };
 
 const DEFAULT_VIEW_MODEL: ShellViewModel = {
@@ -153,26 +156,30 @@ const OAUTH_START_ROUTES: Record<OAuthProviderId, string> = {
   github: "/api/auth/oauth/github/start",
 };
 
-export function beginOAuth(provider: OAuthProviderId, deps: BeginOAuthDependencies = {}): void {
+export async function beginOAuth(provider: OAuthProviderId, deps: BeginOAuthDependencies = {}): Promise<void> {
   const startUrl = OAUTH_START_ROUTES[provider];
   const navigate =
     deps.navigate ??
     ((url: string) => {
       window.location.assign(url);
     });
+  const thumbprint = await (deps.deviceProofThumbprint ?? deviceProofThumbprint)();
+  const separator = startUrl.includes("?") ? "&" : "?";
 
-  navigate(startUrl);
+  navigate(`${startUrl}${separator}${new URLSearchParams({ dpop_jkt: thumbprint }).toString()}`);
 }
 
 export class AuthSessionController {
   private readonly fetchImpl: typeof fetch;
   private readonly getCsrfToken: () => string | null;
+  private readonly deviceProof: DeviceProofProvider;
   private refreshPromise: Promise<string | null> | null = null;
   private model: ShellViewModel;
 
   constructor(mode: string | null | undefined, deps: AuthSessionDependencies = {}) {
     this.fetchImpl = deps.fetchImpl ?? fetch;
     this.getCsrfToken = deps.getCsrfToken ?? (() => null);
+    this.deviceProof = deps.deviceProof ?? browserDeviceProof;
     const authMode = parseMode(mode);
     this.model = {
       ...DEFAULT_VIEW_MODEL,
@@ -284,6 +291,7 @@ export class AuthSessionController {
   }
 
   async login(payload: LoginPayload): Promise<ShellViewModel> {
+    const proofHeaders = await this.proofHeaders("/api/auth/login", { method: "POST" });
     const token = await requestJson<TokenResponse>(
       "/api/auth/login",
       {
@@ -292,6 +300,7 @@ export class AuthSessionController {
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
+          ...proofHeaders,
         },
         body: JSON.stringify(payload),
       },
@@ -310,6 +319,7 @@ export class AuthSessionController {
 
   async logout(): Promise<ShellViewModel> {
     try {
+      const proofHeaders = await this.proofHeaders("/api/auth/logout", { method: "POST" });
       await requestNoContent(
         "/api/auth/logout",
         {
@@ -318,6 +328,7 @@ export class AuthSessionController {
           credentials: "include",
           headers: {
             "X-CSRF-Token": this.getCsrfToken() ?? "",
+            ...proofHeaders,
           },
         },
         this.fetchImpl,
@@ -389,6 +400,7 @@ export class AuthSessionController {
   private async requestWithRefresh<T>(input: string, init: RequestInit): Promise<T> {
     const firstAttemptToken = this.model.accessToken;
     try {
+      const proofHeaders = await this.proofHeaders(input, init);
       return await requestJson<T>(
         input,
         {
@@ -397,6 +409,7 @@ export class AuthSessionController {
           credentials: "include",
           headers: {
             ...defaultHeaders(firstAttemptToken),
+            ...proofHeaders,
             ...(init.headers ?? {}),
           },
         },
@@ -407,12 +420,16 @@ export class AuthSessionController {
         throw error;
       }
 
-      const refreshedToken = await this.refreshAccessToken({ suppressFailureMessage: false });
+      const refreshedToken =
+        this.model.accessToken && this.model.accessToken !== firstAttemptToken
+          ? this.model.accessToken
+          : await this.refreshAccessToken({ suppressFailureMessage: false });
       if (!refreshedToken) {
         this.handleSessionEnded(error.correlationId);
         throw error;
       }
 
+      const proofHeaders = await this.proofHeaders(input, init);
       return requestJson<T>(
         input,
         {
@@ -421,6 +438,7 @@ export class AuthSessionController {
           credentials: "include",
           headers: {
             ...defaultHeaders(refreshedToken),
+            ...proofHeaders,
             ...(init.headers ?? {}),
           },
         },
@@ -438,6 +456,7 @@ export class AuthSessionController {
 
     this.refreshPromise = (async () => {
       try {
+        const proofHeaders = await this.proofHeaders("/api/auth/refresh", { method: "POST" });
         const response = await requestJson<TokenResponse>(
           "/api/auth/refresh",
           {
@@ -446,6 +465,7 @@ export class AuthSessionController {
             credentials: "include",
             headers: {
               "X-CSRF-Token": this.getCsrfToken() ?? "",
+              ...proofHeaders,
             },
           },
           this.fetchImpl,
@@ -489,5 +509,14 @@ export class AuthSessionController {
       globalMessage: "Your session is no longer valid. Sign in again to continue.",
       correlationId: correlationId ?? null,
     };
+  }
+
+  private async proofHeaders(input: string, init: RequestInit = {}): Promise<{ DPoP: string }> {
+    try {
+      return { DPoP: await this.deviceProof.proofHeader(input, init) };
+    } catch (error) {
+      this.handleSessionEnded();
+      throw error;
+    }
   }
 }

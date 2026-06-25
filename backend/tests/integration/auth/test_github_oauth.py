@@ -17,10 +17,15 @@ from app.security.refresh_tokens import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME
 class FakeGitHubProvider:
     identity: GitHubOAuthIdentity
 
-    def authorization_url(self, *, state: str) -> str:
-        return f"https://github.com/login/oauth/authorize?state={state}&client_id=test"
+    def authorization_url(self, *, state: str, code_challenge: str | None = None) -> str:
+        return (
+            "https://github.com/login/oauth/authorize"
+            f"?state={state}&client_id=test&code_challenge={code_challenge}"
+            "&code_challenge_method=S256"
+        )
 
     async def authenticate(self, request) -> GitHubOAuthIdentity:
+        assert request.code_verifier
         return self.identity
 
 
@@ -32,6 +37,7 @@ def github_settings(settings):
             "github_client_secret": "github-client-secret",
             "github_redirect_uri": "http://testserver/api/auth/oauth/github/callback",
             "public_app_origin": "http://testserver",
+            "cookie_secure": False,
         }
     )
 
@@ -98,7 +104,24 @@ async def test_github_start_redirects_only_when_configured(github_settings, sess
     parsed = urlparse(location)
     assert parsed.scheme == "https"
     assert "github.com" in parsed.netloc
-    assert parse_qs(parsed.query).get("state")
+    query = parse_qs(parsed.query)
+    assert query.get("state")
+    assert query.get("code_challenge")
+    assert query.get("code_challenge_method") == ["S256"]
+
+
+@pytest.mark.asyncio
+async def test_github_start_requires_dpop_binding_when_enabled(github_settings, session_factory, clean_database) -> None:
+    app = create_app(settings=github_settings.model_copy(update={"dpop_enabled": True}), session_factory=session_factory)
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+        follow_redirects=False,
+    ) as client:
+        response = await client.get("/api/auth/oauth/github/start")
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_dpop_binding"
 
 
 @pytest.mark.asyncio

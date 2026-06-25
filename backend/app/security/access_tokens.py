@@ -23,6 +23,7 @@ class AccessTokenClaims:
     exp: int
     kid: str
     jti: UUID
+    cnf_jkt: str | None = None
 
 
 class AccessTokenError(ValueError):
@@ -64,7 +65,15 @@ def _validate_temporal_claims(payload: dict[str, Any], *, now: datetime | None) 
     return iat, nbf, exp
 
 
-def issue_access_token(*, user_id: UUID, role: str, scopes: list[str], settings: Settings, now: datetime) -> str:
+def issue_access_token(
+    *,
+    user_id: UUID,
+    role: str,
+    scopes: list[str],
+    settings: Settings,
+    now: datetime,
+    key_thumbprint: str | None = None,
+) -> str:
     canonical_scopes = sorted(dict.fromkeys(scopes))
     if role not in KNOWN_ROLES:
         raise AccessTokenError("Unknown role")
@@ -83,6 +92,8 @@ def issue_access_token(*, user_id: UUID, role: str, scopes: list[str], settings:
         "exp": expires_at,
         "jti": str(uuid4()),
     }
+    if key_thumbprint:
+        payload["cnf"] = {"jkt": key_thumbprint}
     headers = {"typ": JWT_TYPE, "kid": settings.jwt_active_kid, "alg": JWT_ALGORITHM}
     return jwt.encode(payload, settings.jwt_private_key_value, algorithm=JWT_ALGORITHM, headers=headers)
 
@@ -131,6 +142,12 @@ def decode_access_token(token: str, *, settings: Settings, now: datetime | None 
         raise AccessTokenError("Scopes must be sorted and unique")
     if set(canonical_scopes) - KNOWN_SCOPES:
         raise AccessTokenError("Unknown scopes")
+    cnf_jkt: str | None = None
+    cnf = payload.get("cnf")
+    if cnf is not None:
+        if not isinstance(cnf, dict) or set(cnf) != {"jkt"} or not isinstance(cnf.get("jkt"), str) or not cnf["jkt"]:
+            raise AccessTokenError("Invalid cnf claim")
+        cnf_jkt = cnf["jkt"]
     try:
         sub = UUID(str(payload["sub"]))
         jti = UUID(str(payload["jti"]))
@@ -154,4 +171,5 @@ def decode_access_token(token: str, *, settings: Settings, now: datetime | None 
         exp=exp,
         kid=str(header["kid"]),
         jti=jti,
+        cnf_jkt=cnf_jkt,
     )

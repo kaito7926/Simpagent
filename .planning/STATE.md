@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan Phase 07
-stopped_at: Added Phase 07 sender-constrained session hardening workflow after Phase 06 closeout
-last_updated: "2026-06-23T07:15:00Z"
+status: Phase 07 shipped — PR #6
+stopped_at: Phase 07 shipped to main review via PR #6
+last_updated: "2026-06-25T23:21:13+07:00"
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 46
-  completed_plans: 39
-  percent: 85
+  completed_plans: 46
+  percent: 100
 ---
 
 # Project State
@@ -20,17 +20,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-08)
 
 **Core value:** Users can safely authenticate and use an AI chatbot with controlled agent tools without crossing tenant, role, scope, network, or host-execution boundaries.
-**Current focus:** Phase 07 — sender-constrained-sessions-and-cryptographic-hardening
+**Current focus:** Phase 07 shipped — PR #6
 
 ## Current Position
 
-Phase: 07 (sender-constrained-sessions-and-cryptographic-hardening) — PLANNING READY
-Plan: 0 of 5
+Phase: 07 (sender-constrained-sessions-and-cryptographic-hardening) — SHIPPED
+Plan: 5 of 5
 Plan pack: Phase 07 workflow artifacts are being seeded after Phase 06 verification closeout
-Known shipped slice: Phase 06 remains the last fully verified delivery slice; Phase 07 is the next hardening continuation
-Latest verification: `06-VERIFICATION.md` passed on 2026-06-19 with 5/5 must-haves verified and 4/4 human checks passed
+Known shipped slice: Phase 07 is ready for main review in PR #6
+Latest verification: `07-VERIFICATION.md` passed on 2026-06-25 with 4/4 must-haves verified and user-confirmed manual review passed
 
-Progress: Phase 06 is fully verified; Phase 07 now captures the next cryptographic hardening slice while the historical Phase 03 planning/verification debt remains explicitly documented
+Progress: Phase 07 hardening is shipped to PR #6; the historical Phase 03 planning/verification debt remains explicitly documented
 
 ## Performance Metrics
 
@@ -50,7 +50,7 @@ Progress: Phase 06 is fully verified; Phase 07 now captures the next cryptograph
 | 04 Isolated Python Execution | 5/5 | Shipped | PR #2 integrated slice; `04-VERIFICATION.md` passed |
 | 05 Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 8/8 | Complete | `05-VERIFICATION.md` passed on 2026-06-17 |
 | 06 Adversarial Verification and Vietnamese Delivery | 5/5 | Verified | `06-VERIFICATION.md` passed on 2026-06-19; matrix and attack summaries regenerated |
-| 07 Sender-Constrained Sessions and Cryptographic Hardening | 0/5 | Planned | Next hardening slice focused on DPoP, PKCE, and asymmetric anti-replay boundaries |
+| 07 Sender-Constrained Sessions and Cryptographic Hardening | 5/5 | Shipped | PR #6; replay foundations, OAuth PKCE transactions, asymmetric one-time tool capabilities, DPoP auth binding, and frontend proof rollout passed verification |
 
 **Recent Trend:**
 
@@ -60,6 +60,11 @@ Progress: Phase 06 is fully verified; Phase 07 now captures the next cryptograph
 | Phase 03-policy-controlled-google-search P05 | 14 min | 3 tasks | 20 files |
 | Phase 03-policy-controlled-google-search P06 | 11 min | 3 tasks | 15 files |
 | Phase 03-policy-controlled-google-search P07 | 13 min | 2 tasks | 15 files |
+| Phase 07 P01 | 30 min | 3 tasks | 7 files |
+| Phase 07 P02 | 35 min | 3 tasks | 8 files |
+| Phase 07 P03 | 50 min | 3 tasks | 14 files |
+| Phase 07 P04 | 42 min | 3 tasks | 13 files |
+| Phase 07 P05 | 32 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -77,6 +82,9 @@ Recent decisions affecting current work:
 - Phase 06 verified the shipped search behavior without erasing the historical Phase 03 planning/verification debt.
 - Public gateway routing now includes `undo-delete` so adversarial verification hits the real backend authorization path instead of a frontend 404.
 - Phase 07 scopes MVP cryptographic hardening to PKCE + sealed OAuth transactions, asymmetric one-time capability tokens, and DPoP-style sender-constrained sessions; WebAuthn step-up remains deferred beyond this phase.
+- Phase 07 internal tool capabilities now use one-time asymmetric trust artifacts: search consumes `jti` values through the replay journal, and Python sandbox requests verify backend-issued RS256 JWTs with a public key.
+- Phase 07 DPoP hardening is backend-feature-flagged: `cnf.jkt` access tokens and refresh-family thumbprints are enforced when `dpop_enabled` is true, leaving frontend rollout to 07-05.
+- Phase 07 frontend rollout keeps device proof keys memory-only and sends DPoP headers through `AuthSessionController`; proof loss forces re-auth instead of bearer fallback.
 - [Phase ?]: Keep Firecrawl behind existing google_search turn mode — Provider identity is metadata behind tool:websearch, not a new client-visible tool surface.
 - [Phase ?]: Use HTTPX directly for Firecrawl Cloud — The plan required no new SDK; existing HTTPX keeps the provider boundary small and auditable.
 - [Phase 03-policy-controlled-google-search]: Keep provider override in existing runtime settings — Plan 03-06 reuses agent_runtime_settings as nullable value data instead of introducing a new table.
@@ -104,6 +112,7 @@ See `.planning/quick/` for the completed quick-task history from 2026-06-14 thro
 | 260620-klg | Soạn brief nội dung và thiết kế slide thuyết trình phân tích bảo mật dự án SimpAgent | 2026-06-20 | 8fd7d05 | [260620-klg](./quick/260620-klg-so-n-brief-n-i-dung-v-thi-t-k-slide-thuy/) |
 | 260620-l8q | Bổ sung giao tiếp mạng Docker an toàn và chống XSS trong Account Takeover | 2026-06-20 | 26a4fe8 | [260620-l8q](./quick/260620-l8q-b-sung-brief-slide-v-giao-ti-p-m-ng-an-t/) |
 | 260624-3t5 | Fix Phase 03 Firecrawl websearch UAT UI issue report | 2026-06-24 | pending | [260624-3t5](./quick/260624-3t5-fix-phase-03-firecrawl-websearch-uat-ui-/) |
+| 260625-fix | Fix Compose Firecrawl duplicate environment keys | 2026-06-25 | pending | [260625-fix](./quick/260625-fix-fix-compose-firecrawl-duplicate-env/) |
 
 ## Deferred Items
 
@@ -111,6 +120,7 @@ None currently tracked.
 
 ## Session Continuity
 
+Last activity: 2026-06-25 - Shipped Phase 07 sender-constrained session hardening to PR #6
 Last session: 2026-06-23T07:15:00Z
 Stopped at: Added Phase 07 sender-constrained session hardening workflow after Phase 06 closeout
 Resume file: `.planning/phases/07-sender-constrained-sessions-and-cryptographic-hardening/07-CONTEXT.md`

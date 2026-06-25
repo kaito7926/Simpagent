@@ -12,6 +12,7 @@ from app.core.errors import ApiError
 from app.db.session import get_session
 from app.schemas.auth import CurrentUserResponse, LoginRequest, RegisterAcceptedResponse, RegisterRequest, TokenResponse
 from app.security.csrf import CsrfValidationError
+from app.security.dpop import DPoPError, validate_dpop_request
 from app.security.refresh_tokens import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME
 from app.services.authentication import AuthenticationFailed, AuthenticationService
 from app.services.registration import RegistrationInviteRejected, RegistrationService
@@ -54,6 +55,33 @@ def _clear_auth_cookies(response: Response, *, settings: Settings) -> None:
     response.delete_cookie(CSRF_COOKIE_NAME, path="/", secure=settings.cookie_secure, httponly=False, samesite=settings.cookie_samesite)
 
 
+async def _validated_dpop_thumbprint(
+    *,
+    request: Request,
+    session: AsyncSession,
+    settings: Settings,
+    now: datetime,
+    error_code: str,
+) -> str | None:
+    if not settings.dpop_enabled:
+        return None
+    try:
+        proof = await validate_dpop_request(
+            proof_token=request.headers.get("DPoP"),
+            method=request.method,
+            url=str(request.url),
+            settings=settings,
+            session=session,
+            now=now,
+            correlation_id=getattr(request.state, "correlation_id", None),
+        )
+        await session.commit()
+        return proof.key_thumbprint
+    except DPoPError as exc:
+        await session.commit()
+        raise ApiError(status_code=401, code=error_code, message="A valid DPoP proof is required.") from exc
+
+
 @router.post("/register", response_model=RegisterAcceptedResponse, status_code=status.HTTP_202_ACCEPTED)
 async def register(
     payload: RegisterRequest,
@@ -89,12 +117,21 @@ async def login(
 ) -> TokenResponse:
     settings = get_settings(request)
     service = AuthenticationService(session, settings)
+    now = get_now(request)
+    key_thumbprint = await _validated_dpop_thumbprint(
+        request=request,
+        session=session,
+        settings=settings,
+        now=now,
+        error_code="invalid_dpop_proof",
+    )
     try:
         outcome = await service.login(
             email=str(payload.email),
             password=payload.password,
             origin=request.headers.get("origin"),
-            now=get_now(request),
+            now=now,
+            key_thumbprint=key_thumbprint,
         )
     except CsrfValidationError as exc:
         raise ApiError(status_code=403, code="origin_rejected", message="The request origin is not allowed.") from exc
@@ -122,14 +159,27 @@ async def refresh(
 ) -> TokenResponse:
     settings = get_settings(request)
     service = SessionsService(session, settings)
+    now = get_now(request)
+    try:
+        key_thumbprint = await _validated_dpop_thumbprint(
+            request=request,
+            session=session,
+            settings=settings,
+            now=now,
+            error_code="session_invalid",
+        )
+    except ApiError:
+        _clear_auth_cookies(response, settings=settings)
+        raise
     try:
         outcome = await service.refresh(
             refresh_token=request.cookies.get(REFRESH_COOKIE_NAME),
             csrf_cookie=request.cookies.get(CSRF_COOKIE_NAME),
             csrf_header=request.headers.get("X-CSRF-Token"),
             origin=request.headers.get("origin"),
-            now=get_now(request),
+            now=now,
             correlation_id=getattr(request.state, "correlation_id", None),
+            key_thumbprint=key_thumbprint,
         )
     except CsrfValidationError as exc:
         _clear_auth_cookies(response, settings=settings)
@@ -155,13 +205,27 @@ async def logout(
 ) -> Response:
     settings = get_settings(request)
     service = SessionsService(session, settings)
+    now = get_now(request)
+    try:
+        key_thumbprint = await _validated_dpop_thumbprint(
+            request=request,
+            session=session,
+            settings=settings,
+            now=now,
+            error_code="session_invalid",
+        )
+    except ApiError:
+        _clear_auth_cookies(response, settings=settings)
+        raise
     try:
         await service.logout(
             refresh_token=request.cookies.get(REFRESH_COOKIE_NAME),
             csrf_cookie=request.cookies.get(CSRF_COOKIE_NAME),
             csrf_header=request.headers.get("X-CSRF-Token"),
             origin=request.headers.get("origin"),
-            now=get_now(request),
+            now=now,
+            correlation_id=getattr(request.state, "correlation_id", None),
+            key_thumbprint=key_thumbprint,
         )
     except CsrfValidationError as exc:
         raise ApiError(status_code=401, code="session_invalid", message="The session is no longer valid.") from exc

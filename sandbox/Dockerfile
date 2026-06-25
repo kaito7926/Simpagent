@@ -8,7 +8,7 @@ WORKDIR /sandbox
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates docker.io \
-    && pip install --no-cache-dir "docker>=7,<8" \
+    && pip install --no-cache-dir "docker>=7,<8" "PyJWT[crypto]>=2.13,<3" \
     && rm -rf /var/lib/apt/lists/*
 
 EXPOSE 8080

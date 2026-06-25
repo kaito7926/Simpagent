@@ -44,7 +44,15 @@ class AuthenticationService:
         self.sessions = SessionsRepository(session)
         self.provider = LocalIdentityProvider(session)
 
-    async def login(self, *, email: str, password: str, origin: str | None, now: datetime) -> LoginOutcome:
+    async def login(
+        self,
+        *,
+        email: str,
+        password: str,
+        origin: str | None,
+        now: datetime,
+        key_thumbprint: str | None = None,
+    ) -> LoginOutcome:
         require_allowed_origin(origin, self.settings)
         async with self.session.begin():
             decision = await self.provider.check_credentials(LocalAuthRequest(email=email, password=password))
@@ -63,11 +71,15 @@ class AuthenticationService:
                 scopes=scopes,
                 settings=self.settings,
                 now=now,
+                key_thumbprint=key_thumbprint,
             )
             family = await self.sessions.create_family(
                 user_id=bundle.user.id,
                 absolute_expires_at=issue_family_absolute_expiry(now=now, settings=self.settings),
             )
+            family.auth_binding_method = "dpop" if key_thumbprint else "bearer"
+            family.key_thumbprint = key_thumbprint
+            family.binding_created_at = now
             refresh_token = generate_refresh_token()
             await self.sessions.create_token(
                 family_id=family.id,

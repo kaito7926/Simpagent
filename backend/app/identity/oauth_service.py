@@ -55,6 +55,7 @@ class OAuthService:
         provider_name: OAuthProviderName,
         identity: OAuthIdentity,
         now: datetime,
+        key_thumbprint: str | None = None,
     ) -> OAuthLoginOutcome:
         if provider_name not in {"google", "github"}:
             raise OAuthAuthenticationError("Unsupported OAuth provider.")
@@ -85,11 +86,15 @@ class OAuthService:
                     scopes=scopes,
                     settings=self.settings,
                     now=now,
+                    key_thumbprint=key_thumbprint,
                 )
                 family = await self.sessions.create_family(
                     user_id=bundle.user.id,
                     absolute_expires_at=issue_family_absolute_expiry(now=now, settings=self.settings),
                 )
+                family.auth_binding_method = "dpop" if key_thumbprint else "bearer"
+                family.key_thumbprint = key_thumbprint
+                family.binding_created_at = now
                 refresh_token = generate_refresh_token()
                 await self.sessions.create_token(
                     family_id=family.id,

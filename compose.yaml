@@ -136,9 +136,6 @@ services:
       SIMPAGENT_GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
       SIMPAGENT_GITHUB_REDIRECT_URI: ${GITHUB_REDIRECT_URI:-}
       SIMPAGENT_SEARCH_MODEL: ${SEARCH_MODEL:-gemini-2.5-flash}
-      SIMPAGENT_FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
-      SIMPAGENT_FIRECRAWL_API_KEY_FILE: ${FIRECRAWL_API_KEY_FILE:-}
-      SIMPAGENT_FIRECRAWL_API_BASE: ${FIRECRAWL_API_BASE:-https://api.firecrawl.dev}
       SIMPAGENT_GUARDRAIL_SAFETY_ENABLED_DEFAULT: ${GUARDRAIL_SAFETY_ENABLED_DEFAULT:-true}
       SIMPAGENT_PYTHON_SUPERVISOR_BASE_URL: http://sandbox:8080
       SIMPAGENT_PYTHON_SUPERVISOR_REQUEST_TIMEOUT_SECONDS: 30
@@ -355,6 +352,7 @@ services:
     environment:
       SIMPAGENT_SANDBOX_RUNTIME_IMAGE: simpagent-python-runtime:local
       SIMPAGENT_SANDBOX_CAPABILITY_SECRET_FILE: /run/secrets/python_capability_secret
+      SIMPAGENT_SANDBOX_CAPABILITY_PUBLIC_KEY_FILE: /run/secrets/jwt_public_key
     volumes:
       - dev-secrets:/run/secrets:ro
       - /var/run/docker.sock:/var/run/docker.sock

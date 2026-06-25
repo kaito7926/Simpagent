@@ -6,13 +6,17 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import jwt
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings
+from app.db.repositories.sessions import SessionsRepository
 
 SEARCH_CAPABILITY_TYPE = "search-capability+jwt"
 SEARCH_CAPABILITY_ALGORITHM = "RS256"
 SEARCH_CAPABILITY_TOOL = "google_search"
 SEARCH_CAPABILITY_LEEWAY_SECONDS = 5
+SEARCH_CAPABILITY_REPLAY_ARTIFACT = "search_capability"
+SEARCH_CAPABILITY_REPLAY_EVENT = "search_capability_replay"
 
 
 @dataclass(frozen=True)
@@ -33,8 +37,16 @@ class SearchCapabilityError(ValueError):
     pass
 
 
+class SearchCapabilityReplayError(SearchCapabilityError):
+    pass
+
+
 def _timestamp(moment: datetime) -> int:
     return int(moment.replace(tzinfo=UTC).timestamp())
+
+
+def _datetime_from_numeric_date(value: int) -> datetime:
+    return datetime.fromtimestamp(value, UTC)
 
 
 def mint_search_capability(
@@ -162,3 +174,96 @@ def validate_search_capability(
         conversation_id=conversation_id,
         correlation_id=payload.get("correlation_id"),
     )
+
+
+async def consume_search_capability_once(
+    token: str,
+    *,
+    settings: Settings,
+    session_factory: async_sessionmaker[AsyncSession],
+    expected_user_id: UUID,
+    expected_conversation_id: UUID,
+    expected_correlation_id: str | None,
+    now: datetime | None = None,
+) -> SearchCapabilityClaims:
+    reference_now = now or settings.now_utc()
+    claims = validate_search_capability(token, settings=settings, now=reference_now)
+    if claims.sub != expected_user_id:
+        await _record_search_capability_mismatch(
+            settings=settings,
+            session_factory=session_factory,
+            claims=claims,
+            event_type="search_capability_subject_mismatch",
+            correlation_id=expected_correlation_id,
+        )
+        raise SearchCapabilityError("Capability subject does not match the user")
+    if claims.conversation_id != expected_conversation_id:
+        await _record_search_capability_mismatch(
+            settings=settings,
+            session_factory=session_factory,
+            claims=claims,
+            event_type="search_capability_conversation_mismatch",
+            correlation_id=expected_correlation_id,
+        )
+        raise SearchCapabilityError("Capability conversation does not match")
+    if claims.correlation_id != expected_correlation_id:
+        await _record_search_capability_mismatch(
+            settings=settings,
+            session_factory=session_factory,
+            claims=claims,
+            event_type="search_capability_correlation_mismatch",
+            correlation_id=expected_correlation_id,
+        )
+        raise SearchCapabilityError("Capability correlation does not match")
+
+    if not settings.capability_replay_protection_enabled:
+        return claims
+
+    async with session_factory() as session:
+        repository = SessionsRepository(session)
+        result = await repository.consume_security_artifact_once(
+            artifact_type=SEARCH_CAPABILITY_REPLAY_ARTIFACT,
+            jti=str(claims.jti),
+            subject=str(claims.sub),
+            audience=claims.aud,
+            conversation_id=str(claims.conversation_id),
+            binding_key_thumbprint=None,
+            expires_at=_datetime_from_numeric_date(claims.exp),
+            now=reference_now,
+            correlation_id=claims.correlation_id,
+            replay_event_type=SEARCH_CAPABILITY_REPLAY_EVENT,
+        )
+        await session.commit()
+        if not result.accepted:
+            raise SearchCapabilityReplayError("Capability has already been consumed")
+    return claims
+
+
+async def _record_search_capability_mismatch(
+    *,
+    settings: Settings,
+    session_factory: async_sessionmaker[AsyncSession],
+    claims: SearchCapabilityClaims,
+    event_type: str,
+    correlation_id: str | None,
+) -> None:
+    if not settings.capability_replay_protection_enabled:
+        return
+    async with session_factory() as session:
+        repository = SessionsRepository(session)
+        await repository.add_security_event(
+            event_type=event_type,
+            severity="medium",
+            user_id=None,
+            description="Search capability context binding failed.",
+            correlation_id=correlation_id or claims.correlation_id,
+            metadata={
+                "artifact_type": SEARCH_CAPABILITY_REPLAY_ARTIFACT,
+                "jti": str(claims.jti),
+                "subject": str(claims.sub),
+                "audience": claims.aud,
+                "conversation_id": str(claims.conversation_id),
+                "expected_binding": "redacted",
+            },
+        )
+        await session.commit()

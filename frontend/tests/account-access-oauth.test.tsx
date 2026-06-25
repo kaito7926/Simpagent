@@ -109,7 +109,7 @@ void test("oauth readiness helper exposes provider-specific enabled and disabled
   });
 });
 
-void test("starting OAuth navigates to backend-owned routes without browser token storage", () => {
+void test("starting OAuth navigates to backend-owned routes with sender-constrained binding", async () => {
   const navigation: string[] = [];
   const storageTrap = {
     setItem(key: string) {
@@ -121,15 +121,16 @@ void test("starting OAuth navigates to backend-owned routes without browser toke
   };
 
   for (const provider of ["google", "github"] satisfies OAuthProviderId[]) {
-    beginOAuth(provider, {
+    await beginOAuth(provider, {
       navigate: (url) => navigation.push(url),
       localStorage: storageTrap,
       sessionStorage: storageTrap,
+      deviceProofThumbprint: async () => `${provider}-proof-thumbprint`,
     });
   }
 
   assert.deepEqual(navigation, [
-    "/api/auth/oauth/google/start",
-    "/api/auth/oauth/github/start",
+    "/api/auth/oauth/google/start?dpop_jkt=google-proof-thumbprint",
+    "/api/auth/oauth/github/start?dpop_jkt=github-proof-thumbprint",
   ]);
 });

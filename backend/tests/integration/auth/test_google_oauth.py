@@ -10,6 +10,9 @@ from sqlalchemy import select
 from app.identity.providers.google import GOOGLE_ISSUER, GoogleOAuthIdentity
 from app.main import create_app
 from app.models.account import Identity, User
+from app.models.evidence import SecurityEvent
+from app.models.session import RefreshTokenFamily
+from app.api.routes.auth_oauth import OAUTH_STATE_COOKIE_NAMES
 from app.security.refresh_tokens import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME
 
 
@@ -17,10 +20,15 @@ from app.security.refresh_tokens import CSRF_COOKIE_NAME, REFRESH_COOKIE_NAME
 class FakeGoogleProvider:
     identity: GoogleOAuthIdentity
 
-    def authorization_url(self, *, state: str) -> str:
-        return f"https://accounts.google.com/o/oauth2/v2/auth?state={state}&client_id=test"
+    def authorization_url(self, *, state: str, code_challenge: str | None = None) -> str:
+        return (
+            "https://accounts.google.com/o/oauth2/v2/auth"
+            f"?state={state}&client_id=test&code_challenge={code_challenge}"
+            "&code_challenge_method=S256"
+        )
 
     async def authenticate(self, request) -> GoogleOAuthIdentity:
+        assert request.code_verifier
         return self.identity
 
 
@@ -32,6 +40,7 @@ def google_settings(settings):
             "google_client_secret": "google-client-secret",
             "google_redirect_uri": "http://testserver/api/auth/oauth/google/callback",
             "public_app_origin": "http://testserver",
+            "cookie_secure": False,
         }
     )
 
@@ -47,8 +56,11 @@ async def _client_with_identity(settings, session_factory, identity: GoogleOAuth
         yield http_client
 
 
-async def _oauth_roundtrip(client: AsyncClient):
-    start = await client.get("/api/auth/oauth/google/start")
+async def _oauth_roundtrip(client: AsyncClient, *, dpop_jkt: str | None = None):
+    start = await client.get(
+        "/api/auth/oauth/google/start",
+        params={"dpop_jkt": dpop_jkt} if dpop_jkt else None,
+    )
     assert start.status_code in {302, 303, 307}
     state = parse_qs(urlparse(start.headers["location"]).query)["state"][0]
     return await client.get(
@@ -86,6 +98,32 @@ async def test_google_callback_provisions_verified_new_user_and_sets_first_party
         )
     ).scalar_one()
     assert linked_identity.user_id == user.id
+
+
+@pytest.mark.asyncio
+async def test_google_oauth_session_is_bound_to_dpop_thumbprint_when_enabled(
+    google_settings,
+    session_factory,
+    clean_database,
+    db_session,
+) -> None:
+    settings = google_settings.model_copy(update={"dpop_enabled": True})
+    identity = GoogleOAuthIdentity(
+        issuer=GOOGLE_ISSUER,
+        subject="google-dpop-subject",
+        email="oauth-dpop@example.com",
+        email_verified=True,
+    )
+    async for client in _client_with_identity(settings, session_factory, identity):
+        response = await _oauth_roundtrip(client, dpop_jkt="B" * 43)
+
+    assert response.status_code in {302, 303, 307}
+    user = (await db_session.execute(select(User).where(User.email_key == "oauth-dpop@example.com"))).scalar_one()
+    family = (
+        await db_session.execute(select(RefreshTokenFamily).where(RefreshTokenFamily.user_id == user.id))
+    ).scalar_one()
+    assert family.auth_binding_method == "dpop"
+    assert family.key_thumbprint == "B" * 43
 
 
 @pytest.mark.asyncio
@@ -149,3 +187,42 @@ async def test_google_callback_fails_closed_for_missing_or_unverified_email(
     assert (await db_session.execute(select(User))).scalars().all() == []
     assert (await db_session.execute(select(Identity))).scalars().all() == []
     assert "google-client-secret" not in response.text
+
+
+@pytest.mark.asyncio
+async def test_google_callback_replay_is_denied_with_security_evidence(
+    google_settings,
+    session_factory,
+    clean_database,
+    db_session,
+) -> None:
+    identity = GoogleOAuthIdentity(
+        issuer=GOOGLE_ISSUER,
+        subject="google-replay-subject",
+        email="replay@example.com",
+        email_verified=True,
+    )
+    async for client in _client_with_identity(google_settings, session_factory, identity):
+        start = await client.get("/api/auth/oauth/google/start")
+        state = parse_qs(urlparse(start.headers["location"]).query)["state"][0]
+        transaction_cookie = client.cookies.get(OAUTH_STATE_COOKIE_NAMES["google"])
+        assert transaction_cookie
+        first = await client.get(
+            "/api/auth/oauth/google/callback",
+            params={"state": state, "code": "auth-code"},
+        )
+        client.cookies.set(OAUTH_STATE_COOKIE_NAMES["google"], transaction_cookie)
+        replay = await client.get(
+            "/api/auth/oauth/google/callback",
+            params={"state": state, "code": "auth-code"},
+        )
+
+    assert first.status_code in {302, 303, 307}
+    assert replay.status_code in {400, 401}
+    assert replay.json()["error"]["code"] == "oauth_state_invalid"
+
+    event = await db_session.scalar(
+        select(SecurityEvent).where(SecurityEvent.event_type == "oauth_transaction_replay")
+    )
+    assert event is not None
+    assert event.event_metadata["artifact_type"] == "oauth_transaction"
