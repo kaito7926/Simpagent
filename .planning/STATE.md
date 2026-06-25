@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 07 verified
-stopped_at: Phase 07 verified and ready to ship
-last_updated: "2026-06-25T23:18:20+07:00"
+status: Phase 07 shipped — PR #6
+stopped_at: Phase 07 shipped to main review via PR #6
+last_updated: "2026-06-25T23:21:13+07:00"
 progress:
   total_phases: 7
   completed_phases: 7
@@ -20,17 +20,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-06-08)
 
 **Core value:** Users can safely authenticate and use an AI chatbot with controlled agent tools without crossing tenant, role, scope, network, or host-execution boundaries.
-**Current focus:** Phase 07 verified — sender-constrained-sessions-and-cryptographic-hardening
+**Current focus:** Phase 07 shipped — PR #6
 
 ## Current Position
 
-Phase: 07 (sender-constrained-sessions-and-cryptographic-hardening) — VERIFIED
+Phase: 07 (sender-constrained-sessions-and-cryptographic-hardening) — SHIPPED
 Plan: 5 of 5
 Plan pack: Phase 07 workflow artifacts are being seeded after Phase 06 verification closeout
-Known shipped slice: Phase 06 remains the last merged delivery slice; Phase 07 is verified and ready to ship
+Known shipped slice: Phase 07 is ready for main review in PR #6
 Latest verification: `07-VERIFICATION.md` passed on 2026-06-25 with 4/4 must-haves verified and user-confirmed manual review passed
 
-Progress: Phase 07 hardening is verified and ready to ship; the historical Phase 03 planning/verification debt remains explicitly documented
+Progress: Phase 07 hardening is shipped to PR #6; the historical Phase 03 planning/verification debt remains explicitly documented
 
 ## Performance Metrics
 
@@ -50,7 +50,7 @@ Progress: Phase 07 hardening is verified and ready to ship; the historical Phase
 | 04 Isolated Python Execution | 5/5 | Shipped | PR #2 integrated slice; `04-VERIFICATION.md` passed |
 | 05 Final Product Hardening, OAuth, Gateway, Administration, and Security Evidence | 8/8 | Complete | `05-VERIFICATION.md` passed on 2026-06-17 |
 | 06 Adversarial Verification and Vietnamese Delivery | 5/5 | Verified | `06-VERIFICATION.md` passed on 2026-06-19; matrix and attack summaries regenerated |
-| 07 Sender-Constrained Sessions and Cryptographic Hardening | 5/5 | Verified | Replay foundations, OAuth PKCE transactions, asymmetric one-time tool capabilities, DPoP auth binding, and frontend proof rollout passed verification |
+| 07 Sender-Constrained Sessions and Cryptographic Hardening | 5/5 | Shipped | PR #6; replay foundations, OAuth PKCE transactions, asymmetric one-time tool capabilities, DPoP auth binding, and frontend proof rollout passed verification |
 
 **Recent Trend:**
 
@@ -120,7 +120,7 @@ None currently tracked.
 
 ## Session Continuity
 
-Last activity: 2026-06-25 - Completed quick task 260625-fix: Fix Compose Firecrawl duplicate environment keys
+Last activity: 2026-06-25 - Shipped Phase 07 sender-constrained session hardening to PR #6
 Last session: 2026-06-23T07:15:00Z
 Stopped at: Added Phase 07 sender-constrained session hardening workflow after Phase 06 closeout
 Resume file: `.planning/phases/07-sender-constrained-sessions-and-cryptographic-hardening/07-CONTEXT.md`
