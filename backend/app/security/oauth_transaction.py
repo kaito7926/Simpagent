@@ -28,6 +28,7 @@ class OAuthTransaction:
     jti: str
     code_verifier: str
     code_challenge: str
+    dpop_key_thumbprint: str | None
     issued_at: datetime
     expires_at: datetime
 
@@ -54,6 +55,7 @@ def issue_oauth_transaction(
     provider: OAuthTransactionProvider,
     settings: Settings,
     now: datetime,
+    dpop_key_thumbprint: str | None = None,
 ) -> OAuthTransaction:
     code_verifier = secrets.token_urlsafe(64)[:96]
     issued_at = now.astimezone(UTC)
@@ -63,6 +65,7 @@ def issue_oauth_transaction(
         jti=str(uuid4()),
         code_verifier=code_verifier,
         code_challenge=_pkce_challenge(code_verifier),
+        dpop_key_thumbprint=dpop_key_thumbprint,
         issued_at=issued_at,
         expires_at=issued_at + timedelta(seconds=settings.oauth_transaction_ttl_seconds),
     )
@@ -75,6 +78,7 @@ def seal_oauth_transaction(*, transaction: OAuthTransaction, settings: Settings)
         "jti": transaction.jti,
         "code_verifier": transaction.code_verifier,
         "code_challenge": transaction.code_challenge,
+        "dpop_key_thumbprint": transaction.dpop_key_thumbprint,
         "iat": _timestamp(transaction.issued_at),
         "exp": _timestamp(transaction.expires_at),
     }
@@ -118,6 +122,9 @@ def unseal_oauth_transaction(
             jti=str(payload["jti"]),
             code_verifier=str(payload["code_verifier"]),
             code_challenge=str(payload["code_challenge"]),
+            dpop_key_thumbprint=(
+                str(payload["dpop_key_thumbprint"]) if payload.get("dpop_key_thumbprint") is not None else None
+            ),
             issued_at=issued_at,
             expires_at=expires_at,
         )

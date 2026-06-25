@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Annotated, Literal
 from urllib.parse import urlencode
 
@@ -33,6 +34,26 @@ OAUTH_STATE_COOKIE_NAMES: dict[OAuthRouteProvider, str] = {
 }
 OAUTH_STATE_MAX_AGE_SECONDS = 5 * 60
 OAUTH_STATE_SAMESITE = "lax"
+DPOP_THUMBPRINT_PATTERN = re.compile(r"^[A-Za-z0-9_-]{43}$")
+
+
+def _oauth_dpop_thumbprint(request: Request, settings: Settings) -> str | None:
+    thumbprint = request.query_params.get("dpop_jkt")
+    if not thumbprint:
+        if settings.dpop_enabled:
+            raise ApiError(
+                status_code=400,
+                code="invalid_dpop_binding",
+                message="OAuth start requires a browser proof binding.",
+            )
+        return None
+    if not DPOP_THUMBPRINT_PATTERN.fullmatch(thumbprint):
+        raise ApiError(
+            status_code=400,
+            code="invalid_dpop_binding",
+            message="OAuth proof binding is invalid.",
+        )
+    return thumbprint
 
 
 def _issue_state_cookie(
@@ -121,7 +142,7 @@ async def _consume_oauth_transaction(
             subject=None,
             audience=f"simpagent-oauth-{provider}",
             conversation_id=None,
-            binding_key_thumbprint=transaction.code_challenge,
+            binding_key_thumbprint=transaction.dpop_key_thumbprint,
             expires_at=transaction.expires_at,
             now=request.app.state.clock(),
             correlation_id=correlation_id,
@@ -203,7 +224,12 @@ async def google_oauth_start(request: Request) -> RedirectResponse:
             code="oauth_provider_unconfigured",
             message="Google OAuth is not configured.",
         )
-    transaction = issue_oauth_transaction(provider="google", settings=settings, now=request.app.state.clock())
+    transaction = issue_oauth_transaction(
+        provider="google",
+        settings=settings,
+        now=request.app.state.clock(),
+        dpop_key_thumbprint=_oauth_dpop_thumbprint(request, settings),
+    )
     try:
         authorization_url = _google_provider(request, settings).authorization_url(
             state=transaction.state,
@@ -254,6 +280,7 @@ async def google_oauth_callback(
             provider_name="google",
             identity=identity,
             now=request.app.state.clock(),
+            key_thumbprint=transaction.dpop_key_thumbprint,
         )
     except (OAuthAuthenticationError, ValueError) as exc:
         raise ApiError(status_code=401, code="oauth_login_failed", message="Google OAuth login failed.") from exc
@@ -275,7 +302,12 @@ async def github_oauth_start(request: Request) -> RedirectResponse:
             code="oauth_provider_unconfigured",
             message="GitHub OAuth is not configured.",
         )
-    transaction = issue_oauth_transaction(provider="github", settings=settings, now=request.app.state.clock())
+    transaction = issue_oauth_transaction(
+        provider="github",
+        settings=settings,
+        now=request.app.state.clock(),
+        dpop_key_thumbprint=_oauth_dpop_thumbprint(request, settings),
+    )
     try:
         authorization_url = _github_provider(request, settings).authorization_url(
             state=transaction.state,
@@ -326,6 +358,7 @@ async def github_oauth_callback(
             provider_name="github",
             identity=identity,
             now=request.app.state.clock(),
+            key_thumbprint=transaction.dpop_key_thumbprint,
         )
     except (OAuthAuthenticationError, ValueError) as exc:
         raise ApiError(status_code=401, code="oauth_login_failed", message="GitHub OAuth login failed.") from exc

@@ -111,6 +111,20 @@ async def test_github_start_redirects_only_when_configured(github_settings, sess
 
 
 @pytest.mark.asyncio
+async def test_github_start_requires_dpop_binding_when_enabled(github_settings, session_factory, clean_database) -> None:
+    app = create_app(settings=github_settings.model_copy(update={"dpop_enabled": True}), session_factory=session_factory)
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+        follow_redirects=False,
+    ) as client:
+        response = await client.get("/api/auth/oauth/github/start")
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_dpop_binding"
+
+
+@pytest.mark.asyncio
 async def test_github_callback_provisions_verified_new_user_and_sets_first_party_cookies(
     github_settings,
     session_factory,

@@ -390,7 +390,9 @@ export function AccountAccessShell({ initialMode, demoConfig }: AccountAccessShe
   function handleOAuthStart(provider: OAuthProviderId) {
     clearFormState();
     setAnnouncement(null);
-    beginOAuth(provider);
+    void beginOAuth(provider).catch(() => {
+      setAnnouncement("Secure sign-in proof could not be prepared. Try again.");
+    });
   }
 
   function fillDemoAccount(kind: "user" | "admin") {

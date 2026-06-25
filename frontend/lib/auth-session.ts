@@ -1,5 +1,5 @@
 import { ApiError, requestJson, requestNoContent } from "@/lib/api";
-import { browserDeviceProof, type DeviceProofProvider } from "@/lib/device-proof";
+import { browserDeviceProof, deviceProofThumbprint, type DeviceProofProvider } from "@/lib/device-proof";
 
 export type AuthMode = "login" | "register";
 export type SessionState =
@@ -70,6 +70,7 @@ export type BeginOAuthDependencies = {
   navigate?: (url: string) => void;
   localStorage?: OAuthStorageTrap;
   sessionStorage?: OAuthStorageTrap;
+  deviceProofThumbprint?: () => Promise<string>;
 };
 
 export type DemoConfig = {
@@ -155,15 +156,17 @@ const OAUTH_START_ROUTES: Record<OAuthProviderId, string> = {
   github: "/api/auth/oauth/github/start",
 };
 
-export function beginOAuth(provider: OAuthProviderId, deps: BeginOAuthDependencies = {}): void {
+export async function beginOAuth(provider: OAuthProviderId, deps: BeginOAuthDependencies = {}): Promise<void> {
   const startUrl = OAUTH_START_ROUTES[provider];
   const navigate =
     deps.navigate ??
     ((url: string) => {
       window.location.assign(url);
     });
+  const thumbprint = await (deps.deviceProofThumbprint ?? deviceProofThumbprint)();
+  const separator = startUrl.includes("?") ? "&" : "?";
 
-  navigate(startUrl);
+  navigate(`${startUrl}${separator}${new URLSearchParams({ dpop_jkt: thumbprint }).toString()}`);
 }
 
 export class AuthSessionController {
